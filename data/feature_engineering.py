@@ -95,8 +95,13 @@ def main():
     # print(conduits_data.conduits)
     pass
 
+import swmmio as sw
 
-conduits_data = perform_conduits_feature_engineering()
+# print(sw.utils.create_dataframeINP)
+print(model._tags)
+# print(model.inp.headers)
+# print([m for m in dir(model.inp) if not m.startswith('_')])
+# print(model.network)
 
 if __name__ == "__main__":
     main()

@@ -83,6 +83,9 @@ class ConduitsData(Data):
         }
         self.frost_zone = categories.get(frost_zone.upper(), 1.2)
 
+    def get_tag(self):
+        pass
+
     def drop_unused(self) -> None:
         """
         Drops unused columns from the conduits dataframe.
@@ -243,6 +246,8 @@ class ConduitsData(Data):
                 <= (self.conduits.OutletNodeInvert - self.frost_zone)
             )
         ).astype(int)
+
+
 
 
 class NodeData(Data):
