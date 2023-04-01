@@ -10,7 +10,9 @@ from typing import List, Tuple
 from feature_engineering import conduits_data
 
 
-def crossover(parent1: List[float], parent2: List[float]) -> Tuple[List[float], List[float]]:
+def crossover(
+    parent1: List[float], parent2: List[float]
+) -> Tuple[List[float], List[float]]:
     """
     Performs one-point crossover between two parents.
 
@@ -47,7 +49,9 @@ def mutate(individual: List[float], mutation_rate: float) -> List[float]:
     return mutated_individual
 
 
-def create_initial_population(conduits_data: pd.DataFrame, population_size: int) -> List[List[float]]:
+def create_initial_population(
+    conduits_data: pd.DataFrame, population_size: int
+) -> List[List[float]]:
     """
     Creates the initial population for the genetic algorithm.
 
@@ -81,7 +85,8 @@ class GeneticAlgorithm:
 
     def initialize_population(self) -> List[List[float]]:
         return [
-            [random() for _ in range(len(self.conduits_data))] for _ in range(self.population_size)
+            [random() for _ in range(len(self.conduits_data))]
+            for _ in range(self.population_size)
         ]
 
     def fitness(self, individual: List[float]) -> float:

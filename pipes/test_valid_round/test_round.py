@@ -15,6 +15,7 @@ from pipes.round import (
 )
 from utils.lazy_object import LazyObject
 
+
 class TestCheckDimensions:
     def test_check_dimensions_filling_and_diameter_equal(self):
         """

@@ -1,6 +1,13 @@
 import logging
-from pipes.round import (check_dimensions, max_filling, min_slope, max_slopes, max_velocity_value, min_velocity_value,
-                         max_depth_value)
+from pipes.round import (
+    check_dimensions,
+    max_filling,
+    min_slope,
+    max_slopes,
+    max_velocity_value,
+    min_velocity_value,
+    max_depth_value,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +77,9 @@ def check_slope(slope: float) -> bool:
     return True
 
 
-def validate_min_slope(slope: float, filling: float, diameter: float, theta: float = 1.5, g: float = 9.81) -> bool:
+def validate_min_slope(
+    slope: float, filling: float, diameter: float, theta: float = 1.5, g: float = 9.81
+) -> bool:
     """
     Check that the minimum slope is not exceeded.
     For hydraulic calculations of sewers and rainwater collectors,

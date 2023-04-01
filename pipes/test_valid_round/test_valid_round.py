@@ -1,8 +1,15 @@
 import pytest
 import numpy as np
 
-from pipes.valid_round import (validate_filling, validate_max_velocity, validate_min_velocity, validate_max_slope,
-                               validate_min_slope, check_slope, max_velocity_value)
+from pipes.valid_round import (
+    validate_filling,
+    validate_max_velocity,
+    validate_min_velocity,
+    validate_max_slope,
+    validate_min_slope,
+    check_slope,
+    max_velocity_value,
+)
 
 
 class TestValidateMaxFilling:
@@ -90,7 +97,7 @@ class TestValidateMaxVelocity:
         Tests if validate_max_velocity function raises TypeError for non-float values.
         """
         with pytest.raises(TypeError):
-            validate_max_velocity('10.0')  # type: ignore
+            validate_max_velocity("10.0")  # type: ignore
 
     def test_velocity_is_not_none(self):
         """
@@ -158,7 +165,7 @@ class TestValidateMinVelocity:
         Tests if validate_min_velocity function raises TypeError for string values.
         """
         with pytest.raises(TypeError):
-            validate_min_velocity('10.0')  # type: ignore
+            validate_min_velocity("10.0")  # type: ignore
 
 
 class TestValidateMinSlope:
@@ -371,4 +378,4 @@ class TestCheckSlope:
         Test the `check_slope` function with string value.
         """
         with pytest.raises(TypeError):
-            check_slope('nan')  # type: ignore
+            check_slope("nan")  # type: ignore

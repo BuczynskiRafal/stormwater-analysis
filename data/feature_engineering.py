@@ -95,10 +95,11 @@ def main():
     # print(conduits_data.conduits)
     pass
 
+
 import swmmio as sw
 
 # print(sw.utils.create_dataframeINP)
-print(model._tags)
+# print(model._tags)
 # print(model.inp.headers)
 # print([m for m in dir(model.inp) if not m.startswith('_')])
 # print(model.network)

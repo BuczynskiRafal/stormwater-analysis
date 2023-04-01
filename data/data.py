@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import swmmio as sw
-import pyswmm
 
 from abc import ABC, abstractmethod
 from pipes.valid_round import (
@@ -13,26 +12,17 @@ from pipes.valid_round import (
     max_depth_value,
 )
 
-from inp_manager.test_inp import TEST_FILE, RPT_TEST_FILE
-
-
 desired_width = 500
 pd.set_option("display.width", desired_width)
 np.set_printoptions(linewidth=desired_width)
 pd.set_option("display.max_columns", 30)
 
 
-# model = sw.Model(TEST_FILE, include_rpt=True)
-
-# with pyswmm.Simulation(model.inp.path) as sim:
-#     for _ in sim:
-#         pass
-
-
 class Data(ABC):
     """
     Abstract base class for data classes.
     """
+
     def __init__(self, model: sw.Model) -> None:
         self.model = model
 
@@ -57,6 +47,7 @@ class ConduitsData(Data):
     """
     Class for handling conduit data.
     """
+
     def __init__(self, model: sw.Model) -> None:
         super().__init__(model)
         self.conduits = model.conduits().copy()
@@ -248,8 +239,6 @@ class ConduitsData(Data):
         ).astype(int)
 
 
-
-
 class NodeData(Data):
     def __init__(self, model: sw.Model) -> None:
         super().__init__(model)
@@ -292,6 +281,7 @@ class SubcatchmentData(Data):
     """
     Data class for subcatchments.
     """
+
     def __init__(self, model: sw.Model) -> None:
         super().__init__(model)
         self.subcatchments = model.subcatchments.dataframe.copy()

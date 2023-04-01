@@ -33,7 +33,9 @@ def check_dimensions(filling: float, diameter: float) -> bool:
     if filling > diameter:
         raise ValueError("Filling must be less than or equal to the diameter")
     if not (0 <= filling <= 2.0 and 0.2 <= diameter <= 2.0):
-        raise ValueError("Value out of bounds. Filling must be between 0.2 and 2.0 meters, and diameter must be between 0.2 and 2.0 meters")
+        raise ValueError(
+            "Value out of bounds. Filling must be between 0.2 and 2.0 meters, and diameter must be between 0.2 and 2.0 meters"
+        )
     return True
 
 
@@ -181,10 +183,12 @@ def calc_velocity(filling: float, diameter: float, slope: float) -> float:
     """
     if check_dimensions(filling, diameter):
         slope = slope / 1000
-        return 1 / 0.013 * calc_rh(filling, diameter) ** (2 / 3) * (slope ** 0.5)
+        return 1 / 0.013 * calc_rh(filling, diameter) ** (2 / 3) * (slope**0.5)
 
 
-def min_slope(filling: float, diameter: float, theta: float = 1.5, g: float = 9.81) -> float:
+def min_slope(
+    filling: float, diameter: float, theta: float = 1.5, g: float = 9.81
+) -> float:
     """
     Get the minimal slope for sewer pipe.
     If the pipe  filling is greater than 0.3,
@@ -203,7 +207,12 @@ def min_slope(filling: float, diameter: float, theta: float = 1.5, g: float = 9.
         slope (int, float): The minimum slope of the channel [‰]
     """
     if check_dimensions(filling, diameter):
-        return 4 * (theta / g) * ((diameter / 4) / calc_rh(filling, diameter)) * (1 / diameter)
+        return (
+            4
+            * (theta / g)
+            * ((diameter / 4) / calc_rh(filling, diameter))
+            * (1 / diameter)
+        )
 
 
 def max_slope(diameter: float) -> float:
@@ -235,7 +244,9 @@ def max_slope(diameter: float) -> float:
         return slope
 
 
-def draw_pipe_section(filling: float, diameter: float, max_filling: float = None) -> matplotlib.pyplot:
+def draw_pipe_section(
+    filling: float, diameter: float, max_filling: float = None
+) -> matplotlib.pyplot:
     """
     Plot a pipe section with a given diameter and filling height.
 
@@ -274,7 +285,10 @@ def draw_pipe_section(filling: float, diameter: float, max_filling: float = None
     plt.plot([radius, -radius], [0, 0])
     # annotation to diameter
     plt.gca().annotate(
-        f"Diameter={diameter}", xy=(radius / 8, -radius / 5), xycoords="data", fontsize=12
+        f"Diameter={diameter}",
+        xy=(radius / 8, -radius / 5),
+        xycoords="data",
+        fontsize=12,
     )
 
     # draw level of water
@@ -324,20 +338,22 @@ def draw_pipe_section(filling: float, diameter: float, max_filling: float = None
     plt.show()
 
 
-max_slopes = LazyObject(lambda: {
-    "0.2": max_slope(0.2),
-    "0.3": max_slope(0.3),
-    "0.4": max_slope(0.4),
-    "0.5": max_slope(0.5),
-    "0.6": max_slope(0.6),
-    "0.7": max_slope(0.7),
-    "0.8": max_slope(0.8),
-    "0.9": max_slope(0.9),
-    "1.0": max_slope(1.0),
-    "1.2": max_slope(1.2),
-    "1.5": max_slope(1.5),
-    "2.0": max_slope(2.0),
-})
+max_slopes = LazyObject(
+    lambda: {
+        "0.2": max_slope(0.2),
+        "0.3": max_slope(0.3),
+        "0.4": max_slope(0.4),
+        "0.5": max_slope(0.5),
+        "0.6": max_slope(0.6),
+        "0.7": max_slope(0.7),
+        "0.8": max_slope(0.8),
+        "0.9": max_slope(0.9),
+        "1.0": max_slope(1.0),
+        "1.2": max_slope(1.2),
+        "1.5": max_slope(1.5),
+        "2.0": max_slope(2.0),
+    }
+)
 
 
 max_velocity_value = max_velocity()
