@@ -1,15 +1,10 @@
-import pyswmm as ps
-from main import model
+import swmmio
+
+from typing import Tuple
 from data import ConduitsData, NodeData, SubcatchmentData
 
-from inp_manager.test_inp import TEST_FILE
 
-# with ps.Simulation(TEST_FILE) as sim:
-#      for _ in sim:
-#          pass
-
-
-def perform_conduits_feature_engineering():
+def perform_conduits_feature_engineering(model: swmmio.Model) -> ConduitsData:
     """
     Performs feature engineering on the conduits data.
 
@@ -25,6 +20,9 @@ def perform_conduits_feature_engineering():
     - Calculates the amount of ground cover over each conduit's inlet and outlet.
     - Checks if the depth of each conduit is valid based on the inlet and outlet elevations and ground cover.
     - Checks if the ground cover over each conduit's inlet and outlet is valid.
+
+    Args:
+        model (swmmio.Model): The SWMM model containing the data to be processed.
 
     Returns:
         A ConduitsData object representing the conduits data after feature engineering steps have been applied.
@@ -42,16 +40,20 @@ def perform_conduits_feature_engineering():
     conduits_data.inlet_ground_cover()
     conduits_data.depth_is_valid()
     conduits_data.coverage_is_valid()
+    print(conduits_data.conduits)
     return conduits_data
 
 
-def perform_nodes_feature_engineering():
+def perform_nodes_feature_engineering(model: swmmio.Model) -> NodeData:
     """
     Performs feature engineering on the nodes data.
 
     Reads the SWMM model variable and performs the following feature engineering steps on the nodes data:
     - Sets the frost zone to selected category.
     - Drops unused columns from the nodes dataframe.
+
+    Args:
+        model (swmmio.Model): The SWMM model containing the data to be processed.
 
     Returns:
         A NodeData object representing the nodes data after feature engineering steps have been applied.
@@ -62,13 +64,17 @@ def perform_nodes_feature_engineering():
     return nodes_data
 
 
-def perform_subcatchments_feature_engineering():
+def perform_subcatchments_feature_engineering(model: swmmio.Model) -> SubcatchmentData:
     """
     Performs feature engineering on the subcatchments data.
 
     Reads the SWMM model variable and performs the following feature engineering steps on the subcatchments data:
     - Sets the frost zone to selected category.
     - Drops unused columns from the subcatchments dataframe.
+
+    Args:
+        model (swmmio.Model): The SWMM model containing the data to be processed.
+
 
     Returns:
         SubcatchmentData: An instance of the SubcatchmentData class after feature engineering.
@@ -79,7 +85,9 @@ def perform_subcatchments_feature_engineering():
     return subcatchments_data
 
 
-def main():
+def feature_engineering(
+    model: swmmio.Model,
+) -> Tuple[ConduitsData, NodeData, SubcatchmentData]:
     """
     Performs feature engineering on the SWMM model data.
 
@@ -87,22 +95,14 @@ def main():
     - Performs feature engineering on the conduits data.
     - Performs feature engineering on the nodes data.
     - Performs feature engineering on the subcatchments data.
+
+    Returns:
+        tuple: A tuple containing three processed data objects: (conduits_data, nodes_data, subcatchments_data), where
+            - conduits_data (ConduitsData): The processed conduits data after feature engineering.
+            - nodes_data (NodeData): The processed nodes data after feature engineering.
+            - subcatchments_data (SubcatchmentsData): The processed subcatchments data after feature engineering.
     """
-    # conduits_data = perform_conduits_feature_engineering()
-    # nodes_data = perform_nodes_feature_engineering()
-    # subcatchments_data = perform_subcatchments_feature_engineering()
-
-    # print(conduits_data.conduits)
-    pass
-
-
-import swmmio as sw
-
-# print(sw.utils.create_dataframeINP)
-# print(model._tags)
-# print(model.inp.headers)
-# print([m for m in dir(model.inp) if not m.startswith('_')])
-# print(model.network)
-
-if __name__ == "__main__":
-    main()
+    conduits_data = perform_conduits_feature_engineering(model)
+    nodes_data = perform_nodes_feature_engineering(model)
+    subcatchments_data = perform_subcatchments_feature_engineering(model)
+    return conduits_data, nodes_data, subcatchments_data
