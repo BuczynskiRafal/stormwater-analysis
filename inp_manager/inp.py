@@ -60,9 +60,9 @@ class SwmmModel:
         }
 
     def optimize_conduit_slope(self):
-        # min_slope() returns a minimal slope as number/1000,  SlopeFtPerFt is a number.
-        # So we need to convert it to number/1000.
-        # SlopePerMile take number/1000, so there is no need to convert it to number/1000.
+        # TODO: min_slope() returns a minimal slope as number/1000,  SlopeFtPerFt is a number.
+        #       So we need to convert it to number/1000.
+        #       SlopePerMile take number/1000, so there is no need to convert it to number/1000.
         self.conduits_data.conduits.SlopeFtPerFt = min_slope(
             filling=self.conduits_data.conduits.Filling,
             diameter=self.conduits_data.conduits.Geom1,
