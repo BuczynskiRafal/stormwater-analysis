@@ -5,15 +5,14 @@ import pandas as pd
 import numpy as np
 import pprint
 
-from inp_manage.inp import SwmmModel
-from inp_manage.test_inp import TEST_FILE, RPT_TEST_FILE
-from data.feature_engineering import feature_engineering
+from stormwater_analysis.inp_manage.inp import SwmmModel
+from stormwater_analysis.inp_manage.test_inp import TEST_FILE, RPT_TEST_FILE
+from stormwater_analysis.data.feature_engineering import feature_engineering
 
 desired_width = 500
 pd.set_option("display.width", desired_width)
 np.set_printoptions(linewidth=desired_width)
 pd.set_option("display.max_columns", 30)
-
 
 model = sw.Model(TEST_FILE, include_rpt=True)
 
@@ -27,4 +26,7 @@ model = sw.Model(TEST_FILE, include_rpt=True)
 # print(o.find_all_traces())
 # pprint.pprint(o.find_all_traces())
 
-print(model.inp.tags)
+print(model.inp)
+
+if __name__ == '__main__':
+    print("Hello world!")

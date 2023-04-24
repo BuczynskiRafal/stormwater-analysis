@@ -1,39 +1,21 @@
 Data Package
-====================
-
-.. currentmodule:: stormwater-analysis.data
+============
 
 Submodules
 ----------
 
-catchment module
-------------------------------
+data.data module
+----------------
 
-.. automodule:: catchment
+.. automodule:: stormwater_analysis.data.data
    :members:
    :undoc-members:
    :show-inheritance:
 
-data module
-------------------------------
+data.feature_engineering module
+-------------------------------
 
-.. automodule:: data
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-future_engineering module
-------------------------------
-
-.. automodule:: future_engineering
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-future_engineering module
-------------------------------
-
-.. automodule:: future_engineering
+.. automodule:: stormwater_analysis.data.feature_engineering
    :members:
    :undoc-members:
    :show-inheritance:
@@ -41,7 +23,7 @@ future_engineering module
 Module contents
 ---------------
 
-.. automodule:: stormwater-analysis.data
+.. automodule:: stormwater_analysis.data
    :members:
    :undoc-members:
    :show-inheritance:
