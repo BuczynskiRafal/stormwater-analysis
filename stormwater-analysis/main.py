@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 import pprint
 
-from inp_manager.inp import SwmmModel
-from inp_manager.test_inp import TEST_FILE, RPT_TEST_FILE
+from inp_manage.inp import SwmmModel
+from inp_manage.test_inp import TEST_FILE, RPT_TEST_FILE
 from data.feature_engineering import feature_engineering
 
 desired_width = 500
@@ -21,8 +21,10 @@ model = sw.Model(TEST_FILE, include_rpt=True)
 #     for _ in sim:
 #         pass
 
-conduits_data, nodes_data, subcatchments_data = feature_engineering(model)
+# conduits_data, nodes_data, subcatchments_data = feature_engineering(model)
 
-o = SwmmModel(model, conduits_data, nodes_data, subcatchments_data)
+# o = SwmmModel(model, conduits_data, nodes_data, subcatchments_data)
 # print(o.find_all_traces())
-pprint.pprint(o.find_all_traces())
+# pprint.pprint(o.find_all_traces())
+
+print(model.inp.tags)

@@ -5,7 +5,7 @@ import pytest
 
 from unittest.mock import MagicMock
 from pipes.valid_round import validate_filling
-from inp_manager.test_inp import TEST_FILE
+from inp_manage.test_inp import TEST_FILE
 from data.data import ConduitsData
 
 

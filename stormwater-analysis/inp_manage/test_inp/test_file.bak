@@ -203,6 +203,7 @@ Node       J1               #P
 Node       J3               #E              
 Link       C3               #P              
 Link       C4               #E              
+Link       7                #E              
 
 [MAP]
 DIMENSIONS 777170.879 592553.184 777244.390 592609.929
