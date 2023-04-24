@@ -1,4 +1,4 @@
-from utils.lazy_object import LazyObject
+from stormwater_analysis.utils.lazy_object import LazyObject
 
 
 __all__ = [

@@ -1,8 +1,8 @@
 import swmmio
 
-from data.data import ConduitsData, NodeData, SubcatchmentData
 from swmmio.utils.functions import trace_from_node
-from pipes.round import (
+from stormwater_analysis.data.data import ConduitsData, NodeData, SubcatchmentData
+from stormwater_analysis.pipes.round import (
     max_slopes,
     min_slope,
     max_velocity_value,

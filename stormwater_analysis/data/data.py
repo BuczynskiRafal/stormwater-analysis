@@ -3,7 +3,7 @@ import numpy as np
 import swmmio as sw
 
 from abc import ABC, abstractmethod
-from pipes.valid_round import (
+from stormwater_analysis.pipes.valid_round import (
     validate_filling,
     validate_max_velocity,
     validate_min_velocity,

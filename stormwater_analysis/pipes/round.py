@@ -4,7 +4,7 @@ import logging
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
 from numpy import sin, cos, pi, linspace
-from utils.lazy_object import LazyObject
+from stormwater_analysis.utils.lazy_object import LazyObject
 
 
 logger = logging.getLogger(__name__)

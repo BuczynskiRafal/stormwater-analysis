@@ -4,9 +4,9 @@ import swmmio as sw
 import pytest
 
 from unittest.mock import MagicMock
-from pipes.valid_round import validate_filling
-from inp_manage.test_inp import TEST_FILE
-from data.data import ConduitsData
+from stormwater_analysis.pipes.valid_round import validate_filling
+from stormwater_analysis.inp_manage.test_inp import TEST_FILE
+from stormwater_analysis.data.data import ConduitsData
 
 
 desired_width = 500
