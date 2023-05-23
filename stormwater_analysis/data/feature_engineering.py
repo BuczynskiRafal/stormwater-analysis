@@ -1,7 +1,8 @@
 from typing import Tuple
 
 import swmmio
-from data import ConduitsData, NodeData, SubcatchmentData
+
+from stormwater_analysis.data.data import ConduitsData, NodeData, SubcatchmentData
 
 
 def perform_conduits_feature_engineering(model: swmmio.Model) -> ConduitsData:
@@ -40,7 +41,7 @@ def perform_conduits_feature_engineering(model: swmmio.Model) -> ConduitsData:
     conduits_data.inlet_ground_cover()
     conduits_data.depth_is_valid()
     conduits_data.coverage_is_valid()
-    print(conduits_data.conduits)
+    # print(conduits_data.conduits)
     return conduits_data
 
 
@@ -84,6 +85,7 @@ def perform_subcatchments_feature_engineering(
     subcatchments_data = SubcatchmentData(model)
     subcatchments_data.set_frost_zone("II")
     subcatchments_data.drop_unused()
+    subcatchments_data.classify(categories=True)
     return subcatchments_data
 
 

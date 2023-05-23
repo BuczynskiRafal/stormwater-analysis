@@ -53,6 +53,7 @@ class SwmmModel:
         return {outfall: trace_from_node(self.conduits_data.conduits, outfall) for outfall in outfalls}
 
     def optimize_conduit_slope(self) -> None:
+        # Currently, this function is not needed.
         # TODO: min_slope() returns a minimal slope as number/1000,  SlopeFtPerFt is a number.
         #       So we need to convert it to number/1000.
         #       SlopePerMile take number/1000, so there is no need to convert it to number/1000.
@@ -62,10 +63,13 @@ class SwmmModel:
         )
 
     def optimize_conduit_depth(self):  # type: ignore
+        # Currently, this function is not needed.
         pass
 
     def optimize_conduit_diameter(self):  # type: ignore
+        # Currently, this function is not needed.
         pass
 
     def optimize(self):  # type: ignore
+        # Currently, this function is not needed.
         pass

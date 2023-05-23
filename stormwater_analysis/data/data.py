@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import swmmio as sw
 
+from stormwater_analysis.data.predictor import classifier
 from stormwater_analysis.pipes.round import max_depth_value
 from stormwater_analysis.pipes.valid_round import (
     validate_filling,
@@ -101,7 +102,7 @@ class ConduitsData(Data):
         Calculates the conduit filling for a given SWMM model input file.
         Adding values unit is meter.
         """
-        self.conduits["Filling"] = self.conduits.MaxDPerc * self.conduits.Geom1
+        self.conduits["Filling"] = self.conduits["MaxDPerc"] * self.conduits.Geom1
 
     def filling_is_valid(self) -> None:
         """
@@ -314,3 +315,24 @@ class SubcatchmentData(Data):
                 #
             ]
         )
+
+    def classify(self, categories: bool = True) -> None:
+        df = self.subcatchments[
+            ["Area", "PercImperv", "Width", "PercSlope", "PctZero", "TotalPrecip", "TotalRunoffMG", "PeakRunoff", "RunoffCoeff"]
+        ].copy()
+        df["TotalPrecip"] = pd.to_numeric(df["TotalPrecip"])
+        predictions = classifier.predict(df)
+        predictions_cls = predictions.argmax(axis=-1)
+        if categories:
+            categories = [
+                "compact_urban_development",
+                "urban",
+                "loose_urban_development",
+                "wooded_area",
+                "grassy",
+                "loose_soil",
+                "steep_area",
+            ]
+            self.subcatchments["category"] = [categories[i] for i in predictions_cls]
+        else:
+            self.subcatchments["category"] = predictions_cls
