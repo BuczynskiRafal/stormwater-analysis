@@ -1,12 +1,12 @@
 import logging
+
 from stormwater_analysis.pipes.round import (
     check_dimensions,
     max_filling,
-    min_slope,
     max_slopes,
     max_velocity_value,
+    min_slope,
     min_velocity_value,
-    max_depth_value,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def validate_min_velocity(velocity: float) -> bool:
     Return:
         bool: given velocity value is higher than the minimum velocity.
     """
-    return velocity >= min_velocity_value
+    return velocity >= min_velocity_value  # type: ignore
 
 
 def check_slope(slope: float) -> bool:
@@ -78,7 +78,11 @@ def check_slope(slope: float) -> bool:
 
 
 def validate_min_slope(
-    slope: float, filling: float, diameter: float, theta: float = 1.5, g: float = 9.81
+    slope: float,
+    filling: float,
+    diameter: float,
+    theta: float = 1.5,
+    g: float = 9.81,
 ) -> bool:
     """
     Check that the minimum slope is not exceeded.
@@ -105,5 +109,5 @@ def validate_max_slope(slope: float, diameter: float) -> bool:
     Check that the maximum slope is not exceeded.
     """
     if check_slope(slope) and check_dimensions(diameter, diameter):
-        return slope <= max_slopes.get(str(diameter))
+        return slope <= max_slopes.get(str(diameter))  # type: ignore
     return False

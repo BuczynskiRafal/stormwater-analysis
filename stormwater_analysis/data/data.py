@@ -1,15 +1,16 @@
-import pandas as pd
+from abc import ABC, abstractmethod
+
 import numpy as np
+import pandas as pd
 import swmmio as sw
 
-from abc import ABC, abstractmethod
+from stormwater_analysis.pipes.round import max_depth_value
 from stormwater_analysis.pipes.valid_round import (
     validate_filling,
-    validate_max_velocity,
-    validate_min_velocity,
     validate_max_slope,
+    validate_max_velocity,
     validate_min_slope,
-    max_depth_value,
+    validate_min_velocity,
 )
 
 desired_width = 500
@@ -72,9 +73,9 @@ class ConduitsData(Data):
             "III": 1.4,
             "IV": 1.6,
         }
-        self.frost_zone = categories.get(frost_zone.upper(), 1.2)
+        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
 
-    def get_tag(self):
+    def get_tag(self):  # type: ignore
         pass
 
     def drop_unused(self) -> None:
@@ -108,9 +109,7 @@ class ConduitsData(Data):
         Checks the filling of each conduit in the dataframe against its corresponding diameter.
         Adds a new column "ValMaxFill" to the dataframe indicating if the filling is valid (1) or invalid (0).
         """
-        self.conduits["ValMaxFill"] = self.conduits.apply(
-            lambda df: validate_filling(df.Filling, df.Geom1), axis=1
-        ).astype(int)
+        self.conduits["ValMaxFill"] = self.conduits.apply(lambda df: validate_filling(df.Filling, df.Geom1), axis=1).astype(int)
 
     def velocity_is_valid(self) -> None:
         """
@@ -119,12 +118,8 @@ class ConduitsData(Data):
         ValMaxV (1 if MaxV <= max_velocity_value, 0 otherwise) and
         ValMinV (1 if MaxV >= min_velocity_value, 0 otherwise).
         """
-        self.conduits["ValMaxV"] = self.conduits.apply(
-            lambda df: validate_max_velocity(df.MaxV), axis=1
-        ).astype(int)
-        self.conduits["ValMinV"] = self.conduits.apply(
-            lambda df: validate_min_velocity(df.MaxV), axis=1
-        ).astype(int)
+        self.conduits["ValMaxV"] = self.conduits.apply(lambda df: validate_max_velocity(df.MaxV), axis=1).astype(int)
+        self.conduits["ValMinV"] = self.conduits.apply(lambda df: validate_min_velocity(df.MaxV), axis=1).astype(int)
 
     def slope_per_mile(self) -> None:
         """
@@ -141,32 +136,28 @@ class ConduitsData(Data):
         with the validation results, with `1` indicating a valid slope and `0` indicating an invalid slope.
         """
         self.conduits["ValMaxSlope"] = self.conduits.apply(
-            lambda df: validate_max_slope(
-                slope=df.SlopeFtPerFt * 1000, diameter=df.Geom1
-            ),
+            lambda df: validate_max_slope(slope=df.SlopeFtPerFt * 1000, diameter=df.Geom1),
             axis=1,
         ).astype(int)
         self.conduits["ValMinSlope"] = self.conduits.apply(
             lambda df: validate_min_slope(
-                slope=df.SlopeFtPerFt * 1000, filling=df.Filling, diameter=df.Geom1
+                slope=df.SlopeFtPerFt * 1000,
+                filling=df.Filling,
+                diameter=df.Geom1,
             ),
             axis=1,
         ).astype(int)
 
-    def max_depth(self):
+    def max_depth(self) -> None:
         """
         Copies the 'MaxDepth' values from the model's nodes DataFrame to the 'conduits' DataFrame,
         using the 'InletNode' values to match the corresponding rows. A new 'MaxDepth' column is
         added to the 'conduits' DataFrame containing the copied values.
         """
-        self.conduits["InletMaxDepth"] = self.conduits["InletNode"].map(
-            self.model.nodes.dataframe["MaxDepth"]
-        )
-        self.conduits["OutletMaxDepth"] = self.conduits["OutletNode"].map(
-            self.model.nodes.dataframe["MaxDepth"]
-        )
+        self.conduits["InletMaxDepth"] = self.conduits["InletNode"].map(self.model.nodes.dataframe["MaxDepth"])
+        self.conduits["OutletMaxDepth"] = self.conduits["OutletNode"].map(self.model.nodes.dataframe["MaxDepth"])
 
-    def calculate_max_depth(self):
+    def calculate_max_depth(self) -> None:
         """
         Calculates the maximum depth of each conduit's outlet, based on its inlet depth, length, and slope.
 
@@ -175,14 +166,11 @@ class ConduitsData(Data):
         from the inlet depth. The resulting values are then written to the 'OutletMaxDepth' column for those rows.
         """
         nan_rows = pd.isna(self.conduits.OutletMaxDepth)
-        self.conduits.loc[nan_rows, "OutletMaxDepth"] = self.conduits.loc[
-            nan_rows, "InletMaxDepth"
-        ] - (
-            self.conduits.loc[nan_rows, "Length"]
-            * self.conduits.loc[nan_rows, "SlopeFtPerFt"]
+        self.conduits.loc[nan_rows, "OutletMaxDepth"] = self.conduits.loc[nan_rows, "InletMaxDepth"] - (
+            self.conduits.loc[nan_rows, "Length"] * self.conduits.loc[nan_rows, "SlopeFtPerFt"]
         )
 
-    def inlet_ground_cover(self):
+    def inlet_ground_cover(self) -> None:
         """
         Calculates the amount of ground cover over each conduit's inlet and outlet.
 
@@ -190,52 +178,45 @@ class ConduitsData(Data):
         elevation to determine the amount of ground cover over the inlet and outlet, respectively. The results
         are stored in the 'InletGroundCover' and 'OutletGroundCover' columns of the 'conduits' dataframe.
         """
-        self.conduits["InletGroundCover"] = (
-            self.conduits.InletNodeInvert - self.conduits.InletMaxDepth
-        )
-        self.conduits["OutletGroundCover"] = (
-            self.conduits.OutletNodeInvert - self.conduits.OutletMaxDepth
-        )
+        self.conduits["InletGroundCover"] = self.conduits.InletNodeInvert - self.conduits.InletMaxDepth
+        self.conduits["OutletGroundCover"] = self.conduits.OutletNodeInvert - self.conduits.OutletMaxDepth
 
-    def depth_is_valid(self):
+    def depth_is_valid(self) -> None:
         """
-        Checks if the depth of each conduit is valid based on the inlet and outlet elevations and ground cover.
+        Checks if the depth of each conduit is valid based on the inlet and
+        outlet elevations and ground cover.
 
-        This method creates a new column in the 'conduits' dataframe called 'ValDepth', which is set to 1 if the depth of the conduit
-        is valid and 0 if it is not. The depth is considered valid if it falls within the range between the inlet invert elevation
-        minus the maximum depth and the inlet ground cover elevation, and also within the range between the outlet
-        invert elevation minus the maximum depth and the outlet ground cover elevation. The 'max_depth_value'
-        parameter used in the calculations is specified in the class constructor.
+        This method creates a new column in the 'conduits' dataframe
+        called 'ValDepth', which is set to 1 if the depth of the conduit
+        is valid and 0 if it is not. The depth is considered valid if it
+        falls within the range between the inlet invert elevation
+        minus the maximum depth and the inlet ground cover elevation,
+        and also within the range between the outlet
+        invert elevation minus the maximum depth and the outlet ground
+        cover elevation. The 'max_depth_value'
+        parameter used in the calculations is specified
+        in the class constructor.
         """
         self.conduits["ValDepth"] = (
-            (
-                (self.conduits.InletNodeInvert - max_depth_value)
-                <= self.conduits.InletGroundCover
-            )
-            & (
-                (self.conduits.OutletNodeInvert - max_depth_value)
-                <= self.conduits.OutletGroundCover
-            )
+            ((self.conduits.InletNodeInvert - max_depth_value) <= self.conduits.InletGroundCover)
+            & ((self.conduits.OutletNodeInvert - max_depth_value) <= self.conduits.OutletGroundCover)
         ).astype(int)
 
     def coverage_is_valid(self) -> None:
         """
         Checks if the ground cover over each conduit's inlet and outlet is valid.
 
-        This method creates a new column in the 'conduits' dataframe called 'ValCoverage', which is set to 1 if the ground cover over
-        the inlet and outlet of the conduit is valid and 0 if it is not. The ground cover is considered valid if it is less than or
-        equal to the difference between the node's invert elevation and the frost zone depth. The 'frost_zone' parameter used in the
+        This method creates a new column in the 'conduits' dataframe called 'ValCoverage',
+        which is set to 1 if the ground cover over
+        the inlet and outlet of the conduit is valid and 0 if it is not.
+        The ground cover is considered valid if it is less than or
+        equal to the difference between the node's invert elevation and the frost
+        zone depth. The 'frost_zone' parameter used in the
         calculations is specified in the class constructor.
         """
         self.conduits["ValCoverage"] = (
-            (
-                self.conduits.InletGroundCover
-                <= (self.conduits.InletNodeInvert - self.frost_zone)
-            )
-            & (
-                self.conduits.OutletGroundCover
-                <= (self.conduits.OutletNodeInvert - self.frost_zone)
-            )
+            (self.conduits.InletGroundCover <= (self.conduits.InletNodeInvert - self.frost_zone))
+            & (self.conduits.OutletGroundCover <= (self.conduits.OutletNodeInvert - self.frost_zone))
         ).astype(int)
 
 
@@ -264,7 +245,7 @@ class NodeData(Data):
             "III": 1.4,
             "IV": 1.6,
         }
-        self.frost_zone = categories.get(frost_zone.upper(), 1.2)
+        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
 
     def drop_unused(self) -> None:
         """
@@ -275,6 +256,7 @@ class NodeData(Data):
                 #
             ]
         )
+
     # TODO calculate MAxDepth for outlets
     # def max_depth(self):
     #     self.nodes["MaxDepth"] = self.conduits["InletNode"].map(
@@ -296,7 +278,6 @@ class NodeData(Data):
     #         self.nodes.loc[nan_rows, "Length"]
     #         * self.nodes.loc[nan_rows, "SlopeFtPerFt"]
     #     )
-
 
 
 class SubcatchmentData(Data):
@@ -322,7 +303,7 @@ class SubcatchmentData(Data):
             "III": 1.4,
             "IV": 1.6,
         }
-        self.frost_zone = categories.get(frost_zone.upper(), 1.2)
+        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
 
     def drop_unused(self) -> None:
         """

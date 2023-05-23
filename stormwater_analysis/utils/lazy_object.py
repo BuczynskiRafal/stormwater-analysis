@@ -2,13 +2,12 @@ import operator
 
 
 class LazyObject:
-
     _wrapped = None
     _is_init = False
 
     def __init__(self, factory):
         # Assign using __dict__ to avoid the setattr method.
-        self.__dict__['_factory'] = factory
+        self.__dict__["_factory"] = factory
 
     def _setup(self):
         self._wrapped = self._factory()
@@ -19,10 +18,12 @@ class LazyObject:
         Util function to help us route functions
         to the nested object.
         """
+
         def inner(self, *args):
             if not self._is_init:
                 self._setup()
             return func(self._wrapped, *args)
+
         return inner
 
     def __setattr__(self, name, value):
@@ -39,7 +40,7 @@ class LazyObject:
         if name == "_wrapped":
             raise TypeError("can't delete _wrapped.")
         if not self._is_init:
-                self._setup()
+            self._setup()
         delattr(self._wrapped, name)
 
     __getattr__ = new_method_proxy(getattr)

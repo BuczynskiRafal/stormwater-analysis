@@ -1,14 +1,14 @@
-import pytest
 import numpy as np
+import pytest
 
 from stormwater_analysis.pipes.valid_round import (
-    validate_filling,
-    validate_max_velocity,
-    validate_min_velocity,
-    validate_max_slope,
-    validate_min_slope,
     check_slope,
     max_velocity_value,
+    validate_filling,
+    validate_max_slope,
+    validate_max_velocity,
+    validate_min_slope,
+    validate_min_velocity,
 )
 
 
@@ -29,7 +29,8 @@ class TestValidateMaxFilling:
 
     def test_max_filling_invalid_values(self):
         """
-        Tests if validate_max_filling function returns False for invalid values.
+        Tests if validate_max_filling function returns False
+        for invalid values.
         """
         for fill, dia in zip(
             [0.19, 0.26, 0.35, 0.45, 0.50, 0.60, 0.70, 0.80, 0.90],
@@ -46,14 +47,16 @@ class TestValidateMaxFilling:
 
     def test_max_filling_invalid_diameter(self):
         """
-        Tests if validate_max_filling function raise ValueError for invalid diameter.
+        Tests if validate_max_filling function raise ValueError
+        for invalid diameter.
         """
         with pytest.raises(ValueError):
             validate_filling(2, 3.0)
 
     def test_max_filling_invalid_value(self):
         """
-        Tests if validate_max_filling function raise ValueError for negative value.
+        Tests if validate_max_filling function raise ValueError
+        for negative value.
         """
         with pytest.raises(ValueError):
             validate_filling(1, -2)
@@ -62,7 +65,8 @@ class TestValidateMaxFilling:
 
     def test_max_filling_invalid_types(self):
         """
-        Tests if validate_max_filling function raise TypeError for invalid types.
+        Tests if validate_max_filling function raise TypeError
+        for invalid types.
         """
         for val in ["", "four", [], {}]:
             with pytest.raises(TypeError):
@@ -76,32 +80,37 @@ class TestValidateMaxVelocity:
 
     def test_velocity_below_max_velocity(self):
         """
-        Tests if validate_max_velocity function returns True for values below max velocity.
+        Tests if validate_max_velocity function returns True
+        for values below max velocity.
         """
         assert validate_max_velocity(3.0)
 
     def test_velocity_equal_to_max_velocity(self):
         """
-        Tests if validate_max_velocity function returns True for values equal to max velocity.
+        Tests if validate_max_velocity function returns True
+        for values equal to max velocity.
         """
         assert validate_max_velocity(5.0)
 
     def test_velocity_above_max_velocity(self):
         """
-        Tests if validate_max_velocity function returns False for values above max velocity.
+        Tests if validate_max_velocity function returns False
+        for values above max velocity.
         """
         assert not validate_max_velocity(15.0)
 
     def test_velocity_is_float(self):
         """
-        Tests if validate_max_velocity function raises TypeError for non-float values.
+        Tests if validate_max_velocity function raises TypeError
+        for non-float values.
         """
         with pytest.raises(TypeError):
             validate_max_velocity("10.0")  # type: ignore
 
     def test_velocity_is_not_none(self):
         """
-        Tests if validate_max_velocity function raises ValueError for None values.
+        Tests if validate_max_velocity function raises ValueError
+        for None values.
         """
         with pytest.raises(TypeError):
             validate_max_velocity(None)  # type: ignore
@@ -114,55 +123,64 @@ class TestValidateMinVelocity:
 
     def test_validate_min_velocity_equals_minimum_velocity(self):
         """
-        Tests if validate_min_velocity function returns True for values equal to min velocity.
+        Tests if validate_min_velocity function returns True
+        for values equal to min velocity.
         """
         assert validate_min_velocity(0.7)
 
     def test_validate_min_velocity_below_minimum_velocity(self):
         """
-        Tests if validate_min_velocity function returns False for values below min velocity.
+        Tests if validate_min_velocity function returns False
+        for values below min velocity.
         """
         assert not validate_min_velocity(0.6)
 
     def test_validate_min_velocity_above_minimum_velocity(self):
         """
-        Tests if validate_min_velocity function returns False for values above min velocity.
+        Tests if validate_min_velocity function returns False
+        for values above min velocity.
         """
         assert validate_min_velocity(0.8)
 
     def test_validate_min_velocity_negative_velocity(self):
         """
-        Tests if validate_min_velocity function raises ValueError for negative values.
+        Tests if validate_min_velocity function raises ValueError
+        for negative values.
         """
         assert not validate_min_velocity(-0.7)
 
     def test_validate_min_velocity_zero(self):
         """
-        Tests if validate_min_velocity function raises ValueError for zero values.
+        Tests if validate_min_velocity function raises ValueError
+        for zero values.
         """
         assert not validate_min_velocity(0)
 
     def test_validate_min_velocity_maximum_velocity(self):
         """
-        Tests if validate_min_velocity function raises ValueError for maximum velocity.
+        Tests if validate_min_velocity function raises
+        ValueError for maximum velocity.
         """
         assert validate_min_velocity(max_velocity_value)
 
     def test_validate_min_velocity_slightly_above_minimum_velocity(self):
         """
-        Tests if validate_min_velocity function raises ValueError for values slightly above min velocity.
+        Tests if validate_min_velocity function raises ValueError for values
+        slightly above min velocity.
         """
         assert validate_min_velocity(0.701)
 
     def test_validate_min_velocity_slightly_bellow_minimum_velocity(self):
         """
-        Tests if validate_min_velocity function raises ValueError for values slightly below min velocity.
+        Tests if validate_min_velocity function raises ValueError for values
+        slightly below min velocity.
         """
         assert not validate_min_velocity(0.699)
 
     def test_validate_min_velocity_string_value(self):
         """
-        Tests if validate_min_velocity function raises TypeError for string values.
+        Tests if validate_min_velocity function raises TypeError
+        for string values.
         """
         with pytest.raises(TypeError):
             validate_min_velocity("10.0")  # type: ignore
@@ -221,38 +239,44 @@ class TestValidateMinSlope:
 
     def test_valid_slope_with_different_theta(self):
         """
-        Test the `validate_min_slope` function with valid slope and different theta.
+        Test the `validate_min_slope` function
+        with valid slope and different theta.
         """
         assert validate_min_slope(2.5, 0.2, 0.3, 1.0, 9.81)
 
     def test_valid_slope_with_different_diameter(self):
         """
-        Test the `validate_min_slope` function with valid slope and different diameter.
+        Test the `validate_min_slope` function
+        with valid slope and different diameter.
         """
         assert validate_min_slope(1.2, 0.5, 0.6, 1.5, 9.81)
 
     def test_valid_slope_with_different_gravity(self):
         """
-        Test the `validate_min_slope` function with valid slope and different gravity.
+        Test the `validate_min_slope` function with valid
+        slope and different gravity.
         """
         assert validate_min_slope(1.2, 0.5, 0.7, 1.5, 10)
 
     def test_invalid_slope_with_different_gravity(self):
         """
-        Test the `validate_min_slope` function with invalid slope and different gravity.
+        Test the `validate_min_slope` function
+        with invalid slope and different gravity.
         """
         assert validate_min_slope(1.0, 0.5, 0.7, 1.5, 8.81)
 
     def test_invalid_slope_with_negative_filling(self):
         """
-        Test the `validate_min_slope` function with invalid slope and negative filling.
+        Test the `validate_min_slope` function
+        with invalid slope and negative filling.
         """
         with pytest.raises(ValueError):
             validate_min_slope(0.5, -0.5, 0.3, 1.5, 9.81)
 
     def test_invalid_slope_with_negative_diameter(self):
         """
-        Test the `validate_min_slope` function with invalid slope and negative diameter.
+        Test the `validate_min_slope` function
+        with invalid slope and negative diameter.
         """
         with pytest.raises(ValueError):
             validate_min_slope(0.5, 0.5, -0.3, 1.5, 9.81)

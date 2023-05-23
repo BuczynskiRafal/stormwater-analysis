@@ -1,6 +1,6 @@
-import swmmio
-
 from typing import Tuple
+
+import swmmio
 from data import ConduitsData, NodeData, SubcatchmentData
 
 
@@ -64,7 +64,9 @@ def perform_nodes_feature_engineering(model: swmmio.Model) -> NodeData:
     return nodes_data
 
 
-def perform_subcatchments_feature_engineering(model: swmmio.Model) -> SubcatchmentData:
+def perform_subcatchments_feature_engineering(
+    model: swmmio.Model,
+) -> SubcatchmentData:
     """
     Performs feature engineering on the subcatchments data.
 

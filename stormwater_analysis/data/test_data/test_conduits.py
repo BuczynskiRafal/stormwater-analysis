@@ -1,13 +1,11 @@
-import pandas as pd
 import numpy as np
-import swmmio as sw
+import pandas as pd
 import pytest
+import swmmio as sw
 
-from unittest.mock import MagicMock
-from stormwater_analysis.pipes.valid_round import validate_filling
-from stormwater_analysis.inp_manage.test_inp import TEST_FILE
 from stormwater_analysis.data.data import ConduitsData
-
+from stormwater_analysis.inp_manage.test_inp import TEST_FILE
+from stormwater_analysis.pipes.valid_round import validate_filling
 
 desired_width = 500
 pd.set_option("display.width", desired_width)
@@ -127,24 +125,25 @@ class TestConduitsData:
 
     def test_slope_per_mile_column_added(self, conduits_data):
         """
-        Test if the 'SlopePerMile' column is added to the conduits dataframe after calling the slope_per_mile() method.
+        Test if the 'SlopePerMile' column is added to the conduits dataframe
+        after calling the slope_per_mile() method.
         """
         conduits_data.slope_per_mile()
         assert "SlopePerMile" in conduits_data.conduits.columns
 
     def test_slope_per_mile_calculation(self, conduits_data):
         """
-        Test if the calculated values in the 'SlopePerMile' column are correct after calling the slope_per_mile() method.
+        Test if the calculated values in the 'SlopePerMile' column are correct after
+        calling the slope_per_mile() method.
         """
         conduits_data.slope_per_mile()
         expected_values = [1.80, 6.40]  # SlopeFtPerFt * 1000
-        assert list(conduits_data.conduits["SlopePerMile"])[:2] == pytest.approx(
-            expected_values, abs=1e-9
-        )
+        assert list(conduits_data.conduits["SlopePerMile"])[:2] == pytest.approx(expected_values, abs=1e-9)
 
     def test_slopes_is_valid_columns_added(self, conduits_data):
         """
-        Test if the 'ValMaxSlope' and 'ValMinSlope' columns are added to the conduits dataframe after calling slopes_is_valid() method.
+        Test if the 'ValMaxSlope' and 'ValMinSlope' columns are added to the conduits
+        dataframe after calling slopes_is_valid() method.
         """
         conduits_data.calculate_conduit_filling()
         conduits_data.slopes_is_valid()
@@ -153,11 +152,15 @@ class TestConduitsData:
 
     def test_slopes_is_valid_max_slope(self, conduits_data):
         """
-        Test if the maximum slope validation is correct after calling the slopes_is_valid() method.
+        Test if the maximum slope validation is correct after
+        calling the slopes_is_valid() method.
         """
         conduits_data.calculate_conduit_filling()
         conduits_data.slopes_is_valid()
-        expected_values = [1, 1]  # Assuming both conduits have valid maximum slopes
+        expected_values = [
+            1,
+            1,
+        ]  # Assuming both conduits have valid maximum slopes
         assert list(conduits_data.conduits["ValMaxSlope"])[:2] == expected_values
 
     def test_slopes_is_valid_min_slope(self, conduits_data):
@@ -166,7 +169,10 @@ class TestConduitsData:
         """
         conduits_data.calculate_conduit_filling()
         conduits_data.slopes_is_valid()
-        expected_values = [1, 1]  # Assuming both conduits have valid minimum slopes
+        expected_values = [
+            1,
+            1,
+        ]  # Assuming both conduits have valid minimum slopes
         assert list(conduits_data.conduits["ValMinSlope"])[:2] == expected_values
 
     def test_max_depth_columns_added(self, conduits_data):
@@ -292,15 +298,9 @@ class TestConduitsData:
         conduits_data.calculate_max_depth()
 
         assert all(~pd.isna(conduits_data.conduits["OutletMaxDepth"]))
-        assert conduits_data.conduits.loc[0, "OutletMaxDepth"] == pytest.approx(
-            9, abs=1e-9
-        )
-        assert conduits_data.conduits.loc[1, "OutletMaxDepth"] == pytest.approx(
-            16, abs=1e-9
-        )
-        assert conduits_data.conduits.loc[2, "OutletMaxDepth"] == pytest.approx(
-            21, abs=1e-9
-        )
+        assert conduits_data.conduits.loc[0, "OutletMaxDepth"] == pytest.approx(9, abs=1e-9)
+        assert conduits_data.conduits.loc[1, "OutletMaxDepth"] == pytest.approx(16, abs=1e-9)
+        assert conduits_data.conduits.loc[2, "OutletMaxDepth"] == pytest.approx(21, abs=1e-9)
 
     def test_inlet_ground_cover(self, conduits_data):
         """
@@ -344,27 +344,15 @@ class TestConduitsData:
         print(conduits_data.conduits)
         # Check the results
         assert all(~pd.isna(conduits_data.conduits["InletGroundCover"]))
-        assert conduits_data.conduits.loc[0, "InletGroundCover"] == pytest.approx(
-            8, abs=1e-9
-        )
-        assert conduits_data.conduits.loc[1, "InletGroundCover"] == pytest.approx(
-            16, abs=1e-9
-        )
-        assert conduits_data.conduits.loc[2, "InletGroundCover"] == pytest.approx(
-            24, abs=1e-9
-        )
+        assert conduits_data.conduits.loc[0, "InletGroundCover"] == pytest.approx(8, abs=1e-9)
+        assert conduits_data.conduits.loc[1, "InletGroundCover"] == pytest.approx(16, abs=1e-9)
+        assert conduits_data.conduits.loc[2, "InletGroundCover"] == pytest.approx(24, abs=1e-9)
 
         # Check the results
         assert all(~pd.isna(conduits_data.conduits["OutletGroundCover"]))
-        assert conduits_data.conduits.loc[0, "OutletGroundCover"] == pytest.approx(
-            32, abs=1e-9
-        )
-        assert conduits_data.conduits.loc[1, "OutletGroundCover"] == pytest.approx(
-            40, abs=1e-9
-        )
-        assert conduits_data.conduits.loc[2, "OutletGroundCover"] == pytest.approx(
-            48, abs=1e-9
-        )
+        assert conduits_data.conduits.loc[0, "OutletGroundCover"] == pytest.approx(32, abs=1e-9)
+        assert conduits_data.conduits.loc[1, "OutletGroundCover"] == pytest.approx(40, abs=1e-9)
+        assert conduits_data.conduits.loc[2, "OutletGroundCover"] == pytest.approx(48, abs=1e-9)
 
     def test_depth_is_valid(self, conduits_data):
         """

@@ -1,17 +1,19 @@
 import math
-import pytest
+
 import numpy as np
+import pytest
+
 from stormwater_analysis.pipes.round import (
+    calc_f,
+    calc_rh,
+    calc_u,
     check_dimensions,
     max_filling,
-    max_velocity,
-    min_velocity,
-    calc_f,
-    calc_u,
-    calc_rh,
-    min_slope,
     max_slope,
     max_slopes,
+    max_velocity,
+    min_slope,
+    min_velocity,
 )
 from stormwater_analysis.utils.lazy_object import LazyObject
 
@@ -37,7 +39,8 @@ class TestCheckDimensions:
 
     def test_check_dimensions_diameter_lower_than_bound(self):
         """
-        Test check_dimensions function when diameter is lower than the lower bound.
+        Test check_dimensions function when diameter
+        is lower than the lower bound.
         """
         with pytest.raises(ValueError):
             check_dimensions(0.1, 0.1)
@@ -57,7 +60,8 @@ class TestCheckDimensions:
 
     def test_check_dimensions_filling_and_diameter_not_specified(self):
         """
-        This function checks the dimensions of the pizza to make sure that the filling is less than the diameter
+        This function checks the dimensions of the pizza to make sure
+        that the filling is less than the diameter
         """
         with pytest.raises(TypeError):
             check_dimensions()  # type: ignore
@@ -105,7 +109,8 @@ class TestCheckDimensions:
 
     def test_check_dimensions_diameter_out_of_range(self):
         """
-        Check that the diameter and height of a cylinder are both positive and the diameter is no
+        Check that the diameter and height of a cylinder are both
+        positive and the diameter is no
         greater than 2.1
         """
         with pytest.raises(ValueError):
@@ -117,7 +122,8 @@ class TestMaxFilling:
 
     def test_valid_input(self):
         """
-        Tests that the function `max_filling` returns the correct value for three different inputs
+        Tests that the function `max_filling` returns the correct value
+        for three different inputs
         """
         assert math.isclose(max_filling(0.2), 0.1654, rel_tol=1e-4)
         assert math.isclose(max_filling(1.0), 0.827, rel_tol=1e-4)
@@ -125,7 +131,8 @@ class TestMaxFilling:
 
     def test_max_filling_valid_values(self):
         """
-        Check if max_filling takes a diameter and returns the maximum filling for that diameter
+        Check if max_filling takes a diameter and returns
+        the maximum filling for that diameter
         """
         for val, dia in zip(
             [0.165, 0.248, 0.331, 0.414, 0.496, 0.579, 0.662, 0.744, 0.827],
@@ -135,7 +142,8 @@ class TestMaxFilling:
 
     def test_invalid_input(self):
         """
-        Tests the max_filling function to make sure that it raises a TypeError if the input is not a number,
+        Tests the max_filling function to make sure that it raises
+        a TypeError if the input is not a number,
         and a ValueError if the input is not an integer between 1 and 3
         """
         with pytest.raises(TypeError):
@@ -180,7 +188,8 @@ class TestCalcF:
 
     def test_calc_f_filling_equal_diameter(self):
         """
-        Test if calc_f calculates the filling factor of a circle with a given diameter and a given hole diameter
+        Test if calc_f calculates the filling factor of a circle with a
+        given diameter and a given hole diameter
         """
         assert calc_f(1, 1) == 0.7853981633974483
         assert calc_f(2, 2) == 3.141592653589793
@@ -189,7 +198,8 @@ class TestCalcF:
 
     def test_calc_f_filing_equal_radius(self):
         """
-        Test if calc_f calculates the angle of the arc of a circle with a given radius and chord length
+        Test if calc_f calculates the angle of the arc of a circle with a
+        given radius and chord length
         """
         assert calc_f(0.5, 1) == 0.39269908169872414
         assert calc_f(1, 2) == 1.5707963267948966
@@ -198,7 +208,8 @@ class TestCalcF:
 
     def test_calc_f_filing_greater_than_radius(self):
         """
-        Test if calc_f function raises a ValueError when the filing_radius is greater than the radius
+        Test if calc_f function raises a ValueError when the filing_radius
+        is greater than the radius
         """
         with pytest.raises(ValueError):
             calc_f(1.5, 1)
@@ -208,7 +219,8 @@ class TestCalcF:
 
     def test_calc_f_raises_exception(self):
         """
-        Test if calc_f() raises a TypeError exception if the arguments are not of type int
+        Test if calc_f() raises a TypeError exception
+        if the arguments are not of type int
         """
         with pytest.raises(TypeError):
             calc_f("1", 2)  # type: ignore
@@ -219,7 +231,8 @@ class TestCalcF:
 
     def test_calc_f_filing_greater_than_diameter(self):
         """
-        Test if calc_f() raises a ValueError if the filing diameter is greater than the pipe diameter
+        Test if calc_f() raises a ValueError if the filing
+        diameter is greater than the pipe diameter
         """
         with pytest.raises(ValueError):
             calc_f(3, 1)
@@ -337,8 +350,10 @@ class TestCalcRh:
         Args:
             filling (float or int): the filling height of the pipe, in meters.
             diameter (float or int): the diameter of the pipe, in meters.
-            expected: the expected output of the function for the given input arguments.
-                      If it is a type, it indicates the expected exception type.
+            expected: the expected output of the function
+            for the given input arguments.
+                      If it is a type, it indicates
+                      the expected exception type.
 
         Raises:
             AssertionError: if the actual output of the function does not match
@@ -355,7 +370,8 @@ class TestCalcRh:
         """
         Test valid inputs for the `calc_rh` function.
 
-        It tests whether the function returns the expected value for the given inputs.
+        It tests whether the function returns the expected
+        value for the given inputs.
 
         """
         assert calc_rh(0.5, 1.0) == 0.25
@@ -367,7 +383,8 @@ class TestCalcRh:
         """
         Test invalid inputs for the `calc_rh` function.
 
-        It tests whether the function raises the expected exception for the given inputs.
+        It tests whether the function raises the expected
+        exception for the given inputs.
 
         """
         # Test if the function raises a TypeError for non-float input
@@ -388,7 +405,8 @@ class TestCalcRh:
         """
         Test the `calc_rh` function for division by zero.
 
-        It tests whether the function returns 0 when the denominator of the calculation is zero.
+        It tests whether the function returns 0 when the denominator
+        of the calculation is zero.
 
         """
         assert calc_rh(0.0, 1.0) == 0
@@ -452,14 +470,10 @@ class TestMinSlope:
         assert min_slope(filling, diameter) == pytest.approx(expected, rel=1e-3)
 
     def test_min_slope_with_custom_theta(self):
-        assert min_slope(0.4, 1.0, theta=2.0) == pytest.approx(
-            0.9516737211960711, rel=1e-3
-        )
+        assert min_slope(0.4, 1.0, theta=2.0) == pytest.approx(0.9516737211960711, rel=1e-3)
 
     def test_min_slope_with_custom_g(self):
-        assert min_slope(0.4, 1.0, g=10.0) == pytest.approx(
-            0.7001939403700093, rel=1e-3
-        )
+        assert min_slope(0.4, 1.0, g=10.0) == pytest.approx(0.7001939403700093, rel=1e-3)
 
     def test_min_slope_with_invalid_input(self):
         with pytest.raises(TypeError):

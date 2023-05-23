@@ -1,11 +1,12 @@
-import math
 import logging
+import math
+from typing import Union
 
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
-from numpy import sin, cos, pi, linspace
-from stormwater_analysis.utils.lazy_object import LazyObject
+from numpy import cos, linspace, pi, sin
 
+from stormwater_analysis.utils.lazy_object import LazyObject
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +23,10 @@ def check_dimensions(filling: float, diameter: float) -> bool:
         bool: True if the values are valid, False otherwise.
 
     Raises:
-        TypeError: If either the filling or the diameter is not an int or float.
-        ValueError: If either the filling or the diameter is not between 0.2 and 2.0 meters.
+        TypeError: If either the filling or the
+        diameter is not an int or float.
+        ValueError: If either the filling
+        or the diameter is not between 0.2 and 2.0 meters.
 
     """
     if not isinstance(filling, (int, float)):
@@ -34,18 +37,21 @@ def check_dimensions(filling: float, diameter: float) -> bool:
         raise ValueError("Filling must be less than or equal to the diameter")
     if not (0 <= filling <= 2.0 and 0.2 <= diameter <= 2.0):
         raise ValueError(
-            "Value out of bounds. Filling must be between 0.2 and 2.0 meters, and diameter must be between 0.2 and 2.0 meters"
+            """Value out of bounds. Filling must be between 0.2 and 2.0
+            meters and diameter must be between 0.2 and 2.0 meters"""
         )
     return True
 
 
 def max_filling(diameter: float) -> float:
     """
-    > Calculates the maximum filling of a rainwater drain with a circular cross-section.
+    > Calculates the maximum filling of a rainwater
+    drain with a circular cross-section.
 
     According to a methodology based on the Colebrook-White formula, the total
     capacity of the channel (100%), i.e., with total cross-sectional filling
-    (100%), is already achieved at a relative filling of 4/D = 0.827 - in circular pipes,
+    (100%), is already achieved at a relative
+    filling of 4/D = 0.827 - in circular pipes,
     Kotowski, A., Kaźmierczak, B., & Dancewicz, A. (2010).
     Modelowanie opadów do wymiarowania kanalizacji.
     Polska Akademia Nauk. Instytut Podstawowych Problemów Techniki.
@@ -65,7 +71,7 @@ def max_filling(diameter: float) -> float:
         raise TypeError("Diameter must be an int or float")
 
 
-def max_velocity():
+def max_velocity() -> float:
     """
     Maximum stormwater flow velocity in the sewer [m/s].
 
@@ -98,7 +104,8 @@ def max_depth():
 def calc_f(filling: float, diameter: float) -> float:
     """
     Calculate the cross-sectional area of a pipe.
-    The cross-sectional area through which the wastewater flows, active cross-section f,
+    The cross-sectional area through which the wastewater flows,
+    active cross-section f,
     characterized by the filling h and the diameter of the pipe D.
     source: Biedugnis S., “Metody informatyczne w wodociągach i kanalizacji”,
     Oficyna Wydawnicza Politechniki Warszawskiej, Warszawa 1998. - in polish.
@@ -108,7 +115,8 @@ def calc_f(filling: float, diameter: float) -> float:
         diameter (int, float): pipe diameter [m]
 
     Return:
-        area (int, float): cross-sectional area of the wetted part of the pipe [m2]
+        area (int, float): cross-sectional
+        area of the wetted part of the pipe [m2]
     """
     if check_dimensions(filling, diameter):
         radius = diameter / 2
@@ -140,9 +148,7 @@ def calc_u(filling: float, diameter: float) -> float:
     if check_dimensions(filling, diameter):
         radius = diameter / 2
         chord = math.sqrt((radius**2 - (filling - radius) ** 2)) * 2
-        alpha = math.degrees(
-            math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2))
-        )
+        alpha = math.degrees(math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2)))
         if filling > radius:
             return 2 * math.pi * radius - (alpha / 360 * 2 * math.pi * radius)
         return alpha / 360 * 2 * math.pi * radius
@@ -151,7 +157,8 @@ def calc_u(filling: float, diameter: float) -> float:
 def calc_rh(filling: float, diameter: float) -> float:
     """
     Calculate the hydraulic radius Rh, i.e. the ratio of the cross-section f
-    to the contact length of the sewage with the sewer wall, called the wetted circuit U.
+    to the contact length of the sewage with the sewer wall,
+    called the wetted circuit U.
     source: Biedugnis S., “Metody informatyczne w wodociągach i kanalizacji”,
     Oficyna Wydawnicza Politechniki Warszawskiej, Warszawa 1998. - in polish.
 
@@ -169,7 +176,11 @@ def calc_rh(filling: float, diameter: float) -> float:
             return 0
 
 
-def calc_velocity(filling: float, diameter: float, slope: float) -> float:
+def calc_velocity(
+    filling: Union[float, int],
+    diameter: Union[float, int],
+    slope: Union[float, int],
+) -> Union[float, int]:
     """
     Calculate the speed of the sewage flow in the sewer.
 
@@ -186,54 +197,53 @@ def calc_velocity(filling: float, diameter: float, slope: float) -> float:
         return 1 / 0.013 * calc_rh(filling, diameter) ** (2 / 3) * (slope**0.5)
 
 
-def min_slope(
-    filling: float, diameter: float, theta: float = 1.5, g: float = 9.81
-) -> float:
+def min_slope(filling: float, diameter: float, theta: float = 1.5, g: float = 9.81) -> float:
     """
     Get the minimal slope for sewer pipe.
     If the pipe  filling is greater than 0.3,
     then the minimum slope is 1/d, otherwise it's 0.25/rh
 
-    source: Suligowski : Samooczyszczanie przewodów kanalizacyjnych. Instal 2010, nr 2, s. 48-53. - in polish
-    source: https://seidel-przywecki.eu/2021/06/04/obliczenia-hydraulicznych-kanalow-sciekowych-i-deszczowych/
+    source: Suligowski : Samooczyszczanie przewodów kanalizacyjnych.
+    Instal 2010, nr 2, s. 48-53. - in polish
+    source: https://seidel-przywecki.eu/2021/06/04/obliczenia-
+    hydraulicznych-kanalow-sciekowych-i-deszczowych/
 
     Args:
         filling (int, float): pipe filling height [m]
         diameter (int, float): pipe diameter [m]
-        theta (float, optional): theta value. Defaults to 1.5, shear stress [Pa].
-        g (float, optional): specific gravity of liquid (water/wastewater) [N/m3].
+        theta (float, optional): theta value.
+        Defaults to 1.5, shear stress [Pa].
+        g (float, optional): specific gravity
+        of liquid (water/wastewater) [N/m3].
 
     Return:
         slope (int, float): The minimum slope of the channel [‰]
     """
     if check_dimensions(filling, diameter):
-        return (
-            4
-            * (theta / g)
-            * ((diameter / 4) / calc_rh(filling, diameter))
-            * (1 / diameter)
-        )
+        return 4 * (theta / g) * ((diameter / 4) / calc_rh(filling, diameter)) * (1 / diameter)
 
 
-def max_slope(diameter: float) -> float:
+def max_slope(diameter: Union[float, int]) -> Union[float, int]:
     """
     Calculates the maximum slope for a given pipe diameter.
 
-    The function starts with an initial slope based on the diameter, and then iteratively
-    adjusts the slope until the calculated velocity matches the maximum velocity for the
+    The function starts with an initial slope based
+    on the diameter, and then iteratively
+    adjusts the slope until the calculated velocity
+    matches the maximum velocity for the
     pipeline.
 
     Args:
-        diameter (int, float): pipe diameter [m].
+        diameter (Union[float, int]): pipe diameter [m].
 
     Returns:
-        float: The maximum slope that can be achieved for the pipe.
+        Union[float, int]: The maximum slope that can be achieved for the pipe.
     """
     if check_dimensions(diameter, diameter):
         start_slope = min_slope(diameter, diameter)
         slope = start_slope
         v_max = max_velocity()
-        v_clc = 0
+        v_clc = 0.0
         while round(v_clc, 2) != float(v_max):
             v_clc = calc_velocity(diameter, diameter, slope)
             if v_clc < v_max:
@@ -244,9 +254,7 @@ def max_slope(diameter: float) -> float:
         return slope
 
 
-def draw_pipe_section(
-    filling: float, diameter: float, max_filling: float = None
-) -> matplotlib.pyplot:
+def draw_pipe_section(filling: float, diameter: float, max_filling: Union[float, None] = None) -> matplotlib.pyplot:
     """
     Plot a pipe section with a given diameter and filling height.
 
@@ -339,7 +347,7 @@ def draw_pipe_section(
     plt.show()
 
 
-max_slopes = LazyObject(
+max_slopes = LazyObject(  # type: ignore
     lambda: {
         "0.2": max_slope(0.2),
         "0.3": max_slope(0.3),
@@ -359,6 +367,6 @@ max_slopes = LazyObject(
 
 max_velocity_value = max_velocity()
 
-min_velocity_value = min_velocity()
+min_velocity_value = min_velocity()  # type: ignore
 
-max_depth_value = max_depth()
+max_depth_value = max_depth()  # type: ignore

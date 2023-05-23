@@ -1,13 +1,11 @@
-import os
-import swmmio as sw
-import pyswmm as ps
-import pandas as pd
 import numpy as np
-import pprint
+import pandas as pd
+import pyswmm as ps  # noqa
+import swmmio as sw
 
-from stormwater_analysis.inp_manage.inp import SwmmModel
-from stormwater_analysis.inp_manage.test_inp import TEST_FILE, RPT_TEST_FILE
-from stormwater_analysis.data.feature_engineering import feature_engineering
+# from stormwater_analysis.data.feature_engineering import feature_engineering  # noqa
+from stormwater_analysis.inp_manage.inp import SwmmModel  # noqa
+from stormwater_analysis.inp_manage.test_inp import TEST_FILE
 
 desired_width = 500
 pd.set_option("display.width", desired_width)
@@ -28,5 +26,5 @@ model = sw.Model(TEST_FILE, include_rpt=True)
 
 print(model.inp)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Hello world!")
