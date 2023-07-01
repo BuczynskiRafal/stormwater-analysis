@@ -66,39 +66,104 @@ class SwmmModel:
         """
         return self.conduits_data.conduits[self.conduits_data.conduits["ValMaxFill"] == 0]
 
-    # def overflowing_traces(self) -> pd.DataFrame:
-    #     traces = self.all_traces()
-    #     print(traces)
-    #     print("\n")
-    #     overflowing = self.overflowing_pipes()
-    #     print(overflowing)
-    #     # overflowing_traces =
-    #     return traces
+    def overflowing_traces(self) -> Dict[str, Dict[str, List[str]]]:
+        """
+        Identifies the segments of the network system (from `all_traces`) where overflowing occurs.
 
-    def overflowing_traces(self) -> pd.DataFrame:
-        traces = self.all_traces()
-        overflowing = self.overflowing_pipes()
-        overflowing_conduits = overflowing.index.tolist()
+        For each trace in `all_traces`, the function identifies the sections (conduits) where
+        the maximum filling height has been exceeded (identified by `overflowing_pipes`).
+        The output is a dictionary that contains these segments of overflowing. For each identified
+        segment, the trace from the first conduit with overflowing to the last one is included.
+
+        The dictionary keys are outfall IDs and the values are dictionaries where:
+        - The dictionary keys are conduit IDs where overflowing occurs.
+        - The dictionary values are the corresponding conduit's position in the trace.
+
+        Finally, for each outfall, a trace is generated from the first to the last overflowing conduit.
+
+        Returns
+        -------
+        dict
+            A dictionary where the keys are outfall IDs and the values are traces from the first to
+            the last conduit where overflowing occurs. Each trace is a list of tuples, where each
+            tuple represents a conduit and the nodes it connects in the form (inlet_node, outlet_node, conduit_id).
+
+        Notes
+        -----
+        This method requires that `self.all_traces()` and `self.overflowing_pipes()` be defined
+        and return appropriate values. Specifically, `self.all_traces()` should return a dictionary
+        of all traces and `self.overflowing_pipes()` should return a DataFrame of overflowing pipes.
+
+        See Also
+        --------
+        all_traces : method to retrieve all traces in the system.
+        overflowing_pipes : method to identify pipes where the maximum filling height is exceeded.
+
+        Example
+        -------
+        >>> from stormwater_analysis.inp_manage.inp import SwmmModel
+        >>> swmm_model = SwmmModel(model, conduits_data, nodes_data, subcatchments_data)
+        >>> swmm_model.overflowing_traces()
+        >>> {'O4': {'nodes': ['J0', 'J1', 'J2', 'J3'], 'conduits': ['C1', 'C2', 'C3']}}
+        """
+        # Fetch the data
+        all_traces = self.all_traces()
+        overflowing_conduits = self.overflowing_pipes()
 
         overflowing_traces = {}
-        for outfall, trace in traces.items():
-            overlapping_conduits = list(set(trace["conduits"]) & set(overflowing_conduits))
+        for outfall_id, trace_data in all_traces.items():
+            # Check for overlap between this trace's conduits and the overflowing ones
+            overlapping_conduits = [c for c in trace_data["conduits"] if c in overflowing_conduits.index.tolist()]
+
             if overlapping_conduits:
-                start_index = trace["conduits"].index(overlapping_conduits[0])
-                end_index = trace["conduits"].index(overlapping_conduits[-1])
-                overflowing_trace = trace["conduits"][start_index : end_index + 1]
-                overflowing_traces[outfall] = {"conduits": overflowing_trace}
+                # Create a sub-dict for each overlapping conduit and its position in the trace
+                overflowing_trace = {c: trace_data["conduits"].index(c) for c in overlapping_conduits}
+                overflowing_traces[outfall_id] = overflowing_trace
+        # return {
+        #     key:
+        #     find_network_trace(
+        #         self.model,
+        #         overflowing_conduits.loc[list(value)[-1]]['InletNode'],
+        #         overflowing_conduits.loc[list(value)[0]]['OutletNode'],
+        #         )
+        #         for key, value in overflowing_traces.items()
+        #     }
+        #     very interesting result
+        #     >>> {'O4': [('J0', 'J1', 'C1'), ('J1', 'J2', 'C2'), ('J2', 'J3', 'C3')]}
+        return {
+            key: trace_from_node(
+                conduits=self.conduits_data.conduits,
+                startnode=overflowing_conduits.loc[list(value)[-1]]["InletNode"],
+                mode="down",
+                stopnode=overflowing_conduits.loc[list(value)[0]]["OutletNode"],
+            )
+            for key, value in overflowing_traces.items()
+        }
 
-        return overflowing_traces
-
-    def place_pipes_to_apply_change(self) -> None:
+    def place_to_change(self) -> List[str]:
         """
         Places pipes to apply a change in the SWMM model.
 
-        1. Na podstawie listy przepełnionych kanałów określić
-           gdzie należy zastosować rekomendowaną zmianę techniczną.
-        2. Zwrócić liste kanałów lub studzienek na których zastosować zmianę.
+        1. Based on the list of overflowing conduits, determine
+        where the recommended technical change should be applied.
+        2. Returns a list of conduits or manholes where the change should be applied.
+
+        Returns:
+            List of nodes where the change should be applied.
         """
+
+        # Get overflowing traces
+        overflowing_traces = self.overflowing_traces()
+
+        # Prepare list to store nodes to apply changes
+        nodes_to_apply_change = []
+
+        # Loop through each outfall in the overflowing traces
+        for outfall in overflowing_traces:
+            # Add the first node of each trace to the list
+            nodes_to_apply_change.append(overflowing_traces[outfall]["nodes"][0])
+
+        return nodes_to_apply_change
 
     def generate_technical_recommendation(self) -> None:
         """
