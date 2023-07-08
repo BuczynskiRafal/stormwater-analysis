@@ -169,11 +169,27 @@ class SwmmModel:
         """
         Generates a technical recommendation in the SWMM model.
 
-        1. Użyj wytrenowanego ANN do generowania rekomendacji technicznej.
-        2. Przygotuj format danych w jakich bęziesz przechowywał rekomendację.
-        3. Zapisz dane do pliku.
-        4. Zwrócić użytkownikowi rekomendację.
+        1. use a trained ANN to generate a technical recommendation.
+        2. Prepare the data format in which you will store the recommendation.
+        3. save the data to a file.
+        4. Return the recommendation to the user.
         """
+
+    def apply_class(self):
+        """
+        Recommendations made only for nodes.
+            The plan is to classify all nodes in the first approach.
+            In general I want the classifier to see the entire dataset.
+            These are to be manually added learning labels.
+
+            The plan:
+                1. select Nodes
+                2. I manually add recommendations / classifiers
+                3. I add to the data frame.
+
+            Below are some classes of recommendations.
+        """
+        pass
 
     def optimize_conduit_slope(self) -> None:
         # Currently, this function is not needed.
