@@ -172,16 +172,31 @@ class ConduitsData(Data):
             self.conduits.loc[nan_rows, "Length"] * self.conduits.loc[nan_rows, "SlopeFtPerFt"]
         )
 
-    def inlet_ground_cover(self) -> None:
+    def ground_elevation(self) -> None:
         """
         Calculates the amount of ground cover over each conduit's inlet and outlet.
 
         This method subtracts the maximum depth of each conduit's inlet and outlet from the corresponding node's invert
         elevation to determine the amount of ground cover over the inlet and outlet, respectively. The results
-        are stored in the 'InletGroundCover' and 'OutletGroundCover' columns of the 'conduits' dataframe.
+        are stored in the 'InletGroundElevation' and 'OutletGroundElevation' columns of the 'conduits' dataframe.
         """
-        self.conduits["InletGroundCover"] = self.conduits.InletNodeInvert - self.conduits.InletMaxDepth
-        self.conduits["OutletGroundCover"] = self.conduits.OutletNodeInvert - self.conduits.OutletMaxDepth
+        self.conduits["InletGroundElevation"] = self.conduits.InletNodeInvert + self.conduits.InletMaxDepth
+        self.conduits["OutletGroundElevation"] = self.conduits.OutletNodeInvert + self.conduits.OutletMaxDepth
+
+    def ground_cover(self) -> None:
+        """
+        Calculates the amount of ground cover over each conduit's inlet and outlet.
+
+        This method subtracts the maximum depth of each conduit's inlet and outlet from the corresponding node's invert
+        elevation to determine the amount of ground cover over the inlet and outlet, respectively. The results
+        are stored in the 'InletGroundElevation' and 'OutletGroundElevation' columns of the 'conduits' dataframe.
+        """
+        self.conduits["InletGroundCover"] = (
+            self.conduits.InletGroundElevation - self.conduits.InletNodeInvert - self.conduits.Geom1
+        )
+        self.conduits["OutletGroundCover"] = (
+            self.conduits.OutletGroundElevation + self.conduits.OutletNodeInvert - self.conduits.Geom1
+        )
 
     def depth_is_valid(self) -> None:
         """
@@ -195,13 +210,11 @@ class ConduitsData(Data):
         minus the maximum depth and the inlet ground cover elevation,
         and also within the range between the outlet
         invert elevation minus the maximum depth and the outlet ground
-        cover elevation. The 'max_depth_value'
-        parameter used in the calculations is specified
-        in the class constructor.
+        cover elevation.
         """
         self.conduits["ValDepth"] = (
-            ((self.conduits.InletNodeInvert - max_depth_value) <= self.conduits.InletGroundCover)
-            & ((self.conduits.OutletNodeInvert - max_depth_value) <= self.conduits.OutletGroundCover)
+            ((self.conduits.InletNodeInvert - max_depth_value) <= self.conduits.InletGroundElevation)
+            & ((self.conduits.OutletNodeInvert - max_depth_value) <= self.conduits.OutletGroundElevation)
         ).astype(int)
 
     def coverage_is_valid(self) -> None:
@@ -217,8 +230,7 @@ class ConduitsData(Data):
         calculations is specified in the class constructor.
         """
         self.conduits["ValCoverage"] = (
-            (self.conduits.InletGroundCover <= (self.conduits.InletNodeInvert - self.frost_zone))
-            & (self.conduits.OutletGroundCover <= (self.conduits.OutletNodeInvert - self.frost_zone))
+            (self.conduits.InletGroundCover >= self.frost_zone) & (self.conduits.OutletGroundCover >= self.frost_zone)
         ).astype(int)
 
 

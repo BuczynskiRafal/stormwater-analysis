@@ -302,9 +302,9 @@ class TestConduitsData:
         assert conduits_data.conduits.loc[1, "OutletMaxDepth"] == pytest.approx(16, abs=1e-9)
         assert conduits_data.conduits.loc[2, "OutletMaxDepth"] == pytest.approx(21, abs=1e-9)
 
-    def test_inlet_ground_cover(self, conduits_data):
+    def test_ground_elevation(self, conduits_data):
         """
-        Test the 'inlet_ground_cover' method of the ConduitsData class to ensure that it correctly
+        Test the 'ground_elevation' method of the ConduitsData class to ensure that it correctly
         calculates the amount of ground cover over each conduit's inlet and outlet.
         """
         print("\n")
@@ -314,45 +314,45 @@ class TestConduitsData:
             {
                 "InletNodeInvert": 10,
                 "InletMaxDepth": 2,
-                "InletGroundCover": 2,
+                "InletGroundElevation": 2,
                 "OutletNodeInvert": 40,
                 "OutletMaxDepth": 8,
-                "OutletGroundCover": 2,
+                "OutletGroundElevation": 2,
             },
             {
                 "InletNodeInvert": 20,
                 "InletMaxDepth": 4,
-                "InletGroundCover": 2,
+                "InletGroundElevation": 2,
                 "OutletNodeInvert": 50,
                 "OutletMaxDepth": 10,
-                "OutletGroundCover": 2,
+                "OutletGroundElevation": 2,
             },
             {
                 "InletNodeInvert": 30,
                 "InletMaxDepth": 6,
-                "InletGroundCover": 2,
+                "InletGroundElevation": 2,
                 "OutletNodeInvert": 60,
                 "OutletMaxDepth": 12,
-                "OutletGroundCover": 2,
+                "OutletGroundElevation": 2,
             },
         ]
         conduits_data.conduits = pd.DataFrame(test_data)
 
         # Calculate the inlet ground cover
-        conduits_data.inlet_ground_cover()
+        conduits_data.ground_elevation()
         print("\n")
         print(conduits_data.conduits)
         # Check the results
-        assert all(~pd.isna(conduits_data.conduits["InletGroundCover"]))
-        assert conduits_data.conduits.loc[0, "InletGroundCover"] == pytest.approx(8, abs=1e-9)
-        assert conduits_data.conduits.loc[1, "InletGroundCover"] == pytest.approx(16, abs=1e-9)
-        assert conduits_data.conduits.loc[2, "InletGroundCover"] == pytest.approx(24, abs=1e-9)
+        assert all(~pd.isna(conduits_data.conduits["InletGroundElevation"]))
+        assert conduits_data.conduits.loc[0, "InletGroundElevation"] == pytest.approx(8, abs=1e-9)
+        assert conduits_data.conduits.loc[1, "InletGroundElevation"] == pytest.approx(16, abs=1e-9)
+        assert conduits_data.conduits.loc[2, "InletGroundElevation"] == pytest.approx(24, abs=1e-9)
 
         # Check the results
-        assert all(~pd.isna(conduits_data.conduits["OutletGroundCover"]))
-        assert conduits_data.conduits.loc[0, "OutletGroundCover"] == pytest.approx(32, abs=1e-9)
-        assert conduits_data.conduits.loc[1, "OutletGroundCover"] == pytest.approx(40, abs=1e-9)
-        assert conduits_data.conduits.loc[2, "OutletGroundCover"] == pytest.approx(48, abs=1e-9)
+        assert all(~pd.isna(conduits_data.conduits["OutletGroundElevation"]))
+        assert conduits_data.conduits.loc[0, "OutletGroundElevation"] == pytest.approx(32, abs=1e-9)
+        assert conduits_data.conduits.loc[1, "OutletGroundElevation"] == pytest.approx(40, abs=1e-9)
+        assert conduits_data.conduits.loc[2, "OutletGroundElevation"] == pytest.approx(48, abs=1e-9)
 
     def test_depth_is_valid(self, conduits_data):
         """
@@ -364,24 +364,24 @@ class TestConduitsData:
         conduits_data.max_depth()
         print("\n")
         print(f"conduits_data: {conduits_data.conduits}")
-        conduits_data.inlet_ground_cover()
+        conduits_data.ground_elevation()
         conduits_data.conduits.at[0, "InletNodeInvert"] = 10
         conduits_data.conduits.at[0, "OutletNodeInvert"] = 7
         conduits_data.conduits.at[0, "ValDepth"] = np.nan
-        conduits_data.conduits.at[0, "InletGroundCover"] = 6
-        conduits_data.conduits.at[0, "OutletGroundCover"] = 0
+        conduits_data.conduits.at[0, "InletGroundElevation"] = 6
+        conduits_data.conduits.at[0, "OutletGroundElevation"] = 0
 
         conduits_data.conduits.at[1, "InletNodeInvert"] = 10
         conduits_data.conduits.at[1, "OutletNodeInvert"] = 5
         conduits_data.conduits.at[1, "ValDepth"] = np.nan
-        conduits_data.conduits.at[1, "InletGroundCover"] = 5
-        conduits_data.conduits.at[1, "OutletGroundCover"] = 5
+        conduits_data.conduits.at[1, "InletGroundElevation"] = 5
+        conduits_data.conduits.at[1, "OutletGroundElevation"] = 5
 
         conduits_data.conduits.at[2, "InletNodeInvert"] = 10
         conduits_data.conduits.at[2, "OutletNodeInvert"] = 20
         conduits_data.conduits.at[2, "ValDepth"] = np.nan
-        conduits_data.conduits.at[2, "InletGroundCover"] = 0
-        conduits_data.conduits.at[2, "OutletGroundCover"] = 0
+        conduits_data.conduits.at[2, "InletGroundElevation"] = 0
+        conduits_data.conduits.at[2, "OutletGroundElevation"] = 0
 
         conduits_data.depth_is_valid()
         assert conduits_data.conduits["ValDepth"].loc[0] == 1
@@ -398,20 +398,20 @@ class TestConduitsData:
             {
                 "InletNodeInvert": 10,
                 "OutletNodeInvert": 20,
-                "InletGroundCover": 5,
-                "OutletGroundCover": 15,
+                "InletGroundElevation": 5,
+                "OutletGroundElevation": 15,
             },
             {
                 "InletNodeInvert": 5,
                 "OutletNodeInvert": 2,
-                "InletGroundCover": 4,
-                "OutletGroundCover": 1,
+                "InletGroundElevation": 4,
+                "OutletGroundElevation": 1,
             },
             {
                 "InletNodeInvert": 30,
                 "OutletNodeInvert": 40,
-                "InletGroundCover": 15,
-                "OutletGroundCover": 25,
+                "InletGroundElevation": 15,
+                "OutletGroundElevation": 25,
             },
         ]
         conduits_data.conduits = pd.DataFrame(test_data)
@@ -420,7 +420,7 @@ class TestConduitsData:
         conduits_data.coverage_is_valid()
 
         assert all(conduits_data.conduits["ValCoverage"] == 1)
-        conduits_data.conduits.at[1, "InletGroundCover"] = 15
+        conduits_data.conduits.at[1, "InletGroundElevation"] = 15
         conduits_data.coverage_is_valid()
         assert conduits_data.conduits.loc[0, "ValCoverage"] == 1
         assert conduits_data.conduits.loc[1, "ValCoverage"] == 0

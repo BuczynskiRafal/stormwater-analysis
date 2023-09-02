@@ -38,7 +38,8 @@ def perform_conduits_feature_engineering(model: swmmio.Model) -> ConduitsData:
     conduits_data.max_depth()
     conduits_data.slope_per_mile()
     conduits_data.calculate_max_depth()
-    conduits_data.inlet_ground_cover()
+    conduits_data.ground_elevation()
+    conduits_data.ground_cover()
     conduits_data.depth_is_valid()
     conduits_data.coverage_is_valid()
     return conduits_data

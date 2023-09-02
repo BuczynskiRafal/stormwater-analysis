@@ -134,3 +134,8 @@ dmypy.json
 .idea/modules.xml
 .idea/misc.xml
 .idea/inspectionProfiles/Project_Default.xml
+
+*.out
+*.rpt
+*.bak
+*.ini
