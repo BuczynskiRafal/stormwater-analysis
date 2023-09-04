@@ -109,5 +109,9 @@ def validate_max_slope(slope: float, diameter: float) -> bool:
     Check that the maximum slope is not exceeded.
     """
     if check_slope(slope) and check_dimensions(diameter, diameter):
-        return slope <= max_slopes.get(str(diameter))  # type: ignore
+        if str(diameter) not in max_slopes.keys():
+            raise Exception("There is no such sewer diameter.")
+        return slope <= max_slopes.get(
+            str(diameter),
+        )  # type: ignore
     return False
