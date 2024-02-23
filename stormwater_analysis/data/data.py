@@ -45,6 +45,137 @@ class Data(ABC):
         pass
 
 
+class SubcatchmentsData(Data):
+    """
+    Data class for subcatchments.
+    """
+
+    def __init__(self, model: sw.Model) -> None:
+        super().__init__(model)
+        self.subcatchments = model.subcatchments.dataframe.copy()
+        self.frost_zone = None
+
+    def set_frost_zone(self, frost_zone: str) -> None:
+        """
+        Sets the frost zone value for the SubcatchmentsData instance.
+
+        Args:
+            frost_zone (str): A string representing the frost zone category, e.g., "I", "II", "III", "IV".
+        """
+        categories = {
+            "I": 1,
+            "II": 1.2,
+            "III": 1.4,
+            "IV": 1.6,
+        }
+        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
+
+    def drop_unused(self) -> None:
+        """
+        Drops unused columns from the subcatchments dataframe.
+        """
+        self.subcatchments = self.subcatchments.drop(
+            columns=[
+                #
+            ]
+        )
+
+    def classify(self, categories: bool = True) -> None:
+        df = self.subcatchments[
+            ["Area", "PercImperv", "Width", "PercSlope", "PctZero", "TotalPrecip", "TotalRunoffMG", "PeakRunoff", "RunoffCoeff"]
+        ].copy()
+        df["TotalPrecip"] = pd.to_numeric(df["TotalPrecip"])
+        predictions = classifier.predict(df)
+        predictions_cls = predictions.argmax(axis=-1)
+        if categories:
+            categories = [
+                "compact_urban_development",
+                "urban",
+                "loose_urban_development",
+                "wooded_area",
+                "grassy",
+                "loose_soil",
+                "steep_area",
+            ]
+            self.subcatchments["category"] = [categories[i] for i in predictions_cls]
+        else:
+            self.subcatchments["category"] = predictions_cls
+
+
+class NodesData(Data):
+    def __init__(self, model: sw.Model) -> None:
+        super().__init__(model)
+        self.nodes = model.nodes.dataframe.copy()
+        self.frost_zone = None
+
+    def set_frost_zone(self, frost_zone: str) -> None:
+        """
+        Set the frost zone value for the NodesData instance.
+
+        According to several standards (BN-83/8836-02, PN-81/B-03020, and others),
+        the depth of the pipeline and tanks should be such that its cover from
+        the external edge (upper edge) of the pipe (tank) to the elevation of
+        the terrain is greater than the freezing depth by 20 cm (table).
+
+        Args:
+            frost_zone (str): A string representing the frost zone category, e.g., "I", "II", "III", "IV".
+
+        """
+        categories = {
+            "I": 1,
+            "II": 1.2,
+            "III": 1.4,
+            "IV": 1.6,
+        }
+        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
+
+    def drop_unused(self) -> None:
+        """
+        Drops unused columns from the nodes dataframe.
+        """
+        self.nodes = self.nodes.drop(
+            columns=[
+                #
+            ]
+        )
+    
+    # TODO
+    # def subcatchment_name(self):
+    #     pass
+
+    def subcatchment_name(self):
+        # Map the 'Outlet' column in subcatchments_df to 'Name' in nodes_df to get the subcatchment name
+        self.nodes['subcatchment'] = self.nodes['Name'].map(self.model.subcatchments['Outlet'])
+
+        # self.conduits["OutletMaxDepth"] = self.conduits["OutletNode"].map(self.model.nodes.dataframe["MaxDepth"])
+
+    # TODO
+    def category(self):
+        pass
+
+    #  calculate MAxDepth for outlets
+    # def max_depth(self):
+    #     self.nodes["MaxDepth"] = self.conduits["InletNode"].map(
+    #         self.model.nodes.dataframe["MaxDepth"]
+    #     )
+
+    # def calculate_max_depth(self):
+    #     """
+    #     Calculates the maximum depth of each conduit's outlet, based on its inlet depth, length, and slope.
+    #
+    #     First identifies any rows in the 'OutletMaxDepth' column of the 'conduits' dataframe that contain NaN values.
+    #     For those rows, it calculates the outlet depth by subtracting the product of the conduit's length and slope
+    #     from the inlet depth. The resulting values are then written to the 'OutletMaxDepth' column for those rows.
+    #     """
+    #     nan_rows = pd.isna(self.nodes.OutletMaxDepth)
+    #     self.nodes.loc[nan_rows, "OutletMaxDepth"] = self.conduits.loc[
+    #         nan_rows, "InletMaxDepth"
+    #     ] - (
+    #         self.nodes.loc[nan_rows, "Length"]
+    #         * self.nodes.loc[nan_rows, "SlopeFtPerFt"]
+    #     )
+
+
 class ConduitsData(Data):
     """
     Class for handling conduit data.
@@ -97,6 +228,22 @@ class ConduitsData(Data):
                 "Geom4",
             ]
         )
+
+    def drop_unsued(self) -> None:
+        """
+        Drop unused columns from the conduits dataframe.
+        """
+        self.conduits = self.conduits.drop(
+            columns = [
+                "OutOffest"
+            ]
+        )
+
+
+
+
+
+
 
     def calculate_conduit_filling(self) -> None:
         """
@@ -233,119 +380,7 @@ class ConduitsData(Data):
             (self.conduits.InletGroundCover >= self.frost_zone) & (self.conduits.OutletGroundCover >= self.frost_zone)
         ).astype(int)
 
-
-class NodesData(Data):
-    def __init__(self, model: sw.Model) -> None:
-        super().__init__(model)
-        self.nodes = model.nodes.dataframe.copy()
-        self.frost_zone = None
-
-    def set_frost_zone(self, frost_zone: str) -> None:
+    def catchment_category(self):
         """
-        Set the frost zone value for the NodesData instance.
-
-        According to several standards (BN-83/8836-02, PN-81/B-03020, and others),
-        the depth of the pipeline and tanks should be such that its cover from
-        the external edge (upper edge) of the pipe (tank) to the elevation of
-        the terrain is greater than the freezing depth by 20 cm (table).
-
-        Args:
-            frost_zone (str): A string representing the frost zone category, e.g., "I", "II", "III", "IV".
-
+        Add suncatchment category to conduits dataframe for understanding landscaping.
         """
-        categories = {
-            "I": 1,
-            "II": 1.2,
-            "III": 1.4,
-            "IV": 1.6,
-        }
-        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
-
-    def drop_unused(self) -> None:
-        """
-        Drops unused columns from the nodes dataframe.
-        """
-        self.nodes = self.nodes.drop(
-            columns=[
-                #
-            ]
-        )
-
-    # TODO calculate MAxDepth for outlets
-    # def max_depth(self):
-    #     self.nodes["MaxDepth"] = self.conduits["InletNode"].map(
-    #         self.model.nodes.dataframe["MaxDepth"]
-    #     )
-
-    # def calculate_max_depth(self):
-    #     """
-    #     Calculates the maximum depth of each conduit's outlet, based on its inlet depth, length, and slope.
-    #
-    #     First identifies any rows in the 'OutletMaxDepth' column of the 'conduits' dataframe that contain NaN values.
-    #     For those rows, it calculates the outlet depth by subtracting the product of the conduit's length and slope
-    #     from the inlet depth. The resulting values are then written to the 'OutletMaxDepth' column for those rows.
-    #     """
-    #     nan_rows = pd.isna(self.nodes.OutletMaxDepth)
-    #     self.nodes.loc[nan_rows, "OutletMaxDepth"] = self.conduits.loc[
-    #         nan_rows, "InletMaxDepth"
-    #     ] - (
-    #         self.nodes.loc[nan_rows, "Length"]
-    #         * self.nodes.loc[nan_rows, "SlopeFtPerFt"]
-    #     )
-
-
-class SubcatchmentsData(Data):
-    """
-    Data class for subcatchments.
-    """
-
-    def __init__(self, model: sw.Model) -> None:
-        super().__init__(model)
-        self.subcatchments = model.subcatchments.dataframe.copy()
-        self.frost_zone = None
-
-    def set_frost_zone(self, frost_zone: str) -> None:
-        """
-        Sets the frost zone value for the SubcatchmentsData instance.
-
-        Args:
-            frost_zone (str): A string representing the frost zone category, e.g., "I", "II", "III", "IV".
-        """
-        categories = {
-            "I": 1,
-            "II": 1.2,
-            "III": 1.4,
-            "IV": 1.6,
-        }
-        self.frost_zone = categories.get(frost_zone.upper(), 1.2)  # type: ignore
-
-    def drop_unused(self) -> None:
-        """
-        Drops unused columns from the subcatchments dataframe.
-        """
-        self.subcatchments = self.subcatchments.drop(
-            columns=[
-                #
-            ]
-        )
-
-    def classify(self, categories: bool = True) -> None:
-        df = self.subcatchments[
-            ["Area", "PercImperv", "Width", "PercSlope", "PctZero", "TotalPrecip", "TotalRunoffMG", "PeakRunoff", "RunoffCoeff"]
-        ].copy()
-        df["TotalPrecip"] = pd.to_numeric(df["TotalPrecip"])
-        predictions = classifier.predict(df)
-        predictions_cls = predictions.argmax(axis=-1)
-        if categories:
-            categories = [
-                "compact_urban_development",
-                "urban",
-                "loose_urban_development",
-                "wooded_area",
-                "grassy",
-                "loose_soil",
-                "steep_area",
-            ]
-            self.subcatchments["category"] = [categories[i] for i in predictions_cls]
-        else:
-            self.subcatchments["category"] = predictions_cls

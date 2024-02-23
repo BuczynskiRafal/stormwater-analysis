@@ -3,7 +3,7 @@ from typing import Tuple
 import swmmio
 
 from stormwater_analysis.data.data import ConduitsData, NodesData, SubcatchmentsData
-
+import pandas as pd
 
 def perform_conduits_feature_engineering(model: swmmio.Model) -> ConduitsData:
     """
@@ -62,6 +62,7 @@ def perform_nodes_feature_engineering(model: swmmio.Model) -> NodesData:
     nodes_data = NodesData(model)
     nodes_data.set_frost_zone("II")
     nodes_data.drop_unused()
+    nodes_data.subcatchment_name()
     return nodes_data
 
 
@@ -106,7 +107,16 @@ def feature_engineering(
             - nodes_data (NodesData): The processed nodes data after feature engineering.
             - subcatchments_data (SubcatchmentsData): The processed subcatchments data after feature engineering.
     """
-    conduits_data = perform_conduits_feature_engineering(model)
-    nodes_data = perform_nodes_feature_engineering(model)
     subcatchments_data = perform_subcatchments_feature_engineering(model)
+    print(2* "\n")
+    print(subcatchments_data.subcatchments)
+    print(2* "\n")
+    subcatchments_data.subcatchments.to_excel("subcatchments.xlsx")
+
+    nodes_data = perform_nodes_feature_engineering(model)
+    print(2* "\n")
+    print(nodes_data.nodes)
+    print(2* "\n")
+    nodes_data.nodes.to_excel("nodes.xlsx")
+    conduits_data = perform_conduits_feature_engineering(model)
     return conduits_data, nodes_data, subcatchments_data
