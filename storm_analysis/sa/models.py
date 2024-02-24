@@ -1,3 +1,5 @@
 from django.db import models
 
-# Create your models here.
+
+class UserSWMMModel(models.Model):
+    file = models.FileField(upload_to="user_models/")
