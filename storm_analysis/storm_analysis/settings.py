@@ -28,7 +28,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    "sa.apps.SaConfig"
+    "homepage.apps.HomepageConfig",
+    "sa.apps.SaConfig",
 ]
 
 MIDDLEWARE = [
@@ -46,7 +47,7 @@ ROOT_URLCONF = "storm_analysis.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / 'storm_analysis' / 'templates'],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
