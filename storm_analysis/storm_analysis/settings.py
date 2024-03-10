@@ -27,10 +27,16 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    
+    "import_export",
+    "crispy_forms",
+    "crispy_bootstrap4",
 
     "accounts.apps.AccountsConfig",
     "homepage.apps.HomepageConfig",
     "sa.apps.SaConfig",
+
+
 ]
 
 MIDDLEWARE = [
@@ -93,9 +99,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.0/topics/i18n/
+CRISPY_TEMPLATE_PACK = "bootstrap4"
 
 LANGUAGE_CODE = "en-us"
 

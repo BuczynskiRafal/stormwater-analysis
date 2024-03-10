@@ -3,11 +3,11 @@
 
 {% block title %} Logowanie {% endblock %}
 
-{% block content %}
+{% block content %} 
     <form method="POST" class="form-group">
         {% csrf_token %}
         {{ form|crispy }}
         <br>
         <button type="submit" class="btn btn-success">Login</button>
     </form>
-{% endblock %}  
+{% endblock %}
