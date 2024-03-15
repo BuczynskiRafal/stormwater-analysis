@@ -1,9 +1,9 @@
 from django.urls import path
 
-from .views import upload_swmm_file
+from .views import analysis
 
 app_name = "sa"
 
 urlpatterns = [
-    path("", upload_swmm_file, name="upload")
+    path("", analysis, name="analysis")
 ]

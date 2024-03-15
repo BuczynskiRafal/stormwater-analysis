@@ -28,7 +28,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     
-    "import_export",
     "crispy_forms",
     "crispy_bootstrap4",
 
@@ -98,6 +97,8 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+LOGIN_URL = 'accounts:login'
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 

@@ -1,5 +1,11 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from .forms import UserSWMMModelForm
+
+
+@login_required
+def analysis(request):
+    return render(request, "sa/analysis.html")
 
 
 def upload_swmm_file(request):
