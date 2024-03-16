@@ -1,11 +1,13 @@
-{% extends base.html %}
+{% comment %} {% extends base.html %}
 {% load crispy_forms_tags %}
 
 {% block title %}{% endblock %}
 
 {% block content %}
-    <form action="{% url 'accounts:logout' %}" method="post">
+
+    {% comment %} <form method="POST" action="{% url 'accounts:logout' %}">
         {% csrf_token %}
-        <button type="submit" class="btn btn-outline-primary me-2">Logout</button>
-    </form>
-{% endblock %}
+        <button type="submit">Logout</button>
+    </form> {% endcomment %}
+
+{% comment %} {% endblock %} {% endcomment %}

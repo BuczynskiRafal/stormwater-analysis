@@ -99,6 +99,8 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 LOGIN_URL = 'accounts:login'
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
 
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
