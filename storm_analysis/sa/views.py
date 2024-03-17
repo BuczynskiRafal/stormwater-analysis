@@ -7,6 +7,9 @@ from .forms import UserSWMMModelForm
 def analysis(request):
     return render(request, "sa/analysis.html")
 
+@login_required
+def history(request):
+    return render(request, "sa/histtory.html")
 
 def upload_swmm_file(request):
     if request.method == "POST":

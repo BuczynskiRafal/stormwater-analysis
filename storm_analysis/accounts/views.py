@@ -20,7 +20,7 @@ def register(request):
 
 
 @login_required
-def edit_profile(request):
+def profile(request):
     user = request.user
     try:
         profile = user.userprofile
@@ -34,8 +34,7 @@ def edit_profile(request):
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
-            # Możesz tutaj dodać przekierowanie do strony profilu użytkownika
-            return redirect('nazwa_url_do_strony_profilu')
+            return redirect('accounts:profile')
     else:
         user_form = UserForm(instance=user)
         profile_form = UserProfileForm(instance=profile)
@@ -44,4 +43,4 @@ def edit_profile(request):
         "user_form": user_form,
         "profile_form": profile_form,
     }
-    return render(request, "accounts/edit_profile.html", context=context)
+    return render(request, "accounts/profile.html", context=context)
