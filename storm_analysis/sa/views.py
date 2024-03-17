@@ -9,7 +9,7 @@ def analysis(request):
 
 @login_required
 def history(request):
-    return render(request, "sa/histtory.html")
+    return render(request, "sa/history.html")
 
 def upload_swmm_file(request):
     if request.method == "POST":

@@ -49,6 +49,11 @@
         .content-wrapper {
             min-height: calc(90% - 100px);
         }
+        .profile-image {
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+        }
     </style>
 
 
@@ -63,10 +68,10 @@
                     <img src="{% static '/img/logo.png' %}" alt="Logo" height="50px">
                 </a>
                 <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
-                    <li><a href="{% url 'homepage:index' %}" class="nav-link px-2 link-dark">Home</a></li>
-                    <li><a href="{% url 'homepage:about' %}" class="nav-link px-2 link-dark">About</a></li>
-                    <li><a href="{% url 'sa:analysis' %}" class="nav-link px-2 link-dark">Analysis</a></li>
-                    <li><a href="{% url 'sa:analysis' %}" class="nav-link px-2 link-dark">History</a></li>
+                    <li><a href="{% url 'homepage:index' %}" class="nav-link px-4 link-dark">Home</a></li>
+                    <li><a href="{% url 'homepage:about' %}" class="nav-link px-4 link-dark">About</a></li>
+                    <li><a href="{% url 'sa:analysis' %}" class="nav-link px-4 link-dark">Analysis</a></li>
+                    <li><a href="{% url 'sa:history' %}" class="nav-link px-4 link-dark">History</a></li>
                 </ul>
                 <div class="col-md-3 text-end">
                     {% if user.is_authenticated %}
@@ -74,6 +79,13 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-primary me-2">Logout</button>
                         </form>
+                        <a href="{% url 'accounts:profile' %}">
+                            {% if user.userprofile.image %}
+                                <img src="{{ user.userprofile.image_url }}" class="profile-image" alt="Profile image" height="50px"></img>
+                            {% else %}
+                                <img src="{% static 'img/default_user.jpg' %}" class="profile-image" alt="Default User" height="50px"></img>
+                            {% endif %}
+                        </a>
                     {% else %}
                         <a type="button" class="btn btn-outline-primary me-2" href="{% url 'accounts:login' %}">Login</a>
                         <a type="button" class="btn btn-primary" href="{% url 'accounts:register' %}">Sign-up</a>
