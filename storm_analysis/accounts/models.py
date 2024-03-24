@@ -4,14 +4,12 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 
-
-
-
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # phone = models.CharField(max_length=12, blank=True)
+    phone = models.CharField(max_length=12, blank=True)
     # mobile = models.CharField(max_length=12, blank=True)
     # location = models.CharField(max_length=100, blank=True)
+    image = models.ImageField(upload_to='profile_images', blank=True, null=True)
 
     website_url = models.URLField(blank=True)
     facebook_url = models.URLField(blank=True)

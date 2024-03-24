@@ -19,7 +19,7 @@
                 <div class="col-sm-8">
                     <div class="tab-content">
                         <div class="tab-pane active" id="home">
-                            <form class="form" action="{% url 'accounts:profile' %}" method="POST" id="registrationForm" enctype="multipart/form-data">
+                            <form class="form" action="{% url 'accounts:myprofile' %}" method="POST" id="registrationForm" enctype="multipart/form-data">
                                 {% csrf_token %}
                                 {{ user_form|crispy }}
                                 {{ profile_form|crispy }}
