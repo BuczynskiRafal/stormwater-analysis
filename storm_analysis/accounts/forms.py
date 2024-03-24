@@ -1,17 +1,12 @@
 from django import forms
-from django.contrib.auth.models import User
-
-from accounts.models import UserProfile
-
+from accounts.models import User
 
 class UserForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'password', 'email')
-
+        fields = ["email", "phone"]
 
 class UserProfileForm(forms.ModelForm):
     class Meta:
-        model = UserProfile
-        # fields = ('phone', 'mobile', 'location', 'website_url', 'facebook_url', 'github_url', 'twitter_url')
-        fields = ('website_url', 'facebook_url', 'github_url', 'twitter_url')
+        model = User
+        fields = ["bio", "website_url", "facebook_url", "github_url", "twitter_url"]

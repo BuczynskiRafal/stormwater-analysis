@@ -79,11 +79,11 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-outline-primary me-2">Logout</button>
                         </form>
-                        <a href="{% url 'accounts:myprofile' %}">
+                        <a href="{% url 'accounts:user_profile' %}">
                             {% if user.userprofile.image %}
                                 <img src="{{ user.userprofile.image_url }}" class="profile-image" alt="Profile image" height="50px"></img>
                             {% else %}
-                                <img src="{% static 'img/default_user.jpg' %}" class="profile-image" alt="Default User" height="50px"></img>
+                                <img src="{% static '/img/default_user.jpg' %}" class="profile-image" alt="Default User" height="50px"></img>
                             {% endif %}
                         </a>
                     {% else %}
