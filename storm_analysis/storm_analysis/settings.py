@@ -27,15 +27,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    
     "crispy_forms",
     "crispy_bootstrap4",
-
     "accounts.apps.AccountsConfig",
     "homepage.apps.HomepageConfig",
     "sa.apps.SaConfig",
-
-
 ]
 
 MIDDLEWARE = [
@@ -53,7 +49,7 @@ ROOT_URLCONF = "storm_analysis.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / 'storm_analysis' / 'templates'],
+        "DIRS": [BASE_DIR / "storm_analysis" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -97,8 +93,8 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
-AUTH_USER_MODEL = 'accounts.User'
-LOGIN_URL = 'accounts:login'
+AUTH_USER_MODEL = "accounts.User"
+LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
@@ -126,4 +122,4 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
-STATIC_URL = '/static/'
+STATIC_URL = "/static/"

@@ -8,7 +8,7 @@ from django.contrib.auth import get_user_model
 from accounts.forms import UserForm, UserProfileForm, UserAvatarForm, CustomUserCreationForm
 
 
-User = get_user_model() 
+User = get_user_model()
 
 
 def register(request):
@@ -30,50 +30,51 @@ def user_profile(request):
     password_form = PasswordChangeForm(user=request.user)
     avatar_form = UserAvatarForm(instance=request.user)
 
-    if request.method == 'POST':
-        action = request.POST.get('user_profile_forms')
-       
-        if action == '0':
+    if request.method == "POST":
+        action = request.POST.get("user_profile_forms")
+
+        if action == "0":
             user_form = UserForm(request.POST, request.FILES, instance=request.user)
             if user_form.is_valid():
                 user_form.save()
-                messages.success(request, 'Your profile was successfully updated!')
-                return redirect('accounts:user_profile')
+                messages.success(request, "Your profile was successfully updated!")
+                return redirect("accounts:user_profile")
 
-        elif action == '1':
+        elif action == "1":
             password_form = PasswordChangeForm(data=request.POST, user=request.user)
             if password_form.is_valid():
                 password_form.save()
                 update_session_auth_hash(request, password_form.user)
-                messages.success(request, 'Your password was successfully updated!')
-                return redirect('accounts:user_profile')
+                messages.success(request, "Your password was successfully updated!")
+                return redirect("accounts:user_profile")
 
-        elif action == '2':
+        elif action == "2":
             profile_form = UserProfileForm(request.POST, request.FILES, instance=request.user)
             if profile_form.is_valid():
                 profile_form.save()
-                messages.success(request, 'Your additional information was successfully updated!')
-                return redirect('accounts:user_profile')
-                
+                messages.success(request, "Your additional information was successfully updated!")
+                return redirect("accounts:user_profile")
+
         elif action == "3":
             avatar_form = UserAvatarForm(request.POST, request.FILES, instance=request.user)
             if avatar_form.is_valid():
                 avatar_form.save()
-                messages.success(request, 'Your avatar was successfully updated!')
-                return redirect('accounts:user_profile')
+                messages.success(request, "Your avatar was successfully updated!")
+                return redirect("accounts:user_profile")
 
         else:
-            messages.error(request, 'Invalid form submission.')
-            return redirect('accounts:user_profile')
-    
+            messages.error(request, "Invalid form submission.")
+            return redirect("accounts:user_profile")
+
     context = {
-        'user_form': user_form,
-        'profile_form': profile_form,
-        'password_form': password_form,
-        'avatar_form': avatar_form,
+        "user_form": user_form,
+        "profile_form": profile_form,
+        "password_form": password_form,
+        "avatar_form": avatar_form,
     }
-    
-    return render(request, 'accounts/user_profile.html', context)
+
+    return render(request, "accounts/user_profile.html", context)
+
 
 @login_required(login_url="/login")
 def profile(request, id):
@@ -82,16 +83,17 @@ def profile(request, id):
     print(user)
     return render(request, "accounts/profile.html", context)
 
+
 @login_required(login_url="/")
 def avatar(request):
-    if request.method == 'POST':
+    if request.method == "POST":
         form = UserAvatarForm(request.POST, request.FILES, instance=request.user)
         if form.is_valid():
             form.save()
-            return redirect('accounts/user_profile.html')
+            return redirect("accounts/user_profile.html")
     else:
         form = CustomUserProfileForm(instance=request.user)
-    return render(request, 'user_profile.html', {'form': form})
+    return render(request, "user_profile.html", {"form": form})
 
 
 @login_required(login_url="/login")

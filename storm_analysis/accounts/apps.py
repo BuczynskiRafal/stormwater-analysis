@@ -7,7 +7,7 @@ class AccountsConfig(AppConfig):
 
 
 class UsersConfig(AppConfig):
-    name = 'accounts'
+    name = "accounts"
 
     def ready(self):
         import accounts.signals

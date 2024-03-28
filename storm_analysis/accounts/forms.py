@@ -10,6 +10,7 @@ class UserForm(forms.ModelForm):
         model = get_user_model()
         fields = ["first_name", "last_name", "email", "phone"]
 
+
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = get_user_model()
@@ -19,13 +20,17 @@ class UserProfileForm(forms.ModelForm):
 class UserAvatarForm(forms.ModelForm):
     class Meta:
         model = get_user_model()
-        fields = ["avatar", ]
+        fields = [
+            "avatar",
+        ]
 
 
 class CustomUserCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = get_user_model()
-        fields = ["email",]
+        fields = [
+            "email",
+        ]
 
     def __init__(self, *args, **kwargs):
         super(CustomUserCreationForm, self).__init__(*args, **kwargs)
