@@ -11,15 +11,16 @@
             <div class="col-sm-4"><!--left col-->
                 <div class="text-center">
                     <h1>User name</h1>
-                    <img src="http://ssl.gstatic.com/accounts/ui/avatar_2x.png" class="avatar img-circle img-thumbnail" alt="avatar">
+                    <img src="{{ user.get_avatar_url }}" class="avatar img-circle img-thumbnail" alt="avatar">
                     <form action="{% url 'accounts:user_profile' %}" method="post" enctype="multipart/form-data">
                         {% csrf_token %}
-                        <h6>Upload a different photo...</h6>
+                        <input type="hidden" name="user_profile_forms" value="3">
                         <input type="file" class="text-center center-block file-upload" name="avatar">
                         <br>
                         <br>
-                        <button type="submit" class="btn btn-success">Save</button>
-                        <button type="reset" class="btn btn-outline-primary me-2">Reset</button>
+                        <button type="submit" class="btn btn-success" id="saveBtn" style="display:none;">Save</button>
+                        <button type="reset" class="btn btn-outline-primary me-2" id="resetBtn" style="display:none;">Reset</button>
+
                     </form>
                 </div>
             </div><!--right col-->
@@ -110,5 +111,17 @@
         </div>
     </div>
 
-{% endblock  %}
 
+    <script>
+    document.querySelector('.file-upload').addEventListener('change', function() {
+        if(this.files.length > 0) {
+            document.getElementById('saveBtn').style.display = 'inline-block';
+            document.getElementById('resetBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('resetBtn').style.display = 'none';
+        }
+    });
+    </script>
+
+{% endblock  %}

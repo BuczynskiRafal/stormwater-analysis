@@ -32,27 +32,27 @@ class UserManager(BaseUserManager):
 
 class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=12, blank=True)
-    bio = models.TextField(null=True)
-    avatar = models.ImageField(null=True, default='/img/default_user.jpg')
+    phone = models.CharField(max_length=12, blank=True, null=True)
+    first_name = models.CharField(max_length=30, null=True, blank=True)
+    last_name = models.CharField(max_length=150, null=True, blank=True)
+    bio = models.TextField(null=True, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, default='/img/default_user.jpg')
     date_joined = models.DateTimeField(default=timezone.now)
 
-    website_url = models.URLField(blank=True)
-    facebook_url = models.URLField(blank=True)
-    github_url = models.URLField(blank=True)
-    twitter_url = models.URLField(blank=True)
+    website_url = models.URLField(blank=True, null=True)
+    facebook_url = models.URLField(blank=True, null=True)
+    github_url = models.URLField(blank=True, null=True)
+    twitter_url = models.URLField(blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-
-    objects = UserManager()
 
     groups = models.ManyToManyField(
         'auth.Group',
         verbose_name='groups',
         blank=True,
         help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
-        related_name="user_custom",  # Unikalna wartość dla related_name
+        related_name="user_custom",
         related_query_name="user",
     )
     user_permissions = models.ManyToManyField(
@@ -60,9 +60,11 @@ class User(AbstractBaseUser, PermissionsMixin):
         verbose_name='user permissions',
         blank=True,
         help_text='Specific permissions for this user.',
-        related_name="user_custom_perm",  # Unikalna wartość dla related_name
+        related_name="user_custom_perm",
         related_query_name="user",
     )
+
+    objects = UserManager()
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -71,3 +73,9 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+    
+    def get_avatar_url(self):
+        if self.avatar and hasattr(self.avatar, 'url'):
+            return self.avatar.url
+        else:
+            return 'http://ssl.gstatic.com/accounts/ui/avatar_2x.png'
