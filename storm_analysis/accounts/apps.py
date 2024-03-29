@@ -1,3 +1,4 @@
+# ruff: noqa: F401
 from django.apps import AppConfig
 
 
@@ -10,4 +11,4 @@ class UsersConfig(AppConfig):
     name = "accounts"
 
     def ready(self):
-        import accounts.signals  # ruff: noqa: F401
+        import accounts.signals
