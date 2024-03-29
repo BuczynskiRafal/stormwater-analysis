@@ -1,12 +1,9 @@
-from django.shortcuts import render, redirect
+from accounts.forms import CustomUserCreationForm, UserAvatarForm, UserForm, UserProfileForm
 from django.contrib import messages
-from django.contrib.auth import login, update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import get_user_model, login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth import get_user_model
-
-from accounts.forms import UserForm, UserProfileForm, UserAvatarForm, CustomUserCreationForm
-
+from django.contrib.auth.forms import PasswordChangeForm
+from django.shortcuts import redirect, render
 
 User = get_user_model()
 

@@ -1,6 +1,5 @@
 from django.urls import path
-from homepage.views import index, about
-
+from homepage.views import about, index
 
 app_name = "homepage"
 
