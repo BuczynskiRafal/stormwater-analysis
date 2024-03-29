@@ -17,12 +17,12 @@ def upload_swmm_file(request):
     if request.method == "POST":
         form = UserSWMMModelForm(request.POST, request.FILES)
         if form.is_valid():
-            user_file = form.save()
+            form.save()
 
             """
             Handle calculations and classifications
             """
-
+            results = "run simulations and send data frame." + form
             return render(request, "results.html", {"results": results})
     else:
         form = UserSWMMModelForm()

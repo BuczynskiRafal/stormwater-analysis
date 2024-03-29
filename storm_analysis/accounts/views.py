@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from django.contrib.auth import login, authenticate, update_session_auth_hash
-from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
+from django.contrib.auth import login, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 
@@ -82,28 +82,3 @@ def profile(request, id):
     context = {"user": user}
     print(user)
     return render(request, "accounts/profile.html", context)
-
-
-@login_required(login_url="/")
-def avatar(request):
-    if request.method == "POST":
-        form = UserAvatarForm(request.POST, request.FILES, instance=request.user)
-        if form.is_valid():
-            form.save()
-            return redirect("accounts/user_profile.html")
-    else:
-        form = CustomUserProfileForm(instance=request.user)
-    return render(request, "user_profile.html", {"form": form})
-
-
-@login_required(login_url="/login")
-def update_profile(request):
-    user = request.user
-    user_form = UserForm(instance=user)
-    profile_form = UserProfileForm(instance=UserProfile)
-    if request.method == "POST":
-        form = UserProfileForm(request.POST, request.FILES, instance=UserProfile)
-        if form.is_valid():
-            form.save()
-            return redirect("profile", id=user.id)
-    return render(request, "accounts/my_proifile.html", {"form": form})
