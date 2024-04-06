@@ -77,5 +77,4 @@ def user_profile(request):
 def profile(request, id):
     user = request.user
     context = {"user": user}
-    print(user)
     return render(request, "accounts/profile.html", context)

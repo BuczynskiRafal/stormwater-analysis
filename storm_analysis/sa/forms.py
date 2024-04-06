@@ -1,9 +1,9 @@
 from django import forms
 
-from .models import UserSWMMModel
+from .models import SWMMModel
 
 
-class UserSWMMModelForm(forms.ModelForm):
+class SWMMModelForm(forms.ModelForm):
     class Meta:
-        model = UserSWMMModel
-        fields = "__all__"
+        model = SWMMModel
+        fields = ["file", "zone"]
