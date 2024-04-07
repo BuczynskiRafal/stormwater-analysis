@@ -3,9 +3,9 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import swmmio as sw
-from core.data.predictor import classifier
-from core.pipes.round import max_depth_value
-from core.pipes.valid_round import (
+from sa.core.data.predictor import classifier
+from sa.core.pipes.round import max_depth_value
+from sa.core.pipes.valid_round import (
     validate_filling,
     validate_max_slope,
     validate_max_velocity,

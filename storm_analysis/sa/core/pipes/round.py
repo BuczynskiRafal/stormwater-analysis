@@ -4,8 +4,8 @@ from typing import Union
 
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
-from core.utils.lazy_object import LazyObject
 from numpy import cos, linspace, pi, sin
+from sa.core.utils.lazy_object import LazyObject
 
 logger = logging.getLogger(__name__)
 

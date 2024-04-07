@@ -2,8 +2,8 @@ from typing import Dict, List
 
 import pandas as pd
 import swmmio
-from core.data.data import ConduitsData, NodesData, SubcatchmentsData
-from core.pipes.round import min_slope
+from sa.core.data.data import ConduitsData, NodesData, SubcatchmentsData
+from sa.core.pipes.round import min_slope
 from swmmio.utils.functions import trace_from_node
 
 

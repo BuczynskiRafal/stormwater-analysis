@@ -1,7 +1,7 @@
 from typing import Tuple
 
 import swmmio
-from core.data.data import ConduitsData, NodesData, SubcatchmentsData
+from sa.core.data.data import ConduitsData, NodesData, SubcatchmentsData
 
 
 def perform_conduits_feature_engineering(model: swmmio.Model) -> ConduitsData:
@@ -84,7 +84,7 @@ def perform_subcatchments_feature_engineering(
     subcatchments_data = SubcatchmentsData(model)
     subcatchments_data.set_frost_zone("II")
     subcatchments_data.drop_unused()
-    subcatchments_data.classify(categories=True)
+    # subcatchments_data.classify(categories=True)
     return subcatchments_data
 
 

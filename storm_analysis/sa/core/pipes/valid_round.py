@@ -1,6 +1,6 @@
 import logging
 
-from core.pipes.round import check_dimensions, max_filling, max_slopes, max_velocity_value, min_slope, min_velocity_value
+from sa.core.pipes.round import check_dimensions, max_filling, max_slopes, max_velocity_value, min_slope, min_velocity_value
 
 logger = logging.getLogger(__name__)
 
