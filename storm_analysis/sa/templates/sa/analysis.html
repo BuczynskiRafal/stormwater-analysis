@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load crispy_forms_tags %}
 
-
 {% block title %} Analysis {% endblock %}
 
 {% block content %} 
@@ -9,48 +8,53 @@
 {% if not data %}
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
-            <div class="container">
-                <div class="row d-flex justify-content-center">
-                    <div>
-                        {{ swmm_form| crispy }}
-                    </div>
+        <div class="container">
+            <div class="row d-flex justify-content-center">
+                <div>
+                    {{ swmm_form| crispy }}
                 </div>
             </div>
-            <div class="row mt-3">
-                <div class="col-md-12 d-flex justify-content-center">
-                    <button type="submit" class="btn btn-primary" id="saveBtn">Send Data</button>
-                </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-12 d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary" id="saveBtn">Send Data</button>
             </div>
+        </div>
     </form>
 {% endif %}
 
 {% if data %}
-<div class="row mt-1">
-    <div class="col-md-12 d-flex justify-content-center">
-        <a href="{% url 'sa:analysis' %}" class="btn btn-success">New Analysis</a>
+<div class="sticky-top">
+    <div class="container">
+        <div class="row mt-1">
+            <div class="col-md-12 d-flex justify-content-center">
+                <a href="{% url 'sa:analysis' %}" class="btn btn-success">New Analysis</a>
+            </div>
+        </div>
     </div>
 </div>
 
-
 <div class="container mt-3">
-    <table class="table">
-        <thead>
-            <tr>
-                {% for key in data.0.keys %}
-                    <th>{{ key }}</th>
-                {% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in data %}
+    <div class="table-container">
+        <table class="table">
+            <thead>
                 <tr>
-                    {% for value in item.values %}
-                        <td>{{ value|floatformat:2 }}</td>
+                    {% for key in data.0.keys %}
+                        <th>{{ key }}</th>
                     {% endfor %}
                 </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                {% for item in data %}
+                    <tr>
+                        {% for value in item.values %}
+                            <td>{{ value|floatformat:2 }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endif %}
 

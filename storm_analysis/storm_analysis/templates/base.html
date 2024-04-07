@@ -36,22 +36,31 @@
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 
     <style>
+        
         html, body {
             height: 100%;
+            min-height: 100%;
             font-size: 16px;
             margin: 0;
         }
         body {
+            overflow-y: scroll;
             display: flex;
             flex-direction: column;
             background-color: whitesmoke;
             border-bottom: 0px solid black;
             justify-content:center;
           }
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: white;
+        }
 
         .content-wrapper {
             flex: 1;
-            display: flex;
+            display: block;
             flex-direction: column;
         }
 
@@ -65,6 +74,37 @@
             height: 50px;
         }
 
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f9f9f9;
+        }
+
+        tfoot td {
+            position: sticky;
+            bottom: 0;
+            background-color: #f9f9f9;
+        }
+
+        tbody tr:nth-child(odd) {
+            background-color: #f2f2f2;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .table-container thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f9f9f9;
+            z-index: 1;
+        }
 
     </style>
 
