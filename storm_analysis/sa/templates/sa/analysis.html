@@ -23,17 +23,15 @@
     </form>
 {% endif %}
 
-{% if data %}
-<div class="sticky-top">
-    <div class="container">
-        <div class="row mt-1">
-            <div class="col-md-12 d-flex justify-content-center">
-                <a href="{% url 'sa:analysis' %}" class="btn btn-success">New Analysis</a>
-            </div>
+<div class="container">
+    <div class="row">
+        <div class="col-md-12 d-flex justify-content-center">
+            <a href="{% url 'sa:analysis' %}" class="btn btn-success">New Analysis</a>
         </div>
     </div>
 </div>
 
+{% if data %}
 <div class="container mt-3">
     <div class="table-container">
         <table class="table">
