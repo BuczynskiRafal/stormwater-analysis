@@ -38,7 +38,7 @@
             <thead>
                 <tr>
                     {% for key in data.0.keys %}
-                        <th>{{ key }}</th>
+                        <th class="center-text">{{ key }}</th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -46,7 +46,7 @@
                 {% for item in data %}
                     <tr>
                         {% for value in item.values %}
-                            <td>{{ value|floatformat:2 }}</td>
+                            <td class="center-text">{{ value }}</td>
                         {% endfor %}
                     </tr>
                 {% endfor %}

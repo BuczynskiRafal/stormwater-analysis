@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.utils.timezone import now
 from pyswmm import Simulation
+from sa.core.data.feature_engineering import feature_engineering
 
 from .forms import SWMMModelForm
 
@@ -35,8 +36,9 @@ def save_uploaded_file(file_path, uploaded_file):
             destination.write(chunk)
 
 
-@login_required(login_url="/login")
+@login_required(login_url="/accounts/login/")
 def analysis(request):
+
     if request.method == "POST":
         swmm_form = SWMMModelForm(request.POST, request.FILES)
         if swmm_form.is_valid():
@@ -52,12 +54,13 @@ def analysis(request):
 
             # compute swmm file
             try:
-                swmmio_model = swmmio.Model(file_path)
-                with Simulation(swmmio_model.inp.path) as sim:
+                with Simulation(file_path) as sim:
                     for _ in sim:
                         pass
-                data = swmmio_model.subcatchments.dataframe.to_dict("records")
-
+                swmmio_model = swmmio.Model(file_path, include_rpt=True)
+                conduits_data, nodes_data, subcatchments_data = feature_engineering(swmmio_model)
+                conduits_data.conduits.reset_index(inplace=True)
+                data = conduits_data.conduits.to_dict("records")
                 return render(request, "sa/analysis.html", {"swmm_form": swmm_form, "data": data})
             except Exception as e:
                 logger.error(e)
@@ -72,6 +75,6 @@ def analysis(request):
     return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
 
 
-@login_required(login_url="/login")
+@login_required(login_url="/accounts/login/")
 def history(request):
     return render(request, "sa/history.html")
