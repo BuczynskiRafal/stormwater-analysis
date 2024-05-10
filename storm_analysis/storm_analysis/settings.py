@@ -8,12 +8,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 DOTENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 load_dotenv(DOTENV_PATH)
+print("PATH:", DOTENV_PATH)
 
-SECRET_KEY = os.getenv(SECRET_KEY, "def value")
+SECRET_KEY = os.getenv("SECRET_KEY", "def value")
 
-DEBUG = os.getenv(DEBUG, False) == "True"
+DEBUG = os.getenv("DEBUG", False) == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost"]
 
 
 INSTALLED_APPS = [
