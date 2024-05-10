@@ -32,7 +32,16 @@ class DataManager(sw.Model):
 
     def __enter__(self):
         self.set_frost_zone(self.frost_zone)
+        self.calculate()
         self.feature_engineering()
+        float_columns_subcatchments = self.df_subcatchments.select_dtypes(include=["float"]).columns
+        float_columns_nodes = self.df_nodes.select_dtypes(include=["float"]).columns
+        float_columns_conduits = self.df_conduits.select_dtypes(include=["float"]).columns
+        self.df_subcatchments[float_columns_subcatchments] = self.df_subcatchments[float_columns_subcatchments].round(2)
+        self.df_nodes[float_columns_nodes] = self.df_nodes[float_columns_nodes].round(2)
+        self.df_conduits[float_columns_conduits] = self.df_conduits[float_columns_conduits].round(2)
+        self.drop_unused()
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -60,13 +69,6 @@ class DataManager(sw.Model):
             "IV": 1.6,
         }
         self.frost_zone = categories.get(frost_zone.upper(), 1.2)
-
-    # def subcatchments_name_to_node(self):
-    #     """
-    #     Map the 'Outlet' column in subcatchments_df to 'Name' in nodes_df to get the subcatchment name.
-    #     """
-    #     outlet_to_subcatchment_map = self.subcatchments.dataframe.reset_index().set_index('Outlet')['Name'].to_dict()
-    #     self.nodes['Subcatchment'] = self.nodes.index.map(lambda node: outlet_to_subcatchment_map.get(node, "-"))
 
     def subcatchments_classify(self, categories: bool = True) -> None:
         df = self.df_subcatchments[
@@ -128,7 +130,7 @@ class DataManager(sw.Model):
         """
         Calculate the slope per mile for each conduit in the network.
         """
-        self.df_conduits["SlopePerMile"] = self.df_conduits.SlopeFtPerFt * 1000
+        self.df_conduits["SlopePerMile"] = self.df_conduits["SlopeFtPerFt"] * 1000
 
     def conduits_slopes_is_valid(self) -> None:
         """
@@ -139,14 +141,14 @@ class DataManager(sw.Model):
         with the validation results, with `1` indicating a valid slope and `0` indicating an invalid slope.
         """
         self.df_conduits["ValMaxSlope"] = self.df_conduits.apply(
-            lambda df: validate_max_slope(slope=df.SlopeFtPerFt * 1000, diameter=df.Geom1),
+            lambda df: validate_max_slope(slope=df["SlopePerMile"], diameter=df["Geom1"]),
             axis=1,
         ).astype(int)
         self.df_conduits["ValMinSlope"] = self.df_conduits.apply(
             lambda df: validate_min_slope(
-                slope=df.SlopeFtPerFt * 1000,
-                filling=df.Filling,
-                diameter=df.Geom1,
+                slope=df["SlopePerMile"],
+                filling=df["Filling"],
+                diameter=df["Geom1"],
             ),
             axis=1,
         ).astype(int)
@@ -245,7 +247,19 @@ class DataManager(sw.Model):
 
     def drop_unused(self):
         # Clean up each DataFrame
-        conduits_cols = ["OutOffset", "InitFlow", "Barrels", "Shape", "InOffset", "coords", "Geom2", "Geom3", "Geom4"]
+        conduits_cols = [
+            "OutOffset",
+            "InitFlow",
+            "Barrels",
+            "Shape",
+            "InOffset",
+            "coords",
+            "Geom2",
+            "Geom3",
+            "Geom4",
+            "SlopeFtPerFt",
+            "Type",
+        ]
         nodes_cols = ["coords", "StageOrTimeseries"]
         subcatchments_cols = ["coords"]
 
@@ -269,12 +283,6 @@ class DataManager(sw.Model):
         self.conduits_depth_is_valid()
         self.conduits_coverage_is_valid()
         self.conduits_subcatchment_name()
-
-    def prepare_data(self):
-        # print(self.frost_zone)
-        # self.set_frost_zone(self.frost_zone) ?????
-        self.drop_unused()
-        self.feature_engineering()
 
     def calculate(self):
         with Simulation(self.inp.path) as sim:
