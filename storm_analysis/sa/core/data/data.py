@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import swmmio as sw
 from pyswmm import Simulation
-from sa.core.data.predictor import classifier
+from sa.core.data.predictor import classifier, recommendation
 from sa.core.pipes.round import max_depth_value
 from sa.core.pipes.valid_round import (
     validate_filling,
@@ -34,6 +34,7 @@ class DataManager(sw.Model):
         self.set_frost_zone(self.frost_zone)
         self.calculate()
         self.feature_engineering()
+        self.conduits_recommendations()
         float_columns_subcatchments = self.df_subcatchments.select_dtypes(include=["float"]).columns
         float_columns_nodes = self.df_nodes.select_dtypes(include=["float"]).columns
         float_columns_conduits = self.df_conduits.select_dtypes(include=["float"]).columns
@@ -235,6 +236,55 @@ class DataManager(sw.Model):
         self.df_conduits["ValCoverage"] = (
             (self.df_conduits.InletGroundCover >= self.frost_zone) & (self.df_conduits.OutletGroundCover >= self.frost_zone)
         ).astype(int)
+
+    def conduits_recommendations(self, categories: bool = True) -> None:
+        predictions = recommendation.predict(
+            self.df_conduits[
+                [
+                    "Geom1",
+                    "MaxQ",
+                    "MaxV",
+                    "MaxQPerc",
+                    "MaxDPerc",
+                    "InletNodeInvert",
+                    "OutletNodeInvert",
+                    "UpstreamInvert",
+                    "DownstreamInvert",
+                    "Filling",
+                    "ValMaxFill",
+                    "ValMaxV",
+                    "ValMinV",
+                    "SlopePerMile",
+                    "ValMaxSlope",
+                    "ValMinSlope",
+                    "InletMaxDepth",
+                    "OutletMaxDepth",
+                    "InletGroundElevation",
+                    "OutletGroundElevation",
+                    "InletGroundCover",
+                    "OutletGroundCover",
+                    "ValDepth",
+                    "ValCoverage",
+                ]
+            ]
+        )
+        predictions_cls = predictions.argmax(axis=-1)
+        if categories:
+            categories = [
+                "valid",
+                "pump",
+                "tank",
+                "seepage_boxes",
+                "diameter_increase",
+                "diameter_reduction",
+                "slope_increase",
+                "slope_reduction",
+                "depth_increase",
+                "depth_reduction",
+            ]
+            self.df_conduits["recommendation"] = [categories[i] for i in predictions_cls]
+        else:
+            self.df_conduits["recommendation"] = predictions_cls
 
     def conduits_subcatchment_name(self):
         """
