@@ -5,9 +5,9 @@ from typing import Union
 import matplotlib.pyplot
 import matplotlib.pyplot as plt
 from numpy import cos, linspace, pi, sin
-from sa.core.utils.lazy_object import LazyObject
 
 logger = logging.getLogger(__name__)
+common_diameters = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0]
 
 
 def check_dimensions(filling: float, diameter: float) -> bool:
@@ -100,7 +100,7 @@ def max_depth():
     return 8
 
 
-def calc_f(filling: float, diameter: float) -> float:
+def calc_area(filling: float, diameter: float) -> float:
     """
     Calculate the cross-sectional area of a pipe.
     The cross-sectional area through which the wastewater flows,
@@ -170,7 +170,7 @@ def calc_rh(filling: float, diameter: float) -> float:
     """
     if check_dimensions(filling, diameter):
         try:
-            return calc_f(filling, diameter) / calc_u(filling, diameter)
+            return calc_area(filling, diameter) / calc_u(filling, diameter)
         except ZeroDivisionError:
             return 0
 
@@ -339,33 +339,13 @@ def draw_pipe_section(filling: float, diameter: float, max_filling: Union[float,
         marker="o",
         color=color,
         lw=3,
-        label=f"Wetted part of pipe: {calc_f(filling, diameter):.2f} [m2]",
+        label=f"Wetted part of pipe: {calc_area(filling, diameter):.2f} [m2]",
     )
     plt.grid(True)
     plt.legend(loc="upper left")
     plt.show()
 
-
-max_slopes = LazyObject(  # type: ignore
-    lambda: {
-        "0.2": max_slope(0.2),
-        "0.3": max_slope(0.3),
-        "0.4": max_slope(0.4),
-        "0.5": max_slope(0.5),
-        "0.6": max_slope(0.6),
-        "0.7": max_slope(0.7),
-        "0.8": max_slope(0.8),
-        "0.9": max_slope(0.9),
-        "1.0": max_slope(1.0),
-        "1.2": max_slope(1.2),
-        "1.5": max_slope(1.5),
-        "2.0": max_slope(2.0),
-    }
-)
-
-
+max_slopes = {str(dim): max_slope(dim) for dim in common_diameters}
 max_velocity_value = max_velocity()
-
 min_velocity_value = min_velocity()  # type: ignore
-
 max_depth_value = max_depth()  # type: ignore
