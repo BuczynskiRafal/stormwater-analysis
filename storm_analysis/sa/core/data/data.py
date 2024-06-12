@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -466,11 +466,7 @@ class DataManager(sw.Model):
 
         overflowing_traces = {}
         for outfall_id, trace_data in all_traces.items():
-            if overlapping_conduits := [
-                c
-                for c in trace_data["conduits"]
-                if c in overflowing_conduits.index.tolist()
-            ]:
+            if overlapping_conduits := [c for c in trace_data["conduits"] if c in overflowing_conduits.index.tolist()]:
                 # Create a sub-dict for each overlapping conduit and its position in the trace
                 overflowing_trace = {c: trace_data["conduits"].index(c) for c in overlapping_conduits}
                 overflowing_traces[outfall_id] = overflowing_trace
@@ -510,10 +506,7 @@ class DataManager(sw.Model):
         # Get overflowing traces
         overflowing_traces = self.overflowing_traces()
 
-        return [
-            overflowing_traces[outfall]["nodes"][0]
-            for outfall in overflowing_traces
-        ]
+        return [overflowing_traces[outfall]["nodes"][0] for outfall in overflowing_traces]
 
     def generate_technical_recommendation(self) -> None:
         """
