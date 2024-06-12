@@ -3,7 +3,7 @@ import math
 import numpy as np
 import pytest
 from core.pipes.round import (
-    calc_f,
+    calc_area,
     calc_rh,
     calc_u,
     check_dimensions,
@@ -173,81 +173,81 @@ class TestMaxVelocity:
 
 class TestCalcF:
     """
-    Class contain tests the calc_f function.
+    Class contain tests the calc_area function.
     """
 
-    def test_calc_f_zero_filling(self):
+    def test_calc_area_zero_filling(self):
         """
-        Test if calc_f returns 0 when the second argument is 0
+        Test if calc_area returns 0 when the second argument is 0
         """
-        assert calc_f(0, 1) == 0
-        assert calc_f(0, 2) == 0
-        assert calc_f(0, 0.5) == 0
-        assert calc_f(0, 0.2) == 0
+        assert calc_area(0, 1) == 0
+        assert calc_area(0, 2) == 0
+        assert calc_area(0, 0.5) == 0
+        assert calc_area(0, 0.2) == 0
 
-    def test_calc_f_filling_equal_diameter(self):
+    def test_calc_area_filling_equal_diameter(self):
         """
-        Test if calc_f calculates the filling factor of a circle with a
+        Test if calc_area calculates the filling factor of a circle with a
         given diameter and a given hole diameter
         """
-        assert calc_f(1, 1) == 0.7853981633974483
-        assert calc_f(2, 2) == 3.141592653589793
-        assert calc_f(0.5, 0.5) == 0.19634954084936207
-        assert calc_f(0.1, 0.2) == 0.015707963267948967
+        assert calc_area(1, 1) == 0.7853981633974483
+        assert calc_area(2, 2) == 3.141592653589793
+        assert calc_area(0.5, 0.5) == 0.19634954084936207
+        assert calc_area(0.1, 0.2) == 0.015707963267948967
 
-    def test_calc_f_filing_equal_radius(self):
+    def test_calc_area_filing_equal_radius(self):
         """
-        Test if calc_f calculates the angle of the arc of a circle with a
+        Test if calc_area calculates the angle of the arc of a circle with a
         given radius and chord length
         """
-        assert calc_f(0.5, 1) == 0.39269908169872414
-        assert calc_f(1, 2) == 1.5707963267948966
-        assert calc_f(0.25, 0.5) == 0.09817477042468103
-        assert calc_f(0.1, 0.2) == 0.015707963267948967
+        assert calc_area(0.5, 1) == 0.39269908169872414
+        assert calc_area(1, 2) == 1.5707963267948966
+        assert calc_area(0.25, 0.5) == 0.09817477042468103
+        assert calc_area(0.1, 0.2) == 0.015707963267948967
 
-    def test_calc_f_filing_greater_than_radius(self):
+    def test_calc_area_filing_greater_than_radius(self):
         """
-        Test if calc_f function raises a ValueError when the filing_radius
+        Test if calc_area function raises a ValueError when the filing_radius
         is greater than the radius
         """
         with pytest.raises(ValueError):
-            calc_f(1.5, 1)
-            calc_f(2.5, 2)
-            calc_f(0.75, 0.5)
-            calc_f(0.4, 0.3)
+            calc_area(1.5, 1)
+            calc_area(2.5, 2)
+            calc_area(0.75, 0.5)
+            calc_area(0.4, 0.3)
 
-    def test_calc_f_raises_exception(self):
+    def test_calc_area_raises_exception(self):
         """
-        Test if calc_f() raises a TypeError exception
+        Test if calc_area() raises a TypeError exception
         if the arguments are not of type int
         """
         with pytest.raises(TypeError):
-            calc_f("1", 2)  # type: ignore
+            calc_area("1", 2)  # type: ignore
         with pytest.raises(TypeError):
-            calc_f(1, "2")  # type: ignore
+            calc_area(1, "2")  # type: ignore
         with pytest.raises(TypeError):
-            calc_f(1.5, "2.5")  # type: ignore
+            calc_area(1.5, "2.5")  # type: ignore
 
-    def test_calc_f_filing_greater_than_diameter(self):
+    def test_calc_area_filing_greater_than_diameter(self):
         """
-        Test if calc_f() raises a ValueError if the filing
+        Test if calc_area() raises a ValueError if the filing
         diameter is greater than the pipe diameter
         """
         with pytest.raises(ValueError):
-            calc_f(3, 1)
+            calc_area(3, 1)
         with pytest.raises(ValueError):
-            calc_f(4, 2)
+            calc_area(4, 2)
         with pytest.raises(ValueError):
-            calc_f(1.1, 1)
+            calc_area(1.1, 1)
 
-    def test_calc_f_filling_less_than_zero(self):
+    def test_calc_area_filling_less_than_zero(self):
         """
-        Test if calc_f raises a `ValueError` when the filling is less than zero
+        Test if calc_area raises a `ValueError` when the filling is less than zero
         """
         with pytest.raises(ValueError):
-            calc_f(-1, 1)
+            calc_area(-1, 1)
         with pytest.raises(ValueError):
-            calc_f(-0.5, 0.5)
+            calc_area(-0.5, 0.5)
 
 
 class TestCalcU:

@@ -1,9 +1,12 @@
+import math
+from typing import Dict, List, Optional
+
 import numpy as np
 import pandas as pd
 import swmmio as sw
 from pyswmm import Simulation
 from sa.core.data.predictor import classifier, recommendation
-from sa.core.pipes.round import max_depth_value
+from sa.core.pipes.round import common_diameters, max_depth_value, min_slope
 from sa.core.pipes.valid_round import (
     validate_filling,
     validate_max_slope,
@@ -11,6 +14,7 @@ from sa.core.pipes.valid_round import (
     validate_min_slope,
     validate_min_velocity,
 )
+from swmmio.utils.functions import trace_from_node
 
 desired_width = 500
 pd.set_option("display.width", desired_width)
@@ -19,8 +23,10 @@ pd.set_option("display.max_columns", 30)
 
 
 class DataManager(sw.Model):
-    def __init__(self, in_file_path):
-        super().__init__(in_file_path)
+    def __init__(self, in_file_path: str, crs: Optional[str] = None, include_rpt: bool = True):
+        super().__init__(in_file_path, crs=crs, include_rpt=include_rpt)
+        self.crs = crs
+        self.include_rpt = include_rpt
         self.frost_zone = "I"
         self.df_subcatchments = self.get_dataframe_safe(self.subcatchments.dataframe)
         self.df_nodes = self.get_dataframe_safe(self.nodes.dataframe)
@@ -49,6 +55,12 @@ class DataManager(sw.Model):
         if exc_type is not None:
             print(f"Exception occurred: {exc_val}")
         return False
+
+    def enter(self):
+        self.__enter__()
+
+    def close(self, exc_type, exc_val, exc_tb):
+        return self.__exit__(exc_type, exc_val, exc_tb)
 
     def set_frost_zone(self, frost_zone: str) -> None:
         """
@@ -240,48 +252,25 @@ class DataManager(sw.Model):
     def conduits_recommendations(self, categories: bool = True) -> None:
         predictions = recommendation.predict(
             self.df_conduits[
-                [
-                    "Geom1",
-                    "MaxQ",
-                    "MaxV",
-                    "MaxQPerc",
-                    "MaxDPerc",
-                    "InletNodeInvert",
-                    "OutletNodeInvert",
-                    "UpstreamInvert",
-                    "DownstreamInvert",
-                    "Filling",
-                    "ValMaxFill",
-                    "ValMaxV",
-                    "ValMinV",
-                    "SlopePerMile",
-                    "ValMaxSlope",
-                    "ValMinSlope",
-                    "InletMaxDepth",
-                    "OutletMaxDepth",
-                    "InletGroundElevation",
-                    "OutletGroundElevation",
-                    "InletGroundCover",
-                    "OutletGroundCover",
-                    "ValDepth",
-                    "ValCoverage",
-                ]
+                ["ValMaxFill", "ValMaxV", "ValMinV", "ValMaxSlope", "ValMinSlope", "ValDepth", "ValCoverage", "isMinDiameter"]
             ]
         )
         predictions_cls = predictions.argmax(axis=-1)
         if categories:
-            categories = [
-                "valid",
-                "pump",
-                "tank",
-                "seepage_boxes",
-                "diameter_increase",
-                "diameter_reduction",
-                "slope_increase",
-                "slope_reduction",
-                "depth_increase",
-                "depth_reduction",
-            ]
+            # categories = [
+            #     "valid",
+            #     "pump",
+            #     "tank",
+            #     "seepage_boxes",
+            #     "diameter_increase",
+            #     "diameter_reduction",
+            #     "slope_increase",
+            #     "slope_reduction",
+            #     "depth_increase",
+            #     "depth_reduction",
+            # ]
+            print(predictions_cls)
+            categories = ["diameter_reduction", "valid", "depth_increase"]
             self.df_conduits["recommendation"] = [categories[i] for i in predictions_cls]
         else:
             self.df_conduits["recommendation"] = predictions_cls
@@ -333,6 +322,8 @@ class DataManager(sw.Model):
         self.conduits_depth_is_valid()
         self.conduits_coverage_is_valid()
         self.conduits_subcatchment_name()
+        self.min_conduit_diameter()
+        self.is_min_diameter()
 
     def calculate(self):
         with Simulation(self.inp.path) as sim:
@@ -360,3 +351,324 @@ class DataManager(sw.Model):
     #         self.nodes.loc[nan_rows, "Length"]
     #         * self.nodes.loc[nan_rows, "SlopeFtPerFt"]
     #     )
+
+    def all_traces(self) -> Dict[str, List[str]]:
+        """
+        Finds all traces in the SWMM model.
+
+        A trace is a list of conduit IDs that connect a specific outfall to the rest of the network.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary where the keys are outfall IDs and the values are lists
+            of conduit IDs representing the traces connecting the outfalls to the rest of the network.
+        """
+        outfalls = self.model.inp.outfalls.index
+        return {outfall: trace_from_node(self.model.conduits, outfall) for outfall in outfalls}
+
+    def overflowing_pipes(self) -> pd.DataFrame:
+        """
+        Returns rain sewers in which the maximum filling height has been exceeded.
+
+        Args:
+            self: The instance of the class.
+
+        Returns:
+            pd.DataFrame: A DataFrame containing conduits
+                        in which the maximum filling height has been exceeded.
+        """
+        return self.conduits_data.conduits[self.conduits_data.conduits["ValMaxFill"] == 0]
+
+    def overflowing_traces(self) -> Dict[str, Dict[str, List[str]]]:
+        """
+        Identifies the segments of the network system (from `all_traces`) where overflowing occurs.
+
+        For each trace in `all_traces`, the function identifies the sections (conduits) where
+        the maximum filling height has been exceeded (identified by `overflowing_pipes`).
+        The output is a dictionary that contains these segments of overflowing. For each identified
+        segment, the trace from the first conduit with overflowing to the last one is included.
+
+        The dictionary keys are outfall IDs and the values are dictionaries where:
+        - The dictionary keys are conduit IDs where overflowing occurs.
+        - The dictionary values are the corresponding conduit's position in the trace.
+
+        Finally, for each outfall, a trace is generated from the first to the last overflowing conduit.
+
+        Returns
+        -------
+        dict
+            A dictionary where the keys are outfall IDs and the values are traces from the first to
+            the last conduit where overflowing occurs. Each trace is a list of tuples, where each
+            tuple represents a conduit and the nodes it connects in the form (inlet_node, outlet_node, conduit_id).
+
+        Notes
+        -----
+        This method requires that `self.all_traces()` and `self.overflowing_pipes()` be defined
+        and return appropriate values. Specifically, `self.all_traces()` should return a dictionary
+        of all traces and `self.overflowing_pipes()` should return a DataFrame of overflowing pipes.
+
+        See Also
+        --------
+        all_traces : method to retrieve all traces in the system.
+        overflowing_pipes : method to identify pipes where the maximum filling height is exceeded.
+
+        Example
+        -------
+        >>> from core.inp_manage.inp import SwmmModel
+        >>> swmm_model = SwmmModel(model, conduits_data, nodes_data, subcatchments_data)
+        >>> swmm_model.overflowing_traces()
+        >>> {'O4': {'nodes': ['J0', 'J1', 'J2', 'J3'], 'conduits': ['C1', 'C2', 'C3']}}
+        """
+        # Fetch the data
+        all_traces = self.all_traces()
+        overflowing_conduits = self.overflowing_pipes()
+
+        overflowing_traces = {}
+        for outfall_id, trace_data in all_traces.items():
+            if overlapping_conduits := [c for c in trace_data["conduits"] if c in overflowing_conduits.index.tolist()]:
+                # Create a sub-dict for each overlapping conduit and its position in the trace
+                overflowing_trace = {c: trace_data["conduits"].index(c) for c in overlapping_conduits}
+                overflowing_traces[outfall_id] = overflowing_trace
+        # return {
+        #     key:
+        #     find_network_trace(
+        #         self.model,
+        #         overflowing_conduits.loc[list(value)[-1]]['InletNode'],
+        #         overflowing_conduits.loc[list(value)[0]]['OutletNode'],
+        #         )
+        #         for key, value in overflowing_traces.items()
+        #     }
+        #     very interesting result
+        #     >>> {'O4': [('J0', 'J1', 'C1'), ('J1', 'J2', 'C2'), ('J2', 'J3', 'C3')]}
+        return {
+            key: trace_from_node(
+                conduits=self.conduits_data.conduits,
+                startnode=overflowing_conduits.loc[list(value)[-1]]["InletNode"],
+                mode="down",
+                stopnode=overflowing_conduits.loc[list(value)[0]]["OutletNode"],
+            )
+            for key, value in overflowing_traces.items()
+        }
+
+    def place_to_change(self) -> List[str]:
+        """
+        Places pipes to apply a change in the SWMM model.
+
+        1. Based on the list of overflowing conduits, determine
+        where the recommended technical change should be applied.
+        2. Returns a list of conduits or manholes where the change should be applied.
+
+        Returns:
+            List of nodes where the change should be applied.
+        """
+
+        # Get overflowing traces
+        overflowing_traces = self.overflowing_traces()
+
+        return [overflowing_traces[outfall]["nodes"][0] for outfall in overflowing_traces]
+
+    def generate_technical_recommendation(self) -> None:
+        """
+        Generates a technical recommendation in the SWMM model.
+
+        1. use a trained ANN to generate a technical recommendation.
+        2. Prepare the data format in which you will store the recommendation.
+        3. save the data to a file.
+        4. Return the recommendation to the user.
+        """
+
+    def apply_class(self):
+        """
+        Recommendations made only for nodes.
+            The plan is to classify all nodes in the first approach.
+            In general I want the classifier to see the entire dataset.
+            These are to be manually added learning labels.
+
+            The plan:
+                1. select Nodes
+                2. I manually add recommendations / classifiers
+                3. I add to the data frame.
+
+            Below are some classes of recommendations.
+        """
+        pass
+
+    def optimize_conduit_slope(self) -> None:
+        # Currently, this function is not needed.
+        # TODO: min_slope() returns a minimal slope as number/1000,  SlopeFtPerFt is a number.
+        #       So we need to convert it to number/1000.
+        #       SlopePerMile take number/1000, so there is no need to convert it to number/1000.
+        self.model.conduits.SlopeFtPerFt = min_slope(
+            filling=self.model.conduits.Filling,
+            diameter=self.model.conduits.Geom1,
+        )
+
+    def optimize_conduit_depth(self):  # type: ignore
+        # Currently, this function is not needed.
+        pass
+
+    def calc_filling_percentage(self, filling: float, diameter: float) -> float:
+        """
+        Calculate the percentage value of pipe filling height.
+
+        Args:
+            filling (int, float): pipe filling height [m]
+            diameter (int, float): pipe diameter [m]
+
+        Return:
+            filled height (int, float): percentage of pipe that is filled with water.
+        """
+        return (filling / diameter) * 100
+
+    def calc_u(self, filling: float, diameter: float) -> float:
+        """
+        Calculate the circumference of a wetted part of pipe
+
+        Args:
+            filling (int, float): pipe filling height [m]
+            diameter (int, float): pipe diameter [m]
+
+        Return:
+            circumference (int, float): circumference of a wetted part of pipe
+        """
+        if validate_filling(filling, diameter):
+            radius = diameter / 2
+            chord = math.sqrt((radius**2 - (filling - radius) ** 2)) * 2
+            alpha = math.degrees(math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2)))
+            if filling > radius:
+                return 2 * math.pi * radius - (alpha / 360 * 2 * math.pi * radius)
+            return alpha / 360 * 2 * math.pi * radius
+
+    def calc_rh(self, filling: float, diameter: float) -> float:
+        """
+        Calculate the hydraulic radius Rh, i.e. the ratio of the cross-section f
+        to the contact length of the sewage with the sewer wall, called the wetted circuit U.
+
+        Args:
+            filling (int, float): pipe filling height [m]
+            diameter (int, float): pipe diameter [m]
+
+        Return:
+            Rh (int, float): hydraulic radius [m]
+        """
+        try:
+            return self.calc_area(filling, diameter) / self.calc_u(filling, diameter)
+        except ZeroDivisionError:
+            return 0
+
+    def calc_velocity(self, filling: float, diameter: float, slope: float) -> float:
+        """
+        Calculate the speed of the sewage flow in the sewer.
+
+        Args:
+            filling (int, float): pipe filling height [m]
+            diameter (int, float): pipe diameter [m]
+            slope (int, float): fall in the bottom of the sewer [‰]
+
+        Return:
+            v (int, float): sewage flow velocity in the sewer [m/s]
+        """
+        slope /= 1000
+        if validate_filling(filling, diameter):
+            return 1 / 0.013 * self.calc_rh(filling, diameter) ** (2 / 3) * slope**0.5
+
+    def calc_area(self, h: float, d: float) -> float:
+        """
+        Calculate the cross-sectional area of a pipe.
+        Given its pipe filling height and diameter of pipe.
+
+        Args:
+            h (int, float): pipe filling height [m]
+            d (int, float): pipe diameter [m]
+
+        Return:
+            area (int, float): cross-sectional area of the wetted part of the pipe [m2]
+        """
+        if validate_filling(h, d):
+            radius = d / 2
+            chord = math.sqrt((radius**2 - ((h - radius) ** 2))) * 2
+            alpha = math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2))
+            if h > radius:
+                return math.pi * radius**2 - (1 / 2 * (alpha - math.sin(alpha)) * radius**2)
+            elif h == radius:
+                return math.pi * radius**2 / 2
+            elif h == d:
+                return math.pi * radius**2
+            else:
+                return 1 / 2 * (alpha - math.sin(alpha)) * radius**2
+
+    def calc_flow(self, h: float, d: float, i: float) -> float:
+        """
+        Calculate sewage flow in the channel
+
+        Args:
+            h (int, float): pipe filling height [m]
+            d (int, float): pipe diameter [m]
+            i (int, float): fall in the bottom of the sewer [‰]
+
+        Return:
+            q (int, float): sewage flow in the channel [dm3/s]
+        """
+        if validate_filling(h, d):
+            wet_area = self.calc_area(h, d)
+            velocity = self.calc_velocity(h, d, i)
+            return wet_area * velocity
+
+    def calc_filling(self, q, diameter, slope):
+        """
+        Calculate the filling height needed to achieve a specified flow rate in a pipe.
+
+        Args:
+            q (int, float): desired flow rate [dm3/s]
+            diameter (int, float): pipe diameter [m]
+            slope (int, float): slope in the bottom of the sewer [‰]
+
+        Return:
+            filling (int, float): calculated filling height [m]
+        """
+        filling = 0
+        flow = 0
+        while flow < q:
+            if validate_filling(filling, diameter):
+                flow = self.calc_flow(filling, diameter, slope)
+                filling += 0.001
+            else:
+                break
+
+        return filling
+
+    def min_conduit_diameter(self):
+        min_diameters = []
+        for index, row in self.df_conduits.iterrows():
+            if row["ValMaxFill"] == 1:
+                current_flow = row["MaxQ"]
+                current_dim = row["Geom1"]
+                current_slope = row["SlopePerMile"]
+                current_dim_idx = common_diameters.index(current_dim)
+
+                min_diameter = current_dim
+                for i in range(current_dim_idx - 1, -1, -1):
+                    smaller_diameter = common_diameters[i]
+                    try:
+                        filling = self.calc_filling(current_flow, smaller_diameter, current_slope)
+                    except ValueError:
+                        break
+                    if validate_filling(filling, smaller_diameter):
+                        min_diameter = smaller_diameter
+                    else:
+                        break
+
+                min_diameters.append(min_diameter)
+            else:
+                min_diameters.append(current_dim)
+
+        self.df_conduits["MinDiameter"] = min_diameters
+
+    def is_min_diameter(self):
+        """
+        Determine if the current diameter is the minimum possible diameter
+        that can handle the flow.
+
+        Adding to conduits dataframe new column indicating
+        whether the current diameter is the minimum diameter.
+        """
+        self.df_conduits["isMinDiameter"] = np.where(self.df_conduits["Geom1"] == self.df_conduits["MinDiameter"], 1, 0)

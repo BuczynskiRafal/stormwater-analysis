@@ -58,8 +58,8 @@ S2               Raingage2        J9               17       10.000000000000002 4
 S3               Raingage2        J7               12       15.000000000000004 346.41016151377545 5.088435374149661 0                        
 S4               Raingage2        J2               8        10.000000000000002 282.842712474619 5.088435374149661 0                        
 S5               Raingage2        J2               32       25.000000000000007 565.685424949238 5.088435374149661 0                        
-21               Raingage2        C11              5        25       500      0.5      0                        
-22               Raingage2        C6               5        25       500      0.5      0                        
+21               Raingage2        J20              5        25       500      0.5      0                        
+22               Raingage2        J16              5        25       500      0.5      0                        
 
 [SUBAREAS]
 ;;Subcatchment   N-Imperv   N-Perv     S-Imperv   S-Perv     PctZero    RouteTo    PctRouted 
@@ -97,16 +97,16 @@ J6               147.2      2.1        0          0          0
 J9               147.1      2.1        0          0          0         
 J7               147.4      1.9        0          0          0         
 C7               147.2      2.8        0          0          0         
-C8               147.4      2.6        0          0          0         
-C9               147.6      2.4        0          0          0         
-C10              147.8      2.2        0          0          0         
-C11              148        2          0          0          0         
-C1               147        3          0          0          0         
-C2               147.2      2.8        0          0          0         
-C3               147.4      2.6        0          0          0         
-C4               147.6      2.4        0          0          0         
-C5               147.8      2.2        0          0          0         
-C6               148        2          0          0          0         
+J17              147.4      2.6        0          0          0         
+J18              147.6      2.4        0          0          0         
+J19              147.8      2.2        0          0          0         
+J20              148        2          0          0          0         
+J10              147        3          0          0          0         
+J11              147.2      2.8        0          0          0         
+J12              147.4      2.6        0          0          0         
+J13              147.6      2.4        0          0          0         
+J14              147.8      2.2        0          0          0         
+J16              148        2          0          0          0         
 
 [OUTFALLS]
 ;;Name           Elevation  Type       Stage Data       Gated    Route To        
@@ -119,25 +119,25 @@ O2               146.5      FREE                        NO
 ;;-------------- ---------------- ---------------- ---------- ---------- ---------- ---------- ---------- ----------
 C3               J2               J3               50         0.01       0          0          0          0         
 C4               J3               O1               50         0.015      0          0          0          0         
-C2               J1               J2               400        0.01       0          0          0          0         
-C1               J0               J1               400        0.01       0          0          0          0         
-3                J4               J3               400        0.01       0          0          0          0         
-5                J7               J6               400        0.01       0          0          0          0         
-6                J8               J4               400        0.01       0          0          0          0         
-7                J9               J8               400        0.01       0          0          0          0         
-8                J5               J4               400        0.01       0          0          0          0         
-9                J6               J5               400        0.01       0          0          0          0         
-11               C6               C5               400        0.01       0          0          0          0         
-12               C5               C4               400        0.01       0          0          0          0         
-13               C4               C3               400        0.01       0          0          0          0         
-14               C3               C2               400        0.01       0          0          0          0         
-15               C2               C1               400        0.01       0          0          0          0         
-16               C1               O2               400        0.01       0          0          0          0         
-17               C11              C10              400        0.01       0          0          0          0         
-18               C10              C9               400        0.01       0          0          0          0         
-19               C9               C8               400        0.01       0          0          0          0         
-20               C8               C7               400        0.01       0          0          0          0         
-21               C7               C1               400        0.01       0          0          0          0         
+C2               J1               J2               50         0.01       0          0          0          0         
+C1               J0               J1               50         0.01       0          0          0          0         
+C5               J4               J3               50         0.01       0          0          0          0         
+C8               J7               J6               50         0.01       0          0          0          0         
+C9               J8               J4               50         0.01       0          0          0          0         
+C10              J9               J8               50         0.01       0          0          0          0         
+C6               J5               J4               50         0.01       0          0          0          0         
+C7               J6               J5               50         0.01       0          0          0          0         
+C16              J16              J14              50         0.01       0          0          0          0         
+C15              J14              J13              50         0.01       0          0          0          0         
+C14              J13              J12              50         0.01       0          0          0          0         
+C13              J12              J11              50         0.01       0          0          0          0         
+C12              J11              J10              50         0.01       0          0          0          0         
+C11              J10              O2               50         0.01       0          0          0          0         
+C21              J20              J19              50         0.01       0          0          0          0         
+C20              J19              J18              50         0.01       0          0          0          0         
+C19              J18              J17              50         0.01       0          0          0          0         
+C18              J17              C7               50         0.01       0          0          0          0         
+C17              C7               J10              50         0.01       0          0          0          0         
 
 [XSECTIONS]
 ;;Link           Shape        Geom1            Geom2      Geom3      Geom4      Barrels    Culvert   
@@ -146,51 +146,51 @@ C3               CIRCULAR     0.9              0          0          0          
 C4               CIRCULAR     1                0          0          0          1                    
 C2               CIRCULAR     1                0          0          0          1                    
 C1               CIRCULAR     1                0          0          0          1                    
-3                CIRCULAR     1                0          0          0          1                    
-5                CIRCULAR     1                0          0          0          1                    
-6                CIRCULAR     1                0          0          0          1                    
-7                CIRCULAR     1                0          0          0          1                    
-8                CIRCULAR     1                0          0          0          1                    
-9                CIRCULAR     1                0          0          0          1                    
-11               CIRCULAR     1                0          0          0          1                    
-12               CIRCULAR     1                0          0          0          1                    
-13               CIRCULAR     1                0          0          0          1                    
-14               CIRCULAR     1                0          0          0          1                    
-15               CIRCULAR     1                0          0          0          1                    
-16               CIRCULAR     1                0          0          0          1                    
-17               CIRCULAR     1                0          0          0          1                    
-18               CIRCULAR     1                0          0          0          1                    
-19               CIRCULAR     1                0          0          0          1                    
-20               CIRCULAR     1                0          0          0          1                    
-21               CIRCULAR     1                0          0          0          1                    
+C5               CIRCULAR     1                0          0          0          1                    
+C8               CIRCULAR     1                0          0          0          1                    
+C9               CIRCULAR     1                0          0          0          1                    
+C10              CIRCULAR     1                0          0          0          1                    
+C6               CIRCULAR     1                0          0          0          1                    
+C7               CIRCULAR     1                0          0          0          1                    
+C16              CIRCULAR     1                0          0          0          1                    
+C15              CIRCULAR     1                0          0          0          1                    
+C14              CIRCULAR     1                0          0          0          1                    
+C13              CIRCULAR     1                0          0          0          1                    
+C12              CIRCULAR     1                0          0          0          1                    
+C11              CIRCULAR     1                0          0          0          1                    
+C21              CIRCULAR     1                0          0          0          1                    
+C20              CIRCULAR     1                0          0          0          1                    
+C19              CIRCULAR     1                0          0          0          1                    
+C18              CIRCULAR     1                0          0          0          1                    
+C17              CIRCULAR     1                0          0          0          1                    
 
 [TIMESERIES]
 ;;Name           Date       Time       Value     
 ;;-------------- ---------- ---------- ----------
-test_series                 0:01       25.25     
-test_series                 0:02       25.25     
-test_series                 0:03       25.25     
-test_series                 0:04       25.25     
-test_series                 0:05       25.25     
-test_series                 0:06       25.25     
-test_series                 0:07       25.25     
-test_series                 0:08       25.25     
-test_series                 0:09       25.25     
-test_series                 0:10       25.25     
-test_series                 0:11       25.25     
-test_series                 0:12       25.25     
-test_series                 0:13       25.25     
-test_series                 0:14       25.25     
-test_series                 0:15       25.25     
-test_series                 0:16       25.25     
-test_series                 0:17       25.25     
-test_series                 0:18       25.25     
-test_series                 0:19       25.25     
-test_series                 0:20       25.25     
-test_series                 0:21       25.25     
-test_series                 0:22       25.25     
-test_series                 0:23       25.25     
-test_series                 0:24       25.25     
+test_series                 0:01       45.25     
+test_series                 0:02       45.25     
+test_series                 0:03       45.25     
+test_series                 0:04       45.25     
+test_series                 0:05       45.25     
+test_series                 0:06       45.25     
+test_series                 0:07       45.25     
+test_series                 0:08       45.25     
+test_series                 0:09       45.25     
+test_series                 0:10       45.25     
+test_series                 0:11       45.25     
+test_series                 0:12       45.25     
+test_series                 0:13       45.25     
+test_series                 0:14       45.25     
+test_series                 0:15       45.25     
+test_series                 0:16       45.25     
+test_series                 0:17       45.25     
+test_series                 0:18       45.25     
+test_series                 0:19       45.25     
+test_series                 0:20       45.25     
+test_series                 0:21       45.25     
+test_series                 0:22       45.25     
+test_series                 0:23       45.25     
+test_series                 0:24       45.25     
 
 [REPORT]
 ;;Reporting Options
@@ -203,7 +203,7 @@ Node       J2               #P
 Node       J3               #E              
 Link       C3               #P              
 Link       C4               #E              
-Link       7                #E              
+Link       C10              #E              
 
 [MAP]
 DIMENSIONS 777170.879 592553.184 777244.390 592609.929
@@ -222,17 +222,17 @@ J8               777197.370         592584.303
 J6               777217.497         592586.648        
 J9               777194.145         592595.637        
 J7               777215.543         592595.686        
-C7               777226.490         592566.534        
-C8               777229.041         592573.239        
-C9               777229.456         592579.053        
-C10              777228.685         592586.885        
-C11              777227.736         592591.513        
-C1               777224.472         592567.009        
-C2               777222.158         592572.883        
-C3               777221.624         592579.172        
-C4               777221.624         592584.512        
-C5               777220.972         592591.276        
-C6               777220.200         592595.251        
+C7               777226.262         592567.434        
+J17              777229.041         592573.239        
+J18              777229.456         592579.053        
+J19              777228.685         592586.885        
+J20              777227.736         592591.513        
+J10              777224.472         592567.009        
+J11              777222.158         592572.883        
+J12              777221.624         592579.172        
+J13              777221.624         592584.512        
+J14              777220.972         592591.276        
+J16              777220.200         592595.251        
 O1               777203.002         592557.210        
 O2               777225.718         592561.431        
 
