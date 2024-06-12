@@ -345,6 +345,7 @@ def draw_pipe_section(filling: float, diameter: float, max_filling: Union[float,
     plt.legend(loc="upper left")
     plt.show()
 
+
 max_slopes = {str(dim): max_slope(dim) for dim in common_diameters}
 max_velocity_value = max_velocity()
 min_velocity_value = min_velocity()  # type: ignore

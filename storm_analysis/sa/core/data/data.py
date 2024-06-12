@@ -5,9 +5,7 @@ import numpy as np
 import pandas as pd
 import swmmio as sw
 from pyswmm import Simulation
-from swmmio.utils.functions import trace_from_node
-
-from sa.core.data.predictor import classifier, recommendation
+from sa.core.data.predictor import classifier
 from sa.core.pipes.round import common_diameters, max_depth_value, min_slope
 from sa.core.pipes.valid_round import (
     validate_filling,
@@ -16,6 +14,8 @@ from sa.core.pipes.valid_round import (
     validate_min_slope,
     validate_min_velocity,
 )
+from swmmio.utils.functions import trace_from_node
+
 desired_width = 500
 pd.set_option("display.width", desired_width)
 np.set_printoptions(linewidth=desired_width)
@@ -55,7 +55,6 @@ class DataManager(sw.Model):
         if exc_type is not None:
             print(f"Exception occurred: {exc_val}")
         return False
-
 
     def enter(self):
         self.__enter__()
@@ -299,10 +298,19 @@ class DataManager(sw.Model):
         # else:
         #     self.df_conduits["recommendation"] = predictions_cls
         import random
+
         if categories:
             categories = [
-                "valid", "pump", "tank", "seepage_boxes", "diameter_increase", "diameter_reduction",
-                "slope_increase", "slope_reduction", "depth_increase", "depth_reduction",
+                "valid",
+                "pump",
+                "tank",
+                "seepage_boxes",
+                "diameter_increase",
+                "diameter_reduction",
+                "slope_increase",
+                "slope_reduction",
+                "depth_increase",
+                "depth_reduction",
             ]
             predictions_cls = [random.randint(0, len(categories) - 1) for _ in range(len(self.df_conduits))]
             self.df_conduits["recommendation"] = [categories[i] for i in predictions_cls]
@@ -564,7 +572,6 @@ class DataManager(sw.Model):
         """
         return (filling / diameter) * 100
 
-
     def calc_u(self, filling: float, diameter: float) -> float:
         """
         Calculate the circumference of a wetted part of pipe
@@ -579,9 +586,7 @@ class DataManager(sw.Model):
         if validate_filling(filling, diameter):
             radius = diameter / 2
             chord = math.sqrt((radius**2 - (filling - radius) ** 2)) * 2
-            alpha = math.degrees(
-                math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2))
-            )
+            alpha = math.degrees(math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2)))
             if filling > radius:
                 return 2 * math.pi * radius - (alpha / 360 * 2 * math.pi * radius)
             return alpha / 360 * 2 * math.pi * radius
@@ -603,7 +608,6 @@ class DataManager(sw.Model):
         except ZeroDivisionError:
             return 0
 
-
     def calc_velocity(self, filling: float, diameter: float, slope: float) -> float:
         """
         Calculate the speed of the sewage flow in the sewer.
@@ -619,7 +623,6 @@ class DataManager(sw.Model):
         slope = slope / 1000
         if validate_filling(filling, diameter):
             return 1 / 0.013 * self.calc_rh(filling, diameter) ** (2 / 3) * slope**0.5
-
 
     def calc_area(self, h: float, d: float) -> float:
         """
@@ -646,7 +649,6 @@ class DataManager(sw.Model):
             else:
                 return 1 / 2 * (alpha - math.sin(alpha)) * radius**2
 
-
     def calc_flow(self, h: float, d: float, i: float) -> float:
         """
         Calculate sewage flow in the channel
@@ -662,7 +664,7 @@ class DataManager(sw.Model):
         if validate_filling(h, d):
             wet_area = self.calc_area(h, d)
             velocity = self.calc_velocity(h, d, i)
-            return wet_area * 1000 * velocity
+            return wet_area * velocity
 
     def calc_filling(self, q, diameter, slope):
         """
@@ -681,44 +683,46 @@ class DataManager(sw.Model):
         while flow < q:
             if validate_filling(filling, diameter):
                 flow = self.calc_flow(filling, diameter, slope)
-                filling += 0.01
+                filling += 0.001
+            else:
+                break
+
+        print(f"flow: {flow:.2f}, q: {q}, filling: {filling}, ")
         return filling
 
     def min_conduit_diameter(self):
-        """
-        Calculate the minimum conduit diameter 
-        that can handle the flow rate for each conduit.
-
-        Iterates over each conduit, checks flow requirements, 
-        and adjusts the conduit diameter to the minimum necessary 
-        while still handling the maximum expected flow.
-        """
         min_diameters = []
         for index, row in self.df_conduits.iterrows():
-            current_flow = row['MaxQ']
-            current_dim = row['Geom1']
-            current_slope = row['SlopePerMile']
+            if row["ValMaxFill"] == 1:
+                current_flow = row["MaxQ"]
+                current_dim = row["Geom1"]
+                current_slope = row["SlopePerMile"]
+                current_dim_idx = common_diameters.index(current_dim)
 
-            min_diameter = current_dim
-            current_dim_idx = common_diameters.index(current_dim)
+                min_diameter = current_dim
+                for i in range(current_dim_idx - 1, -1, -1):
+                    smaller_diameter = common_diameters[i]
+                    try:
+                        filling = self.calc_filling(current_flow, smaller_diameter, current_slope)
+                    except ValueError:
+                        break
+                    if validate_filling(filling, smaller_diameter):
+                        min_diameter = smaller_diameter
+                    else:
+                        break
 
-            for smaller_diameter in common_diameters[:current_dim_idx]:
-                h = self.calc_filling(current_flow, smaller_diameter, current_slope)
-                if validate_filling(h, smaller_diameter):
-                    min_diameter = smaller_diameter
-                else:
-                    break
+                min_diameters.append(min_diameter)
+            else:
+                min_diameters.append(current_dim)
 
-            min_diameters.append(min_diameter)
-
-        self.df_conduits['MinDiameter'] = min_diameters
+        self.df_conduits["MinDiameter"] = min_diameters
 
     def is_min_diameter(self):
         """
-        Determine if the current diameter is the minimum possible diameter 
+        Determine if the current diameter is the minimum possible diameter
         that can handle the flow.
 
-        Adding to conduits dataframe new column indicating 
+        Adding to conduits dataframe new column indicating
         whether the current diameter is the minimum diameter.
         """
-        self.df_conduits['isMinDiameter'] = np.where(self.df_conduits['Geom1'] == self.df_conduits['MinDiameter'], 1, 0)
+        self.df_conduits["isMinDiameter"] = np.where(self.df_conduits["Geom1"] == self.df_conduits["MinDiameter"], 1, 0)
