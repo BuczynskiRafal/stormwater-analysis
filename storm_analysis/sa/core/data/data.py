@@ -23,7 +23,7 @@ pd.set_option("display.max_columns", 30)
 
 
 class DataManager(sw.Model):
-    def __init__(self, in_file_path, crs=None, include_rpt=True):
+    def __init__(self, in_file_path: str, crs: Optional[str] = None, include_rpt: bool = True):
         super().__init__(in_file_path, crs=crs, include_rpt=include_rpt)
         self.crs = crs
         self.include_rpt = include_rpt
@@ -466,10 +466,11 @@ class DataManager(sw.Model):
 
         overflowing_traces = {}
         for outfall_id, trace_data in all_traces.items():
-            # Check for overlap between this trace's conduits and the overflowing ones
-            overlapping_conduits = [c for c in trace_data["conduits"] if c in overflowing_conduits.index.tolist()]
-
-            if overlapping_conduits:
+            if overlapping_conduits := [
+                c
+                for c in trace_data["conduits"]
+                if c in overflowing_conduits.index.tolist()
+            ]:
                 # Create a sub-dict for each overlapping conduit and its position in the trace
                 overflowing_trace = {c: trace_data["conduits"].index(c) for c in overlapping_conduits}
                 overflowing_traces[outfall_id] = overflowing_trace
@@ -509,15 +510,10 @@ class DataManager(sw.Model):
         # Get overflowing traces
         overflowing_traces = self.overflowing_traces()
 
-        # Prepare list to store nodes to apply changes
-        nodes_to_apply_change = []
-
-        # Loop through each outfall in the overflowing traces
-        for outfall in overflowing_traces:
-            # Add the first node of each trace to the list
-            nodes_to_apply_change.append(overflowing_traces[outfall]["nodes"][0])
-
-        return nodes_to_apply_change
+        return [
+            overflowing_traces[outfall]["nodes"][0]
+            for outfall in overflowing_traces
+        ]
 
     def generate_technical_recommendation(self) -> None:
         """
@@ -620,7 +616,7 @@ class DataManager(sw.Model):
         Return:
             v (int, float): sewage flow velocity in the sewer [m/s]
         """
-        slope = slope / 1000
+        slope /= 1000
         if validate_filling(filling, diameter):
             return 1 / 0.013 * self.calc_rh(filling, diameter) ** (2 / 3) * slope**0.5
 
