@@ -167,16 +167,16 @@ LINKS ALL
 [TAGS]
 Node       J2               #P              
 Node       J3               #E              
-Link       C3               valid           
-Link       C4               diameter_increase
-Link       C2               diameter_increase
-Link       C1               valid           
-Link       C5               diameter_increase
-Link       C8               diameter_increase
-Link       C9               diameter_increase
-Link       C10              valid           
+Link       C3               diameter_reduction
+Link       C4               diameter_reduction
+Link       C2               diameter_reduction
+Link       C1               diameter_reduction
+Link       C5               valid           
+Link       C8               valid           
+Link       C9               valid           
+Link       C10              diameter_reduction
 Link       C6               diameter_increase
-Link       C7               diameter_increase
+Link       C7               diameter_reduction
 
 [MAP]
 DIMENSIONS 777170.879 592553.184 777244.390 592609.929
