@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import swmmio as sw
 from pyswmm import Simulation
-from sa.core.data.predictor import classifier
+from sa.core.data.predictor import classifier, recommendation
 from sa.core.pipes.round import common_diameters, max_depth_value, min_slope
 from sa.core.pipes.valid_round import (
     validate_filling,
@@ -250,72 +250,30 @@ class DataManager(sw.Model):
         ).astype(int)
 
     def conduits_recommendations(self, categories: bool = True) -> None:
-        # predictions = recommendation.predict(
-        #     self.df_conduits[
-        #         [
-        #             "Geom1",
-        #             "MaxQ",
-        #             "MaxV",
-        #             "MaxQPerc",
-        #             "MaxDPerc",
-        #             "InletNodeInvert",
-        #             "OutletNodeInvert",
-        #             "UpstreamInvert",
-        #             "DownstreamInvert",
-        #             "Filling",
-        #             "ValMaxFill",
-        #             "ValMaxV",
-        #             "ValMinV",
-        #             "SlopePerMile",
-        #             "ValMaxSlope",
-        #             "ValMinSlope",
-        #             "InletMaxDepth",
-        #             "OutletMaxDepth",
-        #             "InletGroundElevation",
-        #             "OutletGroundElevation",
-        #             "InletGroundCover",
-        #             "OutletGroundCover",
-        #             "ValDepth",
-        #             "ValCoverage",
-        #         ]
-        #     ]
-        # )
-        # predictions_cls = predictions.argmax(axis=-1)
-        # if categories:
-        #     categories = [
-        #         "valid",
-        #         "pump",
-        #         "tank",
-        #         "seepage_boxes",
-        #         "diameter_increase",
-        #         "diameter_reduction",
-        #         "slope_increase",
-        #         "slope_reduction",
-        #         "depth_increase",
-        #         "depth_reduction",
-        #     ]
-        #     self.df_conduits["recommendation"] = [categories[i] for i in predictions_cls]
-        # else:
-        #     self.df_conduits["recommendation"] = predictions_cls
-        import random
-
-        if categories:
-            categories = [
-                "valid",
-                "pump",
-                "tank",
-                "seepage_boxes",
-                "diameter_increase",
-                "diameter_reduction",
-                "slope_increase",
-                "slope_reduction",
-                "depth_increase",
-                "depth_reduction",
+        predictions = recommendation.predict(
+            self.df_conduits[
+                ["ValMaxFill", "ValMaxV", "ValMinV", "ValMaxSlope", "ValMinSlope", "ValDepth", "ValCoverage", "isMinDiameter"]
             ]
-            predictions_cls = [random.randint(0, len(categories) - 1) for _ in range(len(self.df_conduits))]
+        )
+        predictions_cls = predictions.argmax(axis=-1)
+        if categories:
+            # categories = [
+            #     "valid",
+            #     "pump",
+            #     "tank",
+            #     "seepage_boxes",
+            #     "diameter_increase",
+            #     "diameter_reduction",
+            #     "slope_increase",
+            #     "slope_reduction",
+            #     "depth_increase",
+            #     "depth_reduction",
+            # ]
+            print(predictions_cls)
+            categories = ["diameter_reduction", "valid", "depth_increase"]
             self.df_conduits["recommendation"] = [categories[i] for i in predictions_cls]
         else:
-            self.df_conduits["recommendation"] = 0
+            self.df_conduits["recommendation"] = predictions_cls
 
     def conduits_subcatchment_name(self):
         """
@@ -676,7 +634,6 @@ class DataManager(sw.Model):
             else:
                 break
 
-        print(f"flow: {flow:.2f}, q: {q}, filling: {filling}, ")
         return filling
 
     def min_conduit_diameter(self):
