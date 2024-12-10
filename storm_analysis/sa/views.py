@@ -1,14 +1,15 @@
 import logging
 import os
 
-import swmmio
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.utils.timezone import now
 from pyswmm import Simulation
-from sa.core.data.feature_engineering import feature_engineering
+
+from sa.core.data.data import DataManager
+from sa.core.data.test_inp import TEST_FILE
 
 from .forms import SWMMModelForm
 
@@ -38,7 +39,6 @@ def save_uploaded_file(file_path, uploaded_file):
 
 @login_required(login_url="/accounts/login/")
 def analysis(request):
-
     if request.method == "POST":
         swmm_form = SWMMModelForm(request.POST, request.FILES)
         if swmm_form.is_valid():
@@ -52,27 +52,38 @@ def analysis(request):
             instance.file = new_filename
             instance.save()
 
-            # compute swmm file
             try:
-                with Simulation(file_path) as sim:
+                with Simulation(TEST_FILE) as sim:
                     for _ in sim:
                         pass
-                swmmio_model = swmmio.Model(file_path, include_rpt=True)
-                conduits_data, nodes_data, subcatchments_data = feature_engineering(swmmio_model)
-                conduits_data.conduits.reset_index(inplace=True)
-                data = conduits_data.conduits.to_dict("records")
                 return render(request, "sa/analysis.html", {"swmm_form": swmm_form, "data": data})
             except Exception as e:
                 logger.error(e)
-                messages.error(
-                    request,
-                    "Error occurred while performing calculations: {}".format(str(e)),
-                )
+                messages.error(request, "Error occurred while performing calculations: {}".format(str(e)))
             return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
     else:
         swmm_form = SWMMModelForm()
+        with DataManager(
+            R"C:\Users\Dell\Documents\Git\stormwater-analysis\stormwater_analysis\recomendations\diameter\01_diameter.inp"
+        ) as model:
+            conduits_dict = model.df_conduits.reset_index().to_dict("records")
+            nodes_dict = model.df_nodes.reset_index().to_dict("records")
+            subcatchments_dict = model.df_subcatchments.reset_index().to_dict("records")
 
-    return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
+            formatted_dataset_names = {
+                "conduits_data": "Conduits Data",
+                "nodes_data": "Nodes Data",
+                "subcatchments_data": "Subcatchments Data",
+            }
+            data = {
+                formatted_dataset_names[key]: value
+                for key, value in [
+                    ("conduits_data", conduits_dict),
+                    ("nodes_data", nodes_dict),
+                    ("subcatchments_data", subcatchments_dict),
+                ]
+            }
+            return render(request, "sa/analysis.html", {"swmm_form": swmm_form, "data": data})
 
 
 @login_required(login_url="/accounts/login/")
