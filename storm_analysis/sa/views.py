@@ -64,27 +64,6 @@ def analysis(request):
                 with Simulation(TEST_FILE) as sim:
                     for _ in sim:
                         pass
-                # swmmio_model = swmmio.Model(TEST_FILE, include_rpt=True)
-                # conduits_data, nodes_data, subcatchments_data = feature_engineering(swmmio_model)
-
-                # conduits_dict = conduits_data.conduits.reset_index().to_dict("records")
-                # nodes_dict = nodes_data.nodes.reset_index().to_dict("records")
-                # subcatchments_dict = subcatchments_data.subcatchments.reset_index().to_dict("records")
-
-                # formatted_dataset_names = {
-                #     "conduits_data": "Conduits Data",
-                #     "nodes_data": "Nodes Data",
-                #     "subcatchments_data": "Subcatchments Data",
-                # }
-
-                # data = {
-                #     formatted_dataset_names[key]: value
-                #     for key, value in [
-                #         ("conduits_data", conduits_dict),
-                #         ("nodes_data", nodes_dict),
-                #         ("subcatchments_data", subcatchments_dict),
-                #     ]
-                # }
                 return render(request, "sa/analysis.html", {"swmm_form": swmm_form, "data": data})
             except Exception as e:
                 logger.error(e)
