@@ -92,9 +92,7 @@ def analysis(request):
             return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
     else:
         swmm_form = SWMMModelForm()
-        with DataManager(
-            R"C:\Users\Dell\Documents\Git\stormwater-analysis\stormwater_analysis\recomendations\diameter\01_diameter.inp"
-        ) as model:
+        with DataManager(TEST_FILE) as model:
             conduits_dict = model.df_conduits.reset_index().to_dict("records")
             nodes_dict = model.df_nodes.reset_index().to_dict("records")
             subcatchments_dict = model.df_subcatchments.reset_index().to_dict("records")
