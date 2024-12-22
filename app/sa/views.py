@@ -9,7 +9,7 @@ from django.utils.timezone import now
 from pyswmm import Simulation
 
 from sa.core.data import DataManager
-from sa.core.test_inp import TEST_FILE
+from sa.core.tests import TEST_FILE
 
 from .forms import SWMMModelForm
 
