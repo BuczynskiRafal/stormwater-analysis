@@ -17,10 +17,6 @@ from sa.core.valid_round import (
     validate_min_velocity,
 )
 
-pd.set_option("display.width", 500)
-np.set_printoptions(linewidth=500)
-pd.set_option("display.max_columns", 30)
-
 
 class DataManager(sw.Model):
     """
@@ -50,7 +46,7 @@ class DataManager(sw.Model):
         self.set_frost_zone(self.frost_zone)
         self.calculate()
         self.feature_engineering()
-        self.conduits_recommendations()
+        self.recommendations()
         self._round_float_columns()
         self._drop_unused()
         return self
@@ -130,18 +126,18 @@ class DataManager(sw.Model):
         """
         self.subcatchments_classify()
         self.nodes_subcatchment_name()
-        self.conduits_calculate_filling()
-        self.conduits_filling_is_valid()
-        self.conduits_velocity_is_valid()
-        self.conduits_slope_per_mile()
-        self.conduits_slopes_is_valid()
-        self.conduits_max_depth()
+        self.calculate_filling()
+        self.filling_is_valid()
+        self.velocity_is_valid()
+        self.slope_per_mile()
+        self.slopes_is_valid()
+        self.max_depth()
         self.conduits_calculate_max_depth()
-        self.conduits_ground_elevation()
-        self.conduits_ground_cover()
-        self.conduits_depth_is_valid()
-        self.conduits_coverage_is_valid()
-        self.conduits_subcatchment_name()
+        self.ground_elevation()
+        self.ground_cover()
+        self.ground_cover()
+        self.coverage_is_valid()
+        self.subcatchment_name()
         self.min_conduit_diameter()
         self.is_min_diameter()
 
@@ -206,14 +202,14 @@ class DataManager(sw.Model):
     # Conduit Methods
     # ------------------------
 
-    def conduits_calculate_filling(self) -> None:
+    def calculate_filling(self) -> None:
         """
         Calculates conduit filling based on MaxDPerc * Geom1 (diameter).
         """
         if self.df_conduits is not None:
             self.df_conduits["Filling"] = self.df_conduits["MaxDPerc"] * self.df_conduits["Geom1"]
 
-    def conduits_filling_is_valid(self) -> None:
+    def filling_is_valid(self) -> None:
         """
         Validates conduit filling. Adds 'ValMaxFill' column (1 if valid, 0 otherwise).
         """
@@ -222,7 +218,7 @@ class DataManager(sw.Model):
                 lambda row: validate_filling(row["Filling"], row["Geom1"]), axis=1
             ).astype(int)
 
-    def conduits_velocity_is_valid(self) -> None:
+    def velocity_is_valid(self) -> None:
         """
         Validates conduit velocities. Adds 'ValMaxV' and 'ValMinV' columns.
         """
@@ -230,14 +226,14 @@ class DataManager(sw.Model):
             self.df_conduits["ValMaxV"] = self.df_conduits.apply(lambda r: validate_max_velocity(r["MaxV"]), axis=1).astype(int)
             self.df_conduits["ValMinV"] = self.df_conduits.apply(lambda r: validate_min_velocity(r["MaxV"]), axis=1).astype(int)
 
-    def conduits_slope_per_mile(self) -> None:
+    def slope_per_mile(self) -> None:
         """
         Converts slope from ft/ft to slope per mile (e.g., multiply by 1000).
         """
         if self.df_conduits is not None:
             self.df_conduits["SlopePerMile"] = self.df_conduits["SlopeFtPerFt"] * 1000
 
-    def conduits_slopes_is_valid(self) -> None:
+    def slopes_is_valid(self) -> None:
         """
         Validates conduit slopes. Adds 'ValMaxSlope' and 'ValMinSlope'.
         """
@@ -249,7 +245,7 @@ class DataManager(sw.Model):
                 lambda r: validate_min_slope(r["SlopePerMile"], r["Filling"], r["Geom1"]), axis=1
             ).astype(int)
 
-    def conduits_max_depth(self) -> None:
+    def max_depth(self) -> None:
         """
         Copies MaxDepth from node DataFrame for InletNode and OutletNode.
         """
@@ -257,7 +253,7 @@ class DataManager(sw.Model):
             self.df_conduits["InletMaxDepth"] = self.df_conduits["InletNode"].map(self.df_nodes["MaxDepth"])
             self.df_conduits["OutletMaxDepth"] = self.df_conduits["OutletNode"].map(self.df_nodes["MaxDepth"])
 
-    def conduits_calculate_max_depth(self) -> None:
+    def calculate_max_depth(self) -> None:
         """
         For conduits with missing OutletMaxDepth, calculates it based on InletMaxDepth - (Length * SlopeFtPerFt).
         """
@@ -267,22 +263,14 @@ class DataManager(sw.Model):
                 self.df_conduits.loc[nan_rows, "Length"] * self.df_conduits.loc[nan_rows, "SlopeFtPerFt"]
             )
 
-    def ground_elevationground_elevation(self) -> None:
-        """
-        Computes ground elevation above the conduit (inlet/outlet).
-        """
-        if self.df_conduits is not None:
-            self.df_conduits["InletGroundElevation"] = self.df_conduits["InletNodeInvert"] + self.df_conduits["InletMaxDepth"]
-            self.df_conduits["OutletGroundElevation"] = self.df_conduits["OutletNodeInvert"] + self.df_conduits["OutletMaxDepth"]
-
-    def conduits_ground_elevation(self) -> None:
+    def calculate_ground_elevation(self) -> None:
         """Calculates the amount of ground cover
         over each conduit's inlet and outlet.
         """
         self.df_conduits["InletGroundElevation"] = self.df_conduits.InletNodeInvert + self.df_conduits.InletMaxDepth
         self.df_conduits["OutletGroundElevation"] = self.df_conduits.OutletNodeInvert + self.df_conduits.OutletMaxDepth
 
-    def conduits_ground_cover(self) -> None:
+    def ground_cover(self) -> None:
         """
         Calculates the soil cover above conduit at inlet/outlet.
         """
@@ -294,7 +282,7 @@ class DataManager(sw.Model):
                 self.df_conduits["OutletGroundElevation"] + self.df_conduits["OutletNodeInvert"] - self.df_conduits["Geom1"]
             )
 
-    def conduits_depth_is_valid(self) -> None:
+    def ground_cover(self) -> None:
         """
         Validates conduit depth based on node invert and max_depth_value.
         Adds 'ValDepth' column (1 if valid, 0 otherwise).
@@ -305,7 +293,7 @@ class DataManager(sw.Model):
                 & ((self.df_conduits["OutletNodeInvert"] - max_depth_value) <= self.df_conduits["OutletGroundElevation"])
             ).astype(int)
 
-    def conduits_coverage_is_valid(self) -> None:
+    def coverage_is_valid(self) -> None:
         """
         Checks if ground cover is >= frost_zone depth at inlet/outlet.
         Adds 'ValCoverage' column.
@@ -316,7 +304,7 @@ class DataManager(sw.Model):
                 & (self.df_conduits["OutletGroundCover"] >= self.frost_zone)
             ).astype(int)
 
-    def conduits_subcatchment_name(self) -> None:
+    def subcatchment_name(self) -> None:
         """
         Example stub method: Maps subcatchment names onto conduits if needed.
         """
@@ -325,7 +313,7 @@ class DataManager(sw.Model):
         #     self.df_conduits["Subcatchment"] = self.df_conduits["OutletNode"].map(self.df_nodes["Subcatchment"])
         pass
 
-    def conduits_recommendations(self, categories: bool = True) -> None:
+    def recommendations(self, categories: bool = True) -> None:
         """
         Generates recommendations via 'recommendation' model and adds 'recommendation' column.
         """
