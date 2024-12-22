@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %} User Profile {% endblock %}
+
+{% block content %}
+<div class="container bootstrap snippet">
+    <div class="row">
+        <div class="col-sm-4"><!--left col-->
+            <div class="text-center">
+                <h1>{{ user.username }}</h1>
+                {% if user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}" class="profile-image" alt="avatar">
+                {% else %}
+                    <img src="http://ssl.gstatic.com/accounts/ui/avatar_2x.png" class="profile-image" alt="avatar">
+                {% endif %}
+                <h6>Profile photo</h6>
+            </div>
+        </div><!--/col-3-->
+        <div class="col-sm-8">
+            <div class="tab-content">
+                <div class="tab-pane active" id="home">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>First Name:</label>
+                            <p>{{ user.first_name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Last Name:</label>
+                            <p>{{ user.last_name }}</p>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Email:</label>
+                            <p>{{ user.email }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Phone:</label>
+                            <p>{{ user.phone }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>Website:</label>
+                            <p>{{ user.website_url }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label>Bio:</label>
+                            <p>{{ user.bio }}</p>
+                        </div>
+                    </div>
+                    <!-- Możesz kontynuować dodawanie innych pól w podobny sposób -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+{% comment %} {% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %} User Profile {% endblock %}
+
+{% block content %}
+    <div class="container bootstrap snippet">
+        <div class="row">
+            <div class="col-sm-4"><!--left col-->
+                <div class="text-center">
+                    <h1>User name</h1>
+                    <img src="http://ssl.gstatic.com/accounts/ui/avatar_2x.png" class="avatar img-circle img-thumbnail" alt="avatar">
+                    <h6>Upload a different photo...</h6>
+                    <input type="file" class="text-center center-block file-upload">
+                </div>
+            
+
+            </div><!--/col-3-->
+                <div class="col-sm-8">
+                    <div class="tab-content">
+                        <div class="tab-pane active" id="home">
+                            <form class="form" action="{% url 'accounts:profile' %}" method="POST" id="registrationForm" enctype="multipart/form-data">
+                                {% csrf_token %}
+                                {{ user_form|crispy }}
+                                {{ profile_form|crispy }}
+                                <div class="form-group">
+                                    <div class="col-xs-12">
+                                        <br>
+                                        <button type="submit" class="btn btn-success">Save</button>
+                                        <button type="reset" class="btn btn-outline-primary me-2">Reset</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock  %}
+ {% endcomment %}
