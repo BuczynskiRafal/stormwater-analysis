@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import swmmio as sw
 from pyswmm import Simulation
+from swmmio.utils.functions import trace_from_node
+
 from sa.core.predictor import classifier, recommendation
 from sa.core.round import common_diameters, max_depth_value, min_slope
 from sa.core.valid_round import (
@@ -14,7 +16,6 @@ from sa.core.valid_round import (
     validate_min_slope,
     validate_min_velocity,
 )
-from swmmio.utils.functions import trace_from_node
 
 
 class DataManager(sw.Model):
