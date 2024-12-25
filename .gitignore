@@ -139,3 +139,18 @@ dmypy.json
 *.rpt
 *.bak
 *.ini
+*.inp
+backup/*
+stormwater_analysis/catchment_classification_model/*
+stormwater_analysis/catchment_classification_model/generator.ipynb
+stormwater_analysis/catchment_classification_model/newplot.png
+stormwater_analysis/catchment_classification_model/classifier.ipynb
+stormwater_analysis/catchment_classification_model/catchment classifier.ipynb
+stormwater_analysis/catchment_classification_model/wroclaw_generated -test set.INP
+stormwater_analysis/catchment_classification_model/catchment classifier.ipynb
+models/*
+*migrations*
+app/media/*
+app/recomendtions.ipynb
+
+.idea/

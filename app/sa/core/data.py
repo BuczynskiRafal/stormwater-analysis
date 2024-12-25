@@ -19,20 +19,23 @@ from sa.core.valid_round import (
 
 
 class DataManager(sw.Model):
-    """
-    Manages SWMM model data and performs preliminary data processing.
-    Inherits from swmmio.Model for direct access to SWMM structures.
-    """
+    def __init__(self, inp_file_path: str, crs: Optional[str] = None, include_rpt: bool = True, zone: float = 1.2):
+        super().__init__(inp_file_path, crs=crs, include_rpt=include_rpt)
+        self._frost_zone: float = None
+        self.frost_zone = zone  # Use setter for validation
+        self.dfs = self._get_df_safe(self.subcatchments.dataframe)
+        self.dfn = self._get_df_safe(self.nodes.dataframe)
+        self.dfc = self._get_df_safe(self.conduits())
 
-    def __init__(self, in_file_path: str, crs: Optional[str] = None, include_rpt: bool = True):
-        super().__init__(in_file_path, crs=crs, include_rpt=include_rpt)
-        self.crs = crs
-        self.include_rpt = include_rpt
-        self.frost_zone = "I"  # Default zone; can be overridden in __enter__.
+    @property
+    def frost_zone(self) -> float:
+        return self._frost_zone
 
-        self.df_subcatchments = self._get_df_safe(self.subcatchments.dataframe)
-        self.df_nodes = self._get_df_safe(self.nodes.dataframe)
-        self.df_conduits = self._get_df_safe(self.conduits())
+    @frost_zone.setter
+    def frost_zone(self, value: float) -> None:
+        if not (1.0 <= value <= 1.6):
+            raise ValueError("Frost zone must be between 1.0 and 1.6 meters")
+        self._frost_zone = value
 
     def _get_df_safe(self, df_source):
         """
@@ -43,7 +46,6 @@ class DataManager(sw.Model):
         return df.copy() if df is not None else None
 
     def __enter__(self):
-        self.set_frost_zone(self.frost_zone)
         self.calculate()
         self.feature_engineering()
         self.recommendations()
@@ -64,23 +66,11 @@ class DataManager(sw.Model):
         """Alternative exit method to clean up resources if needed."""
         return self.__exit__(exc_type, exc_val, exc_tb)
 
-    def set_frost_zone(self, frost_zone: str) -> None:
-        """
-        Sets the frost depth according to the climate zone.
-        """
-        zones = {
-            "I": 1.0,
-            "II": 1.2,
-            "III": 1.4,
-            "IV": 1.6,
-        }
-        self.frost_zone = zones.get(frost_zone.upper(), 1.2)
-
     def _round_float_columns(self) -> None:
         """
         Rounds all float columns in subcatchments, nodes, and conduits DataFrames to 2 decimal places.
         """
-        for df in [self.df_subcatchments, self.df_nodes, self.df_conduits]:
+        for df in [self.dfs, self.dfn, self.dfc]:
             if df is not None:
                 float_cols = df.select_dtypes(include=["float"]).columns
                 df[float_cols] = df[float_cols].round(2)
@@ -105,12 +95,12 @@ class DataManager(sw.Model):
         unused_nodes = ["coords", "StageOrTimeseries"]
         unused_subcatchments = ["coords"]
 
-        if self.df_conduits is not None:
-            self.df_conduits.drop(columns=unused_conduits, inplace=True, errors="ignore")
-        if self.df_nodes is not None:
-            self.df_nodes.drop(columns=unused_nodes, inplace=True, errors="ignore")
-        if self.df_subcatchments is not None:
-            self.df_subcatchments.drop(columns=unused_subcatchments, inplace=True, errors="ignore")
+        if self.dfc is not None:
+            self.dfc.drop(columns=unused_conduits, inplace=True, errors="ignore")
+        if self.dfn is not None:
+            self.dfn.drop(columns=unused_nodes, inplace=True, errors="ignore")
+        if self.dfs is not None:
+            self.dfs.drop(columns=unused_subcatchments, inplace=True, errors="ignore")
 
     def calculate(self) -> None:
         """
@@ -132,11 +122,11 @@ class DataManager(sw.Model):
         self.slope_per_mile()
         self.slopes_is_valid()
         self.max_depth()
-        self.conduits_calculate_max_depth()
-        self.ground_elevation()
+        self.calculate_max_depth()
+        self.calculate_ground_elevation()
         self.ground_cover()
-        self.ground_cover()
-        self.coverage_is_valid()
+        self.max_ground_cover_is_valid()
+        self.min_ground_cover_is_valid()
         self.subcatchment_name()
         self.min_conduit_diameter()
         self.is_min_diameter()
@@ -148,9 +138,9 @@ class DataManager(sw.Model):
     def subcatchments_classify(self, categories: bool = True) -> None:
         """
         Classifies subcatchments using a trained classifier (e.g., ANN).
-        Adds a 'category' column to df_subcatchments.
+        Adds a 'category' column to dfs.
         """
-        if self.df_subcatchments is None:
+        if self.dfs is None:
             return
 
         cols = [
@@ -164,7 +154,7 @@ class DataManager(sw.Model):
             "PeakRunoff",
             "RunoffCoeff",
         ]
-        df = self.df_subcatchments[cols].copy()
+        df = self.dfs[cols].copy()
         df["TotalPrecip"] = pd.to_numeric(df["TotalPrecip"], errors="coerce").fillna(0)
 
         preds = classifier.predict(df)
@@ -180,23 +170,19 @@ class DataManager(sw.Model):
                 "loose_soil",
                 "steep_area",
             ]
-            self.df_subcatchments["category"] = [labels[i] for i in preds_cls]
+            self.dfs["category"] = [labels[i] for i in preds_cls]
         else:
-            self.df_subcatchments["category"] = preds_cls
+            self.dfs["category"] = preds_cls
 
     def nodes_subcatchment_name(self) -> None:
         """
-        Maps subcatchment names to nodes based on 'Outlet' in df_subcatchments and node names in df_nodes.
+        Maps subcatchment names to nodes based on 'Outlet' in dfs and node names in dfn.
         """
-        if self.df_subcatchments is None or self.df_nodes is None:
+        if self.dfs is None or self.dfn is None:
             return
 
-        mapping = (
-            self.df_subcatchments.reset_index().set_index("Outlet")["Name"].to_dict()
-            if "Outlet" in self.df_subcatchments.columns
-            else {}
-        )
-        self.df_nodes["Subcatchment"] = self.df_nodes.index.map(lambda n: mapping.get(n, "-"))
+        mapping = self.dfs.reset_index().set_index("Outlet")["Name"].to_dict() if "Outlet" in self.dfs.columns else {}
+        self.dfn["Subcatchment"] = self.dfn.index.map(lambda n: mapping.get(n, "-"))
 
     # ------------------------
     # Conduit Methods
@@ -206,42 +192,42 @@ class DataManager(sw.Model):
         """
         Calculates conduit filling based on MaxDPerc * Geom1 (diameter).
         """
-        if self.df_conduits is not None:
-            self.df_conduits["Filling"] = self.df_conduits["MaxDPerc"] * self.df_conduits["Geom1"]
+        if self.dfc is not None:
+            self.dfc["Filling"] = self.dfc["MaxDPerc"] * self.dfc["Geom1"]
 
     def filling_is_valid(self) -> None:
         """
         Validates conduit filling. Adds 'ValMaxFill' column (1 if valid, 0 otherwise).
         """
-        if self.df_conduits is not None:
-            self.df_conduits["ValMaxFill"] = self.df_conduits.apply(
-                lambda row: validate_filling(row["Filling"], row["Geom1"]), axis=1
-            ).astype(int)
+        if self.dfc is not None:
+            self.dfc["ValMaxFill"] = self.dfc.apply(lambda row: validate_filling(row["Filling"], row["Geom1"]), axis=1).astype(
+                int
+            )
 
     def velocity_is_valid(self) -> None:
         """
         Validates conduit velocities. Adds 'ValMaxV' and 'ValMinV' columns.
         """
-        if self.df_conduits is not None:
-            self.df_conduits["ValMaxV"] = self.df_conduits.apply(lambda r: validate_max_velocity(r["MaxV"]), axis=1).astype(int)
-            self.df_conduits["ValMinV"] = self.df_conduits.apply(lambda r: validate_min_velocity(r["MaxV"]), axis=1).astype(int)
+        if self.dfc is not None:
+            self.dfc["ValMaxV"] = self.dfc.apply(lambda r: validate_max_velocity(r["MaxV"]), axis=1).astype(int)
+            self.dfc["ValMinV"] = self.dfc.apply(lambda r: validate_min_velocity(r["MaxV"]), axis=1).astype(int)
 
     def slope_per_mile(self) -> None:
         """
         Converts slope from ft/ft to slope per mile (e.g., multiply by 1000).
         """
-        if self.df_conduits is not None:
-            self.df_conduits["SlopePerMile"] = self.df_conduits["SlopeFtPerFt"] * 1000
+        if self.dfc is not None:
+            self.dfc["SlopePerMile"] = self.dfc["SlopeFtPerFt"] * 1000
 
     def slopes_is_valid(self) -> None:
         """
         Validates conduit slopes. Adds 'ValMaxSlope' and 'ValMinSlope'.
         """
-        if self.df_conduits is not None:
-            self.df_conduits["ValMaxSlope"] = self.df_conduits.apply(
-                lambda r: validate_max_slope(r["SlopePerMile"], r["Geom1"]), axis=1
-            ).astype(int)
-            self.df_conduits["ValMinSlope"] = self.df_conduits.apply(
+        if self.dfc is not None:
+            self.dfc["ValMaxSlope"] = self.dfc.apply(lambda r: validate_max_slope(r["SlopePerMile"], r["Geom1"]), axis=1).astype(
+                int
+            )
+            self.dfc["ValMinSlope"] = self.dfc.apply(
                 lambda r: validate_min_slope(r["SlopePerMile"], r["Filling"], r["Geom1"]), axis=1
             ).astype(int)
 
@@ -249,91 +235,91 @@ class DataManager(sw.Model):
         """
         Copies MaxDepth from node DataFrame for InletNode and OutletNode.
         """
-        if self.df_conduits is not None and self.df_nodes is not None:
-            self.df_conduits["InletMaxDepth"] = self.df_conduits["InletNode"].map(self.df_nodes["MaxDepth"])
-            self.df_conduits["OutletMaxDepth"] = self.df_conduits["OutletNode"].map(self.df_nodes["MaxDepth"])
+        if self.dfc is not None and self.dfn is not None:
+            self.dfc["InletMaxDepth"] = self.dfc["InletNode"].map(self.dfn["MaxDepth"])
+            self.dfc["OutletMaxDepth"] = self.dfc["OutletNode"].map(self.dfn["MaxDepth"])
 
     def calculate_max_depth(self) -> None:
         """
         For conduits with missing OutletMaxDepth, calculates it based on InletMaxDepth - (Length * SlopeFtPerFt).
         """
-        if self.df_conduits is not None:
-            nan_rows = pd.isna(self.df_conduits["OutletMaxDepth"])
-            self.df_conduits.loc[nan_rows, "OutletMaxDepth"] = self.df_conduits.loc[nan_rows, "InletMaxDepth"] - (
-                self.df_conduits.loc[nan_rows, "Length"] * self.df_conduits.loc[nan_rows, "SlopeFtPerFt"]
+        if self.dfc is not None:
+            nan_rows = pd.isna(self.dfc["OutletMaxDepth"])
+            self.dfc.loc[nan_rows, "OutletMaxDepth"] = self.dfc.loc[nan_rows, "InletMaxDepth"] - (
+                self.dfc.loc[nan_rows, "Length"] * self.dfc.loc[nan_rows, "SlopeFtPerFt"]
             )
 
     def calculate_ground_elevation(self) -> None:
         """Calculates the amount of ground cover
         over each conduit's inlet and outlet.
         """
-        self.df_conduits["InletGroundElevation"] = self.df_conduits.InletNodeInvert + self.df_conduits.InletMaxDepth
-        self.df_conduits["OutletGroundElevation"] = self.df_conduits.OutletNodeInvert + self.df_conduits.OutletMaxDepth
+        self.dfc["InletGroundElevation"] = self.dfc.InletNodeInvert + self.dfc.InletMaxDepth
+        self.dfc["OutletGroundElevation"] = self.dfc.OutletNodeInvert + self.dfc.OutletMaxDepth
 
     def ground_cover(self) -> None:
-        """
-        Calculates the soil cover above conduit at inlet/outlet.
-        """
-        if self.df_conduits is not None:
-            self.df_conduits["InletGroundCover"] = (
-                self.df_conduits["InletGroundElevation"] - self.df_conduits["InletNodeInvert"] - self.df_conduits["Geom1"]
-            )
-            self.df_conduits["OutletGroundCover"] = (
-                self.df_conduits["OutletGroundElevation"] + self.df_conduits["OutletNodeInvert"] - self.df_conduits["Geom1"]
-            )
+        """Calculates ground cover above conduit."""
+        if self.dfc is None:
+            return
+        required_cols = ["InletGroundElevation", "InletNodeInvert", "Geom1"]
+        if not all(col in self.dfc.columns for col in required_cols):
+            raise ValueError(f"Missing required columns: {required_cols}")
 
-    def ground_cover(self) -> None:
+        self.dfc["InletGroundCover"] = self.dfc["InletGroundElevation"] - self.dfc["InletNodeInvert"] - self.dfc["Geom1"]
+        self.dfc["OutletGroundCover"] = self.dfc["OutletGroundElevation"] - self.dfc["OutletNodeInvert"] - self.dfc["Geom1"]
+
+    def max_ground_cover_is_valid(self) -> None:
         """
         Validates conduit depth based on node invert and max_depth_value.
+        Checks if conduit invert is not deeper than maximum allowed depth from ground elevation.
         Adds 'ValDepth' column (1 if valid, 0 otherwise).
         """
-        if self.df_conduits is not None:
-            self.df_conduits["ValDepth"] = (
-                ((self.df_conduits["InletNodeInvert"] - max_depth_value) <= self.df_conduits["InletGroundElevation"])
-                & ((self.df_conduits["OutletNodeInvert"] - max_depth_value) <= self.df_conduits["OutletGroundElevation"])
+        if self.dfc is not None:
+            self.dfc["ValDepth"] = (
+                (self.dfc["InletNodeInvert"] >= (self.dfc["InletGroundElevation"] - max_depth_value))
+                & (self.dfc["OutletNodeInvert"] >= (self.dfc["OutletGroundElevation"] - max_depth_value))
             ).astype(int)
 
-    def coverage_is_valid(self) -> None:
-        """
-        Checks if ground cover is >= frost_zone depth at inlet/outlet.
-        Adds 'ValCoverage' column.
-        """
-        if self.df_conduits is not None:
-            self.df_conduits["ValCoverage"] = (
-                (self.df_conduits["InletGroundCover"] >= self.frost_zone)
-                & (self.df_conduits["OutletGroundCover"] >= self.frost_zone)
-            ).astype(int)
+    def min_ground_cover_is_valid(self) -> None:
+        """Validates ground cover against frost zone."""
+        if self.dfc is None:
+            return
+        if "InletGroundCover" not in self.dfc.columns:
+            self.ground_cover()
+
+        self.dfc["ValCoverage"] = (
+            (self.dfc["InletGroundCover"] >= self.frost_zone) & (self.dfc["OutletGroundCover"] >= self.frost_zone)
+        ).astype(int)
 
     def subcatchment_name(self) -> None:
         """
         Example stub method: Maps subcatchment names onto conduits if needed.
         """
         # Placeholder implementation if needed:
-        # if self.df_conduits is not None and self.df_nodes is not None:
-        #     self.df_conduits["Subcatchment"] = self.df_conduits["OutletNode"].map(self.df_nodes["Subcatchment"])
+        # if self.dfc is not None and self.dfn is not None:
+        #     self.dfc["Subcatchment"] = self.dfc["OutletNode"].map(self.dfn["Subcatchment"])
         pass
 
     def recommendations(self, categories: bool = True) -> None:
         """
         Generates recommendations via 'recommendation' model and adds 'recommendation' column.
         """
-        if self.df_conduits is None:
+        if self.dfc is None:
             return
 
         cols = ["ValMaxFill", "ValMaxV", "ValMinV", "ValMaxSlope", "ValMinSlope", "ValDepth", "ValCoverage", "isMinDiameter"]
         for c in cols:
-            if c not in self.df_conduits.columns:
-                self.df_conduits[c] = 0
+            if c not in self.dfc.columns:
+                self.dfc[c] = 0
 
-        preds = recommendation.predict(self.df_conduits[cols])
+        preds = recommendation.predict(self.dfc[cols])
         preds_cls = preds.argmax(axis=-1)
 
         if categories:
             # Example category labels
             labels = ["diameter_reduction", "valid", "depth_increase"]
-            self.df_conduits["recommendation"] = [labels[i] for i in preds_cls]
+            self.dfc["recommendation"] = [labels[i] for i in preds_cls]
         else:
-            self.df_conduits["recommendation"] = preds_cls
+            self.dfc["recommendation"] = preds_cls
 
     # ------------------------
     # Overflowing / Trace Methods
@@ -407,11 +393,11 @@ class DataManager(sw.Model):
         """
         Attempts to find the smallest diameter (from a predefined list) that can handle the flow (MaxQ) for each conduit.
         """
-        if self.df_conduits is None:
+        if self.dfc is None:
             return
 
         diameters = []
-        for _, row in self.df_conduits.iterrows():
+        for _, row in self.dfc.iterrows():
             current_flow = row.get("MaxQ", 0.0)
             current_diam = row["Geom1"]
             current_slope = row["SlopePerMile"]
@@ -436,14 +422,14 @@ class DataManager(sw.Model):
             else:
                 diameters.append(current_diam)
 
-        self.df_conduits["MinDiameter"] = diameters
+        self.dfc["MinDiameter"] = diameters
 
     def is_min_diameter(self) -> None:
         """
         Marks conduits where the current diameter equals the minimal feasible diameter (1 if yes, 0 if no).
         """
-        if self.df_conduits is not None:
-            self.df_conduits["isMinDiameter"] = np.where(self.df_conduits["Geom1"] == self.df_conduits["MinDiameter"], 1, 0)
+        if self.dfc is not None:
+            self.dfc["isMinDiameter"] = np.where(self.dfc["Geom1"] == self.dfc["MinDiameter"], 1, 0)
 
     # ------------------------
     # Hydraulic Calculations
