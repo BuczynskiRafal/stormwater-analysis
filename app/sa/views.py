@@ -72,7 +72,7 @@ def analysis(request):
     else:
         swmm_form = SWMMModelForm()
         with DataManager(TEST_FILE) as model:
-            conduits_dict = model.df_conduits.reset_index().to_dict("records")
+            conduits_dict = model.dfc.reset_index().to_dict("records")
             nodes_dict = model.df_nodes.reset_index().to_dict("records")
             subcatchments_dict = model.df_subcatchments.reset_index().to_dict("records")
 
