@@ -22,7 +22,7 @@ class DataManager(sw.Model):
     def __init__(self, inp_file_path: str, crs: Optional[str] = None, include_rpt: bool = True, zone: float = 1.2):
         super().__init__(inp_file_path, crs=crs, include_rpt=include_rpt)
         self._frost_zone: float = None
-        self.frost_zone = zone  # Use setter for validation
+        self.frost_zone = zone
         self.dfs = self._get_df_safe(self.subcatchments.dataframe)
         self.dfn = self._get_df_safe(self.nodes.dataframe)
         self.dfc = self._get_df_safe(self.conduits())
@@ -264,8 +264,12 @@ class DataManager(sw.Model):
         if not all(col in self.dfc.columns for col in required_cols):
             raise ValueError(f"Missing required columns: {required_cols}")
 
-        self.dfc["InletGroundCover"] = self.dfc["InletGroundElevation"] - self.dfc["InletNodeInvert"] - self.dfc["Geom1"]
-        self.dfc["OutletGroundCover"] = self.dfc["OutletGroundElevation"] - self.dfc["OutletNodeInvert"] - self.dfc["Geom1"]
+        self.dfc["InletGroundCover"] = round(
+            self.dfc["InletGroundElevation"] - self.dfc["InletNodeInvert"] - self.dfc["Geom1"], 2
+        )
+        self.dfc["OutletGroundCover"] = round(
+            self.dfc["OutletGroundElevation"] - self.dfc["OutletNodeInvert"] - self.dfc["Geom1"], 2
+        )
 
     def max_ground_cover_is_valid(self) -> None:
         """
@@ -285,7 +289,6 @@ class DataManager(sw.Model):
             return
         if "InletGroundCover" not in self.dfc.columns:
             self.ground_cover()
-
         self.dfc["ValCoverage"] = (
             (self.dfc["InletGroundCover"] >= self.frost_zone) & (self.dfc["OutletGroundCover"] >= self.frost_zone)
         ).astype(int)
