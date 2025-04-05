@@ -71,10 +71,37 @@ def analysis(request):
             return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
     else:
         swmm_form = SWMMModelForm()
-        with DataManager(TEST_FILE) as model:
-            conduits_dict = model.dfc.reset_index().to_dict("records")
-            nodes_dict = model.df_nodes.reset_index().to_dict("records")
-            subcatchments_dict = model.df_subcatchments.reset_index().to_dict("records")
+        with DataManager(TEST_FILE, zone=1.6) as model:
+            dfc = model.dfc[
+                [
+                    "Name",
+                    "OutletNode",
+                    "InletNode",
+                    "InletGroundElevation",
+                    "InletNodeInvert",
+                    "InletGroundCover",
+                    "OutletGroundElevation",
+                    "OutletNodeInvert",
+                    "OutletGroundCover",
+                    "ValDepth",
+                    "ValCoverage",
+                    "Filling",
+                    "ValMaxFill",
+                    "MaxV",
+                    "ValMaxV",
+                    "ValMinV",
+                    "SlopePerMile",
+                    "ValMaxSlope",
+                    "ValMinSlope",
+                    "Geom1",
+                    "MinDiameter",
+                    "isMinDiameter",
+                    "recommendation",
+                ]
+            ]
+            conduits_dict = dfc.reset_index().to_dict("records")
+            nodes_dict = model.dfn.reset_index().to_dict("records")
+            subcatchments_dict = model.dfs.reset_index().to_dict("records")
 
             formatted_dataset_names = {
                 "conduits_data": "Conduits Data",
