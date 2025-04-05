@@ -3,7 +3,7 @@ line-length = 130
 target-version = ['py310']
 
 [tool.pytest.ini_options]
-addopts = ["-l"]
+addopts = ["-vvv", "--tb=short"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::FutureWarning",

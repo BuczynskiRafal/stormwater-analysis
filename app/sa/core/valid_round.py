@@ -1,8 +1,9 @@
-import logging, math
+import math
 
-from sa.core.round import check_dimensions, max_filling, max_slopes, max_velocity_value, min_slope, min_velocity_value, common_diameters
+from sa.core.round import common_diameters
 
 logger = logging.getLogger(__name__)
+
 
 def validate_max_filling(filling: float, diameter: float) -> bool:
     """
@@ -17,6 +18,7 @@ def validate_max_filling(filling: float, diameter: float) -> bool:
     """
     return filling <= max_filling(diameter)
 
+
 def validate_filling(filling: float, diameter: float) -> bool:
     """
     Validates the filling height.
@@ -26,21 +28,18 @@ def validate_filling(filling: float, diameter: float) -> bool:
         diameter (float): Diameter of the channel [m].
 
     Returns:
-        bool: True if filling is valid, else raises ValueError.
-
-    Raises:
-        ValueError: If filling is invalid.
-        TypeError: If inputs are not of type float or int.
+        bool: True if filling is valid, else False.
     """
     if not isinstance(diameter, (float, int)) or not isinstance(filling, (float, int)):
-        raise TypeError("Invalid type for diameter or filling")
+        return False
     if 0 > filling or filling >= diameter:
-        raise ValueError("Invalid filling value")
-    if not validate_max_filling(filling, diameter):
-        raise ValueError("The filling value is too high")
+        return False
     if not (common_diameters[0] <= diameter <= common_diameters[-1]):
-        raise ValueError("Diameter out of range for common diameters")
+        return False
+    if not validate_max_filling(filling, diameter):
+        return False
     return True
+
 
 def validate_max_velocity(velocity: float) -> bool:
     """
@@ -105,23 +104,27 @@ def validate_min_slope(slope: float, filling: float, diameter: float) -> bool:
     Returns:
         bool: True if slope is above the minimum required, False otherwise.
     """
-    h_over_D = filling / diameter
-    if h_over_D > 0.3:
-        return slope >= min_slope_hydromechanic(filling, diameter)
-    else:
-        return slope >= min_slope_imhoff(diameter)
+    # h_over_D = filling / diameter
+    # if h_over_D > 0.3:
+    #     return slope >= min_slope_hydromechanic(filling, diameter)
+    # else:
+    return slope >= min_slope_imhoff(diameter)
+
 
 def min_slope_imhoff(diameter: float) -> float:
     """
     Calculate the minimal slope using Imhoff's formula.
 
+    Imhoff defines the minimum slope as the reciprocal of the pipe diameter in millimeters.
+
     Args:
         diameter (float): Diameter of the channel [m].
 
     Returns:
-        float: Minimal slope [m/m].
+        float: Minimal slope [m/m], calculated as 1 / D[mm].
     """
-    return (1.0 / diameter) / 1000.0  # in m/m
+    return 1.0 / (diameter * 1000)
+
 
 def min_slope_hydromechanic(filling: float, diameter: float, theta: float = 1.5, g: float = 9.81) -> float:
     """
@@ -137,13 +140,14 @@ def min_slope_hydromechanic(filling: float, diameter: float, theta: float = 1.5,
         float: Minimal slope [m/m].
     """
     R_b = diameter / 4.0  # Hydraulic radius for full flow [m]
-    area = math.pi * (filling ** 2) / 4.0  # Cross-sectional area for partial flow [m²]
+    area = math.pi * (filling**2) / 4.0  # Cross-sectional area for partial flow [m²]
     perimeter = math.pi * filling  # Wetted perimeter for partial flow [m]
     R_hn = area / perimeter if perimeter != 0 else 0  # Hydraulic radius [m]
     if R_hn == 0:
-        return float('inf')  # Avoid division by zero
+        return float("inf")  # Avoid division by zero
     i_min = 0.612e-3 * (R_hn / R_b) * (1 / diameter)  # [m/m]
     return i_min
+
 
 def validate_max_slope(slope: float, diameter: float) -> bool:
     """

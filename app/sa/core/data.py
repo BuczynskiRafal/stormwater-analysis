@@ -1,4 +1,5 @@
 import math
+from enum import Enum
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -17,13 +18,34 @@ from sa.core.valid_round import (
     validate_min_velocity,
 )
 
+
+class RecommendationCategory(Enum):
+    DIAMETER_REDUCTION = "diameter_reduction"
+    VALID = "valid"
+    DEPTH_INCREASE = "depth_increase"
+
+
+import numpy as np
+
 ###############################################################################
-#                                   SERVICES 
+#                                   SERVICES
 ###############################################################################
+
+
+def validate_inputs(func):
+    """Decorator to validate filling and diameter inputs."""
+
+    def wrapper(filling, diameter, *args, **kwargs):
+        if not validate_filling(filling, diameter) or diameter <= 0:
+            return 0.0
+        if filling == 0:
+            return 0.0
+        return func(filling, diameter, *args, **kwargs)
+
+    return wrapper
 
 
 class HydraulicCalculationsService:
-
     @staticmethod
     def calc_filling_percentage(filling: float, diameter: float) -> float:
         """
@@ -34,14 +56,16 @@ class HydraulicCalculationsService:
             diameter (float): Diameter of the channel [m].
 
         Returns:
-            float: Percentage filling [%].
+            float: Percentage filling [%]. Returns 0.0 if filling is invalid or 0.
         """
-        if validate_filling(filling, diameter):
-            if filling == 0:
-                return 0.0
-            return (filling / diameter) * 100.0
+        if not validate_filling(filling, diameter):
+            return 0.0
+        if filling == 0:
+            return 0.0
+        return (filling / diameter) * 100.0
 
     @staticmethod
+    @validate_inputs
     def calc_area(filling: float, diameter: float) -> float:
         """
         Computes the wetted cross-sectional area (m^2) for a circular pipe filled to height h.
@@ -53,34 +77,24 @@ class HydraulicCalculationsService:
         Returns:
             float: Wetted cross-sectional area [m^2].
         """
-        if not validate_filling(filling, diameter) or diameter <= 0:
-            return 0.0
-
         radius = diameter / 2.0
-        if filling == 0:
-            return 0.0
 
-        # Obliczenie długości cięciwy
         chord = 2.0 * math.sqrt(radius**2 - (filling - radius) ** 2)
-        # Obliczenie kąta centralnego w radianach
         alpha = math.acos((2.0 * radius**2 - chord**2) / (2.0 * radius**2))
 
         if filling > radius:
-            # Obszar przekroju dla częściowego wypełnienia powyżej połowy średnicy
             area = math.pi * radius**2 - 0.5 * (alpha - math.sin(alpha)) * radius**2
         elif filling == radius:
-            # Przekrój poprzeczny w połowie średnicy
             area = 0.5 * math.pi * radius**2
         elif filling == diameter:
-            # Pełne wypełnienie
             area = math.pi * radius**2
         else:
-            # Obszar przekroju dla częściowego wypełnienia poniżej połowy średnicy
             area = 0.5 * (alpha - math.sin(alpha)) * radius**2
 
         return area
 
     @staticmethod
+    @validate_inputs
     def calc_u(filling: float, diameter: float) -> float:
         """
         Computes the wetted perimeter U for a circular pipe filled to 'filling'.
@@ -92,12 +106,7 @@ class HydraulicCalculationsService:
         Returns:
             float: Wetted perimeter [m].
         """
-        if not validate_filling(filling, diameter) or diameter <= 0:
-            return 0.0
-
         radius = diameter / 2.0
-        if filling == 0:
-            return 0.0
 
         # Obliczenie długości cięciwy
         chord = 2.0 * math.sqrt(radius**2 - (filling - radius) ** 2)
@@ -115,6 +124,7 @@ class HydraulicCalculationsService:
         return perimeter
 
     @staticmethod
+    @validate_inputs
     def calc_rh(filling: float, diameter: float) -> float:
         """
         Computes the hydraulic radius Rh = A / U.
@@ -126,10 +136,6 @@ class HydraulicCalculationsService:
         Returns:
             float: Hydraulic radius [m].
         """
-        if not validate_filling(filling, diameter) or diameter <= 0:
-            return 0.0
-        if filling == 0:
-            return 0.0
 
         area = HydraulicCalculationsService.calc_area(filling, diameter)
         perimeter = HydraulicCalculationsService.calc_u(filling, diameter)
@@ -138,6 +144,7 @@ class HydraulicCalculationsService:
         return rh
 
     @staticmethod
+    @validate_inputs
     def calc_velocity(filling: float, diameter: float, slope: float) -> float:
         """
         Calculates the flow velocity using Manning's equation.
@@ -153,14 +160,10 @@ class HydraulicCalculationsService:
         Raises:
             ValueError: If slope is too small or exceeds maximum allowed value.
         """
-        if not validate_filling(filling, diameter):
-            return 0.0
         if not validate_max_slope(slope, diameter):
             raise ValueError("Slope exceeds maximum allowed value")
         if not validate_min_slope(slope, filling, diameter):
             raise ValueError("Slope is too small")
-        if filling == 0:
-            return 0.0
 
         # Manning's coefficient
         n = 0.013
@@ -173,6 +176,7 @@ class HydraulicCalculationsService:
         return velocity
 
     @staticmethod
+    @validate_inputs
     def calc_flow(filling: float, diameter: float, slope: float) -> float:
         """
         Computes flow rate Q [dm³/s].
@@ -188,10 +192,6 @@ class HydraulicCalculationsService:
         Raises:
             ValueError: If slope is too small or exceeds maximum allowed.
         """
-        if not validate_filling(filling, diameter):
-            return 0.0
-        if filling == 0:
-            return 0.0
         if not validate_max_slope(slope, diameter):
             raise ValueError("Slope exceeds maximum allowed value")
         if not validate_min_slope(slope, filling, diameter):
@@ -257,21 +257,14 @@ class ConduitFeatureEngineeringService:
 
     def filling_is_valid(self) -> None:
         if self.dfc is not None:
-            self.dfc["ValMaxFill"] = self.dfc.apply(
-                lambda row: validate_filling(row["Filling"], row["Geom1"]),
-                axis=1
-            ).astype(int)
+            self.dfc["ValMaxFill"] = self.dfc.apply(lambda row: validate_filling(row["Filling"], row["Geom1"]), axis=1).astype(
+                int
+            )
 
     def velocity_is_valid(self) -> None:
         if self.dfc is not None:
-            self.dfc["ValMaxV"] = self.dfc.apply(
-                lambda r: validate_max_velocity(r["MaxV"]),
-                axis=1
-            ).astype(int)
-            self.dfc["ValMinV"] = self.dfc.apply(
-                lambda r: validate_min_velocity(r["MaxV"]),
-                axis=1
-            ).astype(int)
+            self.dfc["ValMaxV"] = self.dfc.apply(lambda r: validate_max_velocity(r["MaxV"]), axis=1).astype(int)
+            self.dfc["ValMinV"] = self.dfc.apply(lambda r: validate_min_velocity(r["MaxV"]), axis=1).astype(int)
 
     def slope_per_mile(self) -> None:
         if self.dfc is not None:
@@ -279,13 +272,11 @@ class ConduitFeatureEngineeringService:
 
     def slopes_is_valid(self) -> None:
         if self.dfc is not None:
-            self.dfc["ValMaxSlope"] = self.dfc.apply(
-                lambda r: validate_max_slope(r["SlopePerMile"], r["Geom1"]),
-                axis=1
-            ).astype(int)
+            self.dfc["ValMaxSlope"] = self.dfc.apply(lambda r: validate_max_slope(r["SlopePerMile"], r["Geom1"]), axis=1).astype(
+                int
+            )
             self.dfc["ValMinSlope"] = self.dfc.apply(
-                lambda r: validate_min_slope(r["SlopePerMile"], r["Filling"], r["Geom1"]),
-                axis=1
+                lambda r: validate_min_slope(r["SlopePerMile"], r["Filling"], r["Geom1"]), axis=1
             ).astype(int)
 
     def max_depth(self) -> None:
@@ -296,19 +287,14 @@ class ConduitFeatureEngineeringService:
     def calculate_max_depth(self) -> None:
         if self.dfc is not None:
             nan_rows = pd.isna(self.dfc["OutletMaxDepth"])
-            self.dfc.loc[nan_rows, "OutletMaxDepth"] = (
-                self.dfc.loc[nan_rows, "InletMaxDepth"]
-                - (self.dfc.loc[nan_rows, "Length"] * self.dfc.loc[nan_rows, "SlopeFtPerFt"])
+            self.dfc.loc[nan_rows, "OutletMaxDepth"] = self.dfc.loc[nan_rows, "InletMaxDepth"] - (
+                self.dfc.loc[nan_rows, "Length"] * self.dfc.loc[nan_rows, "SlopeFtPerFt"]
             )
 
     def calculate_ground_elevation(self) -> None:
         if self.dfc is not None:
-            self.dfc["InletGroundElevation"] = (
-                self.dfc["InletNodeInvert"] + self.dfc["InletMaxDepth"]
-            )
-            self.dfc["OutletGroundElevation"] = (
-                self.dfc["OutletNodeInvert"] + self.dfc["OutletMaxDepth"]
-            )
+            self.dfc["InletGroundElevation"] = self.dfc["InletNodeInvert"] + self.dfc["InletMaxDepth"]
+            self.dfc["OutletGroundElevation"] = self.dfc["OutletNodeInvert"] + self.dfc["OutletMaxDepth"]
 
     def ground_cover(self) -> None:
         if self.dfc is None:
@@ -317,12 +303,8 @@ class ConduitFeatureEngineeringService:
         if not all(col in self.dfc.columns for col in required_cols):
             raise ValueError(f"Missing required columns: {required_cols}")
 
-        self.dfc["InletGroundCover"] = (
-            self.dfc["InletGroundElevation"] - self.dfc["InletNodeInvert"] - self.dfc["Geom1"]
-        )
-        self.dfc["OutletGroundCover"] = (
-            self.dfc["OutletGroundElevation"] - self.dfc["OutletNodeInvert"] - self.dfc["Geom1"]
-        )
+        self.dfc["InletGroundCover"] = self.dfc["InletGroundElevation"] - self.dfc["InletNodeInvert"] - self.dfc["Geom1"]
+        self.dfc["OutletGroundCover"] = self.dfc["OutletGroundElevation"] - self.dfc["OutletNodeInvert"] - self.dfc["Geom1"]
 
     def max_ground_cover_is_valid(self) -> None:
         if self.dfc is not None:
@@ -338,8 +320,7 @@ class ConduitFeatureEngineeringService:
             self.ground_cover()
 
         self.dfc["ValCoverage"] = (
-            (self.dfc["InletGroundCover"] >= self.frost_zone)
-            & (self.dfc["OutletGroundCover"] >= self.frost_zone)
+            (self.dfc["InletGroundCover"] >= self.frost_zone) & (self.dfc["OutletGroundCover"] >= self.frost_zone)
         ).astype(int)
 
     def min_conduit_diameter(self) -> None:
@@ -364,9 +345,7 @@ class ConduitFeatureEngineeringService:
             best_diam = current_diam
             for i in range(idx - 1, -1, -1):
                 candidate = common_diameters_sorted[i]
-                fill_height = HydraulicCalculationsService.calc_filling(
-                    row["MaxQ"], candidate, row["SlopePerMile"]
-                )
+                fill_height = HydraulicCalculationsService.calc_filling(row["MaxQ"], candidate, row["SlopePerMile"])
                 if validate_filling(fill_height, candidate):
                     best_diam = candidate
                 else:
@@ -380,9 +359,7 @@ class ConduitFeatureEngineeringService:
 
     def is_min_diameter(self) -> None:
         if self.dfc is not None:
-            self.dfc["isMinDiameter"] = np.where(
-                self.dfc["Geom1"] == self.dfc["MinDiameter"], 1, 0
-            )
+            self.dfc["isMinDiameter"] = np.where(self.dfc["Geom1"] == self.dfc["MinDiameter"], 1, 0)
 
 
 class SubcatchmentFeatureEngineeringService:
@@ -446,9 +423,7 @@ class NodeFeatureEngineeringService:
 
         mapping = {}
         if "Outlet" in self.dfs.columns:
-            mapping = (
-                self.dfs.reset_index().set_index("Outlet")["Name"].to_dict()
-            )
+            mapping = self.dfs.reset_index().set_index("Outlet")["Name"].to_dict()
         self.dfn["Subcatchment"] = self.dfn.index.map(lambda n: mapping.get(n, "-"))
 
 
@@ -485,7 +460,11 @@ class RecommendationService:
         preds_cls = preds.argmax(axis=-1)
 
         if categories:
-            labels = ["diameter_reduction", "valid", "depth_increase"]
+            labels = [
+                RecommendationCategory.DIAMETER_REDUCTION.value,
+                RecommendationCategory.VALID.value,
+                RecommendationCategory.DEPTH_INCREASE.value,
+            ]
             self.dfc["recommendation"] = [labels[i] for i in preds_cls]
         else:
             self.dfc["recommendation"] = preds_cls
@@ -504,18 +483,13 @@ class TraceAnalysisService:
         Returns the route (trace) for each outfall in the model.
         """
         outfalls = self.model.inp.outfalls.index
-        return {
-            outfall: trace_from_node(self.model.conduits, outfall)
-            for outfall in outfalls
-        }
+        return {outfall: trace_from_node(self.model.conduits, outfall) for outfall in outfalls}
 
     def overflowing_pipes(self) -> pd.DataFrame:
         """
         Returns all conduits that exceeded the allowed filling (ValMaxFill == 0).
         """
-        return self.model.conduits_data.conduits[
-            self.model.conduits_data.conduits["ValMaxFill"] == 0
-        ]
+        return self.model.conduits_data.conduits[self.model.conduits_data.conduits["ValMaxFill"] == 0]
 
     def overflowing_traces(self) -> Dict[str, Dict[str, List[str]]]:
         """
@@ -526,10 +500,7 @@ class TraceAnalysisService:
 
         results = {}
         for outfall_id, trace_data in all_tr.items():
-            overlap = [
-                c for c in trace_data["conduits"] 
-                if c in overflow_df.index.tolist()
-            ]
+            overlap = [c for c in trace_data["conduits"] if c in overflow_df.index.tolist()]
             if overlap:
                 indexes = {c: trace_data["conduits"].index(c) for c in overlap}
                 results[outfall_id] = indexes
@@ -573,6 +544,7 @@ class SimulationRunnerService:
 #                                   DATA MANAGER
 ###############################################################################
 
+
 class DataManager(sw.Model):
     """
     Main class that combines various services/classes responsible for different areas
@@ -580,13 +552,7 @@ class DataManager(sw.Model):
     logic rather than implementing all logic in a single class.
     """
 
-    def __init__(
-        self,
-        inp_file_path: str,
-        crs: Optional[str] = None,
-        include_rpt: bool = True,
-        zone: float = 1.2
-    ):
+    def __init__(self, inp_file_path: str, crs: Optional[str] = None, include_rpt: bool = True, zone: float = 1.2):
         super().__init__(inp_file_path, crs=crs, include_rpt=include_rpt)
         self._frost_zone: float = None
         self.frost_zone = zone
@@ -603,9 +569,7 @@ class DataManager(sw.Model):
         # ---------------------------
         self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs)
         self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
-        self.conduit_service = ConduitFeatureEngineeringService(
-            dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone
-        )
+        self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
         self.recommendation_service = RecommendationService(self.dfc)
         self.simulation_service = SimulationRunnerService(self.inp.path)
         self.trace_analysis_service = TraceAnalysisService(self)
@@ -639,12 +603,6 @@ class DataManager(sw.Model):
         if exc_type is not None:
             print(f"Exception occurred: {exc_val}")
         return False
-
-    def enter(self):
-        self.__enter__()
-
-    def close(self, exc_type, exc_val, exc_tb):
-        return self.__exit__(exc_type, exc_val, exc_tb)
 
     ############################################################################
     #                   HELPER METHODS (round, drop, etc.)

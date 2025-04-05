@@ -42,7 +42,7 @@ class TestConduitsData:
         Test the 'calculate_filling' method of the ConduitsData class to ensure that it
         correctly calculates and adds the 'Filling' column to the 'conduits' DataFrame.
         """
-        data_manager.calculate_filling()
+        data_manager.conduit_service.calculate_filling()
         assert "Filling" in data_manager.dfc.columns
         assert all(data_manager.dfc["Filling"] >= 0)
 
@@ -51,8 +51,8 @@ class TestConduitsData:
         Test the 'filling_is_valid' method of the ConduitsData class to ensure that it correctly
         validates the conduit filling and adds the 'ValMaxFill' column to the 'conduits' DataFrame.
         """
-        data_manager.calculate_filling()
-        data_manager.filling_is_valid()
+        data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.filling_is_valid()
         assert "ValMaxFill" in data_manager.dfc.columns
         assert all(data_manager.dfc["ValMaxFill"].isin([0, 1]))
 
@@ -72,7 +72,7 @@ class TestConduitsData:
         adds the 'ValMaxV' column to the 'conduits' DataFrame.
         """
         assert "ValMaxV" not in data_manager.dfc.columns
-        data_manager.velocity_is_valid()
+        data_manager.conduit_service.velocity_is_valid()
         assert "ValMaxV" in data_manager.dfc.columns
 
     def test_velocity_is_valid(self, data_manager: DataManager):
@@ -81,7 +81,7 @@ class TestConduitsData:
         validates the conduit velocities and updates the 'ValMaxV' and 'ValMinV' columns in the
         'conduits' DataFrame.
         """
-        data_manager.velocity_is_valid()
+        data_manager.conduit_service.velocity_is_valid()
         expected_values = [1, 1]
         assert list(data_manager.dfc["ValMaxV"])[:2] == expected_values
         assert list(data_manager.dfc["ValMinV"])[:2] == expected_values
@@ -91,7 +91,7 @@ class TestConduitsData:
         Test if the 'SlopePerMile' column is added to the conduits dataframe
         after calling the slope_per_mile() method.
         """
-        data_manager.slope_per_mile()
+        data_manager.conduit_service.slope_per_mile()
         assert "SlopePerMile" in data_manager.dfc.columns
 
     def test_slope_per_mile_calculation(self, data_manager: DataManager):
@@ -99,7 +99,7 @@ class TestConduitsData:
         Test if the calculated values in the 'SlopePerMile' column are correct after
         calling the slope_per_mile() method.
         """
-        data_manager.slope_per_mile()
+        data_manager.conduit_service.slope_per_mile()
         expected_values = [1.80, 6.40]  # SlopeFtPerFt * 1000
         assert list(data_manager.dfc["SlopePerMile"])[:2] == pytest.approx(expected_values, abs=1e-9)
 
@@ -108,8 +108,8 @@ class TestConduitsData:
         Test if the 'ValMaxSlope' and 'ValMinSlope' columns are added to the conduits
         dataframe after calling slopes_is_valid() method.
         """
-        data_manager.calculate_filling()
-        data_manager.slopes_is_valid()
+        data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.slopes_is_valid()
         assert "ValMaxSlope" in data_manager.dfc.columns
         assert "ValMinSlope" in data_manager.dfc.columns
 
@@ -118,8 +118,8 @@ class TestConduitsData:
         Test if the maximum slope validation is correct after
         calling the slopes_is_valid() method.
         """
-        data_manager.calculate_filling()
-        data_manager.slopes_is_valid()
+        data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.slopes_is_valid()
         expected_values = [
             1,
             1,
@@ -130,8 +130,8 @@ class TestConduitsData:
         """
         Test if the minimum slope validation is correct after calling the slopes_is_valid() method.
         """
-        data_manager.calculate_filling()
-        data_manager.slopes_is_valid()
+        data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.slopes_is_valid()
         expected_values = [
             1,
             1,
@@ -143,7 +143,7 @@ class TestConduitsData:
         Test if the 'InletMaxDepth' and 'OutletMaxDepth' columns are added to the conduits DataFrame after
         calling the `max_depth()` method.
         """
-        data_manager.max_depth()
+        data_manager.conduit_service.max_depth()
         assert "InletMaxDepth" in data_manager.dfc.columns
         assert "OutletMaxDepth" in data_manager.dfc.columns
 
@@ -152,7 +152,7 @@ class TestConduitsData:
         Test if the 'InletMaxDepth' values in the conduits DataFrame match the corresponding 'MaxDepth' values
         in the nodes DataFrame, using the 'InletNode' as a reference.
         """
-        data_manager.max_depth()
+        data_manager.conduit_service.max_depth()
         nodes_data = model.nodes.dataframe
         for _, conduit in data_manager.dfc.iterrows():
             inlet_node = conduit["InletNode"]
@@ -165,8 +165,8 @@ class TestConduitsData:
         Test if the 'OutletMaxDepth' values in the conduits DataFrame match the corresponding 'MaxDepth' values
         in the nodes DataFrame, using the 'OutletNode' as a reference.
         """
-        data_manager.max_depth()
-        data_manager.calculate_max_depth()
+        data_manager.conduit_service.max_depth()
+        data_manager.conduit_service.calculate_max_depth()
         nodes_data = model.nodes.dataframe
         for _, conduit in data_manager.dfc.iterrows():
             outlet_node = conduit["OutletNode"]
@@ -225,7 +225,7 @@ class TestConduitsData:
         data_manager.dfc.at[0, "OutletGroundElevation"] = 13
         data_manager.dfc.at[0, "ValDepth"] = np.nan
 
-        data_manager.max_ground_cover_is_valid()
+        data_manager.conduit_service.max_ground_cover_is_valid()
         assert data_manager.dfc["ValDepth"].loc[0] == 1
 
     def test_max_ground_cover_invalid_depths(self, data_manager: DataManager):
@@ -236,7 +236,7 @@ class TestConduitsData:
         data_manager.dfc.at[0, "OutletGroundElevation"] = 32
         data_manager.dfc.at[0, "ValDepth"] = np.nan
 
-        data_manager.max_ground_cover_is_valid()
+        data_manager.conduit_service.max_ground_cover_is_valid()
         assert data_manager.dfc["ValDepth"].loc[0] == 0
 
     def test_calculate_max_depth(self, data_manager: DataManager):
@@ -244,7 +244,7 @@ class TestConduitsData:
         Test the 'calculate_max_depth' method of the ConduitsData class to ensure that it correctly
         calculates the maximum depth of each conduit's outlet, based on its inlet depth, length, and slope.
         """
-        data_manager.max_depth()
+        data_manager.conduit_service.max_depth()
         data_manager.dfc.at[0, "InletMaxDepth"] = 10
         data_manager.dfc.at[0, "Length"] = 100
         data_manager.dfc.at[0, "OutletMaxDepth"] = 5
@@ -252,7 +252,7 @@ class TestConduitsData:
         data_manager.dfc.at[1, "InletMaxDepth"] = 20
         data_manager.dfc.at[1, "Length"] = 200
         data_manager.dfc.at[1, "OutletMaxDepth"] = 10
-        data_manager.calculate_max_depth()
+        data_manager.conduit_service.calculate_max_depth()
         assert data_manager.dfc["OutletMaxDepth"].loc[0] == 5
         assert data_manager.dfc["OutletMaxDepth"].loc[1] == 10
         data_manager.dfc = data_manager.dfc.drop(index=[0, 1])
@@ -262,7 +262,7 @@ class TestConduitsData:
         Test the 'calculate_max_depth' method of the ConduitsData class to ensure that it correctly
         calculates the maximum depth of each conduit's outlet, based on its inlet depth, length, and slope.
         """
-        data_manager.max_depth()
+        data_manager.conduit_service.max_depth()
         # Set up some test data
         test_data = [
             {
@@ -285,7 +285,8 @@ class TestConduitsData:
             },
         ]
         data_manager.dfc = pd.DataFrame(test_data)
-        data_manager.calculate_max_depth()
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.calculate_max_depth()
 
         assert all(~pd.isna(data_manager.dfc["OutletMaxDepth"]))
         assert data_manager.dfc.loc[0, "OutletMaxDepth"] == pytest.approx(9, abs=1e-9)
@@ -325,10 +326,11 @@ class TestConduitsData:
             },
         ]
         data_manager.dfc = pd.DataFrame(test_data)
+        data_manager.conduit_service.dfc = data_manager.dfc
         data_manager.frost_zone = 1.0
 
         # Call the method
-        data_manager.min_ground_cover_is_valid()
+        data_manager.conduit_service.min_ground_cover_is_valid()
 
         # Assertions
         assert data_manager.dfc.loc[0, "ValCoverage"] == 1
@@ -342,7 +344,7 @@ class TestConduitsData:
         data_manager.dfc.at[0, "OutletGroundCover"] = 1.4
         data_manager.dfc.at[0, "ValCoverage"] = np.nan
 
-        data_manager.min_ground_cover_is_valid()
+        data_manager.conduit_service.min_ground_cover_is_valid()
         assert data_manager.dfc["ValCoverage"].loc[0] == 1
 
     def test_min_ground_cover_invalid(self, data_manager: DataManager):
@@ -352,7 +354,7 @@ class TestConduitsData:
         data_manager.dfc.at[0, "OutletGroundCover"] = 0.9
         data_manager.dfc.at[0, "ValCoverage"] = np.nan
 
-        data_manager.min_ground_cover_is_valid()
+        data_manager.conduit_service.min_ground_cover_is_valid()
         assert data_manager.dfc["ValCoverage"].loc[0] == 0
 
     def test_min_ground_cover_mixed(self, data_manager: DataManager):
@@ -362,7 +364,7 @@ class TestConduitsData:
         data_manager.dfc.at[0, "OutletGroundCover"] = 0.9
         data_manager.dfc.at[0, "ValCoverage"] = np.nan
 
-        data_manager.min_ground_cover_is_valid()
+        data_manager.conduit_service.min_ground_cover_is_valid()
         assert data_manager.dfc["ValCoverage"].loc[0] == 0
 
     def test_min_ground_cover_edge_case(self, data_manager: DataManager):
@@ -372,7 +374,7 @@ class TestConduitsData:
         data_manager.dfc.at[0, "OutletGroundCover"] = 1.2
         data_manager.dfc.at[0, "ValCoverage"] = np.nan
 
-        data_manager.min_ground_cover_is_valid()
+        data_manager.conduit_service.min_ground_cover_is_valid()
         assert data_manager.dfc["ValCoverage"].loc[0] == 1
 
     def test_ground_elevation(self, data_manager: DataManager):
@@ -387,9 +389,10 @@ class TestConduitsData:
             {"InletNodeInvert": 30, "InletMaxDepth": 6, "OutletNodeInvert": 60, "OutletMaxDepth": 12},
         ]
         data_manager.dfc = pd.DataFrame(test_data)
+        data_manager.conduit_service.dfc = data_manager.dfc
 
         # Call the method
-        data_manager.calculate_ground_elevation()
+        data_manager.conduit_service.calculate_ground_elevation()
 
         # Assertions for InletGroundElevation
         assert data_manager.dfc.loc[0, "InletGroundElevation"] == pytest.approx(
