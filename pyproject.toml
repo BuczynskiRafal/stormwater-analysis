@@ -3,7 +3,7 @@ line-length = 130
 target-version = ['py310']
 
 [tool.pytest.ini_options]
-addopts = ["-l"]
+addopts = ["-vvv", "--tb=short"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::FutureWarning",
@@ -16,3 +16,6 @@ line_length = 130
 [tool.ruff]
 line-length = 130
 target-version = 'py310'
+
+[tool.flake8]
+ignore = ["E501", "W291"]
