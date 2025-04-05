@@ -25,8 +25,6 @@ class RecommendationCategory(Enum):
     DEPTH_INCREASE = "depth_increase"
 
 
-import numpy as np
-
 ###############################################################################
 #                                   SERVICES
 ###############################################################################

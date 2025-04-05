@@ -1,17 +1,15 @@
-version: '3.8'
-
 services:
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
-      - static_volume:/app/static
-      - media_volume:/app/media
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
     ports:
       - "8000:8000"
     environment:
-      - DEBUG=1
+      - DEBUG=True
 
 volumes:
   static_volume:
