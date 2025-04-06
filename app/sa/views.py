@@ -64,7 +64,7 @@ def analysis(request):
                 with Simulation(TEST_FILE) as sim:
                     for _ in sim:
                         pass
-                return render(request, "sa/analysis.html", {"swmm_form": swmm_form, "data": data})
+                return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
             except Exception as e:
                 logger.error(e)
                 messages.error(request, "Error occurred while performing calculations: {}".format(str(e)))

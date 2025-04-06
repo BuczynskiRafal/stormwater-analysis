@@ -154,3 +154,5 @@ app/media/*
 app/recomendtions.ipynb
 
 .idea/
+app/staticfiles/*
+main.ipynb

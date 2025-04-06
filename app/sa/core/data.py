@@ -165,7 +165,6 @@ class HydraulicCalculationsService:
 
         # Manning's coefficient
         n = 0.013
-        area = HydraulicCalculationsService.calc_area(filling, diameter)
         rh = HydraulicCalculationsService.calc_rh(filling, diameter)
 
         if rh == 0:
