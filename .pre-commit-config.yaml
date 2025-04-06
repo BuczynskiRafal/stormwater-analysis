@@ -1,11 +1,15 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.3.0
+    rev: v4.6.0
     hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
       - id: requirements-txt-fixer
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 'v0.1.7'
+    rev: v0.4.4
     hooks:
       - id: ruff
-        args: [--select=I]
+        args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format

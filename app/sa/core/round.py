@@ -2,7 +2,7 @@ import logging
 import math
 from typing import Union
 
-from numpy import cos, linspace, pi, sin
+from numpy import pi
 
 logger = logging.getLogger(__name__)
 common_diameters = [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.2, 1.5, 2.0]
