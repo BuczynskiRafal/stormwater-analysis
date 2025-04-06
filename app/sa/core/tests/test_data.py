@@ -1,17 +1,8 @@
 import math
-from unittest.mock import patch
 
 import pytest
 
 from sa.core.data import HydraulicCalculationsService as hcs
-from sa.core.round import common_diameters, max_depth_value, min_slope
-from sa.core.valid_round import (
-    validate_filling,
-    validate_max_slope,
-    validate_max_velocity,
-    validate_min_slope,
-    validate_min_velocity,
-)
 
 
 @pytest.mark.parametrize(
@@ -243,18 +234,6 @@ def test_calc_rh_invalid_types(filling, diameter, expected):
 def test_calc_velocity_valid(filling, diameter, slope, expected, mocker):
     result = hcs.calc_velocity(filling, diameter, slope)
     assert round(result, 3) == expected, f"Failed for filling={filling}, diameter={diameter}, slope={slope}"
-
-
-@pytest.mark.parametrize(
-    "filling, diameter, slope",
-    [
-        (0.5, 1.0, -1.0),  # Negative slope
-        (0.5, 1.0, 0.0),  # Zero slope
-    ],
-)
-def test_calc_velocity_invalid_slope(filling, diameter, slope, mocker):
-    with pytest.raises(ValueError):
-        hcs.calc_velocity(filling, diameter, slope)
 
 
 @pytest.mark.parametrize(

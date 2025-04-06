@@ -3,11 +3,11 @@ html, body {
     min-height: 100%;
     font-size: 16px;
     margin: 0;
-    font-family: sans-serif; 
-    line-height: 1.15; 
-    -webkit-text-size-adjust: 100%; 
-    -ms-text-size-adjust: 100%; 
-    -ms-overflow-style: scrollbar; 
+    font-family: sans-serif;
+    line-height: 1.15;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    -ms-overflow-style: scrollbar;
     -webkit-tap-highlight-color: transparent;
 }
 body {
@@ -22,7 +22,7 @@ body {
     flex-direction: column;
     background-color: whitesmoke;
     border-bottom: 0px solid black;
-    margin: 0; 
+    margin: 0;
 }
 
 header {
@@ -81,36 +81,36 @@ header {
 }
 
 
-* { 
+* {
     box-sizing: border-box;
-} 
+}
 
-.bd-example { 
-    position: relative; 
-    padding: 1rem; 
-    margin: 1rem -15px 0; 
-    border: solid #f7f7f9; 
+.bd-example {
+    position: relative;
+    padding: 1rem;
+    margin: 1rem -15px 0;
+    border: solid #f7f7f9;
     border-width: .2rem 0 0;
-} 
+}
 
-@media (min-width: 576px){ 
-  .bd-example { 
-    padding: 1.5rem; 
-    margin-right: 0; 
-    margin-left: 0; 
+@media (min-width: 576px){
+  .bd-example {
+    padding: 1.5rem;
+    margin-right: 0;
+    margin-left: 0;
     border-width: .2rem;
-  } 
-}     
+  }
+}
 
-*,:after,:before { 
+*,:after,:before {
     box-sizing: border-box;
-} 
+}
 
-.bd-example:after { 
-    display: block; 
-    clear: both; 
+.bd-example:after {
+    display: block;
+    clear: both;
     content: "";
-} 
+}
 .nav-link {
     font-size: 18px;
     font-weight:500;
@@ -131,10 +131,10 @@ header {
     cursor: pointer;
     text-align: left;
 }
-a { 
+a {
     font-size: 16px;
     font-weight:400;
-    color: #0d6efd; 
+    color: #0d6efd;
     text-decoration: underline;
 }
 
@@ -150,36 +150,36 @@ label {
     font-weight: bold;
 }
 
-.containerwide { 
-    width: 100%; 
+.containerwide {
+    width: 100%;
     padding-right: 5rem;
-    padding-left: 5rem; 
-    margin-right: auto; 
+    padding-left: 5rem;
+    margin-right: auto;
     margin-left: auto;
-} 
+}
 
-@media (min-width: 576px){ 
-  .containerwide { 
+@media (min-width: 576px){
+  .containerwide {
     max-width: 100%;
-  } 
-}     
+  }
+}
 
-@media (min-width: 768px){ 
-  .containerwide { 
+@media (min-width: 768px){
+  .containerwide {
     max-width: 100%;
-  } 
-}     
+  }
+}
 
-@media (min-width: 992px){ 
-  .containerwide { 
+@media (min-width: 992px){
+  .containerwide {
     max-width: 100%;
-  } 
-}     
+  }
+}
 
-@media (min-width: 1200px){ 
-  .containerwide { 
+@media (min-width: 1200px){
+  .containerwide {
     max-width: 100%;
-  } 
+  }
 }
 
 .container-forms {
@@ -200,27 +200,106 @@ label {
 }
 
 
+/* --- Global Font & Base Styles --- */
+body {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px; /* Bootstrap default is 1rem */
+    line-height: 1.6; /* Slightly increased line height */
+    color: #333; /* Darker gray for better contrast */
+    background-color: #f8f9fa; /* Light background */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif; /* Ensure headings use the new font */
+    font-weight: 600; /* Adjust weight as needed */
+}
+
+/* --- Modern Table Styles --- */
+
+.table {
+    border-collapse: separate; /* Allows border-radius */
+    border-spacing: 0;
+    margin-bottom: 1.5rem; /* More space below table */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+    border-radius: 8px; /* Rounded corners for the table */
+    overflow: hidden; /* Ensures shadow and border-radius work */
+}
+
+/* Table header styling */
+.table thead th {
+    background-color: #f8f9fa; /* Very light gray header */
+    color: #495057; /* Darker gray text */
+    font-weight: 600; /* Bold font */
+    text-transform: uppercase; /* Uppercase text */
+    font-size: 0.85em; /* Slightly smaller header font */
+    padding: 0.9rem 1rem; /* Adjusted padding */
+    border-bottom: 2px solid #dee2e6; /* Clearer bottom border */
+    border-top: none;
+    border-left: 1px solid #f1f3f5; /* Thin vertical border */
+    vertical-align: middle;
+}
+
+/* Table cell styling */
+.table tbody td {
+    padding: 0.9rem 1rem; /* Consistent padding with header */
+    vertical-align: middle; /* Align text vertically */
+    border-top: 1px solid #f1f3f5; /* Thin horizontal border */
+    border-left: 1px solid #f1f3f5; /* Thin vertical border */
+    color: #495057; /* Cell text color */
+}
+
+/* Remove left border from the first cell in header and body rows */
+.table thead th:first-child,
+.table tbody td:first-child {
+    border-left: none;
+}
+
+/* Remove top border for the first body row (already done by border-collapse: separate and overflow: hidden on .table) */
+/* .table tbody tr:first-child td {
+    border-top: none;
+} */ /* This might not be needed anymore */
+
+
+/* Striped table styling */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #fbfdff; /* Very light blue tint for striping */
+}
+
+/* Hover effect styling */
+.table-hover tbody tr:hover {
+    background-color: #f5faff; /* Slightly more noticeable light blue tint for hover */
+    cursor: pointer; /* Indicate interactivity */
+}
+
+/* Optional: If you still want to remove the main outer border if .table-bordered is used */
+.table-bordered {
+     border: none;
+}
+/* The specific removal of inner borders for .table-bordered th/td is removed
+   to allow the new thin borders to show. */
+
+
 .scrollable-table-container {
     overflow-x: auto;
     white-space: nowrap;
 }
 
-.table { 
-    width: 100%; 
-    max-width: 100%; 
-    margin-bottom: 1rem; 
+.table {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
     background-color: whitesmoke;
     border-collapse: separate;
     border-spacing: 0;
-} 
+}
 
 .table-title {
-    font-weight: bold; 
+    font-weight: bold;
     line-height: 1.2;
     text-align: left;
-    display: block; 
-    text-decoration: none; 
-    font-size: 18px; 
+    display: block;
+    text-decoration: none;
+    font-size: 18px;
     white-space: nowrap;
 }
 
@@ -236,31 +315,31 @@ table {
     border-color: gray;
 }
 
-th { 
+th {
     text-align: inherit;
-} 
+}
 
-.table-bordered { 
+.table-bordered {
     border: 2px solid #dee2e6;
-} 
+}
 
-.table-bordered th, .table-bordered td  { 
+.table-bordered th, .table-bordered td  {
     border: 2px solid #dee2e6;
-} 
+}
 
-.table thead th  { 
-    vertical-align: bottom; 
+.table thead th  {
+    vertical-align: bottom;
     border-bottom: 2px solid #dee2e6;
-} 
+}
 
-.table-bordered thead th  { 
+.table-bordered thead th  {
     border-bottom-width: 2px;
-} 
+}
 
 *, ::after, ::before {
     box-sizing: border-box;
 }
- 
+
 table td, table th {
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -268,14 +347,14 @@ table td, table th {
 }
 
 .table th, .table td {
-    padding: .75rem; 
-    vertical-align: top; 
+    padding: .75rem;
+    vertical-align: top;
     text-align: center;
     border: 2px solid #dee2e6;
     z-index: 1;
 }
 
-.table th  { 
+.table th  {
     font-size: 16px;
     font-weight: bold;
     background-color: #d5e3f5;
@@ -299,7 +378,7 @@ thead th {
 }
 
 .table th:not(:first-child), .table td:not(:first-child) {
-    position: relative; 
+    position: relative;
     border-left: none;
     z-index: 1;
 }
@@ -402,4 +481,3 @@ a {
     white-space: pre-wrap;
     overflow-x: auto;
 }
-
