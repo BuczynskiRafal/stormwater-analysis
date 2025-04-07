@@ -4,7 +4,7 @@
 
   WARNING 09: time series interval greater than recording interval for Rain Gage Raingage2
   WARNING 01: wet weather time step reduced to recording interval for Rain Gage Raingage2
-  
+
   ****************
   Analysis Options
   ****************
@@ -23,8 +23,8 @@
   Report Time Step ......... 00:15:00
   Wet Time Step ............ 00:01:00
   Dry Time Step ............ 01:00:00
-  
-  
+
+
   **************************        Volume         Depth
   Runoff Quantity Continuity     hectare-m            mm
   **************************     ---------       -------
@@ -34,8 +34,8 @@
   Surface Runoff ...........         2.330         2.314
   Final Storage ............         0.295         0.293
   Continuity Error (%) .....        -0.432
-  
-  
+
+
   **************************        Volume        Volume
   Flow Routing Continuity        hectare-m      10^6 ltr
   **************************     ---------     ---------
@@ -51,12 +51,12 @@
   Initial Stored Volume ....         0.000         0.000
   Final Stored Volume ......         0.000         0.000
   Continuity Error (%) .....         0.000
-  
-  
+
+
   ***************************
   Subcatchment Runoff Summary
   ***************************
-  
+
   ------------------------------------------------------------------------------------------------------------------------------
                             Total      Total      Total      Total     Imperv       Perv      Total       Total     Peak  Runoff
                            Precip      Runon       Evap      Infil     Runoff     Runoff     Runoff      Runoff   Runoff   Coeff
@@ -1063,7 +1063,7 @@
   S999                       9.50       0.00       0.00       6.31       2.87       0.28       3.15        0.02     0.01   0.332
   S1000                      9.50       0.00       0.00       8.14       0.84       0.17       1.01        0.01     0.00   0.106
   S1001                      9.50       0.00       0.00       1.40       8.03       0.20       8.23        0.02     0.01   0.866
-  
+
 
   Analysis begun on:  Wed Jul  5 06:53:49 2023
   Analysis ended on:  Wed Jul  5 06:53:50 2023

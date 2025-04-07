@@ -3,7 +3,7 @@
   ------------------------------------------------------------
 
   WARNING 01: wet weather time step reduced to recording interval for Rain Gage Raingage2
-  
+
   ****************
   Analysis Options
   ****************
@@ -25,8 +25,8 @@
   Wet Time Step ............ 00:01:00
   Dry Time Step ............ 01:00:00
   Routing Time Step ........ 60.00 sec
-  
-  
+
+
   **************************        Volume         Depth
   Runoff Quantity Continuity     hectare-m            mm
   **************************     ---------       -------
@@ -36,8 +36,8 @@
   Surface Runoff ...........         1.287         7.996
   Final Storage ............         0.293         1.817
   Continuity Error (%) .....        -0.016
-  
-  
+
+
   **************************        Volume        Volume
   Flow Routing Continuity        hectare-m      10^6 ltr
   **************************     ---------     ---------
@@ -53,8 +53,8 @@
   Initial Stored Volume ....         0.000         0.000
   Final Stored Volume ......         0.000         0.000
   Continuity Error (%) .....         0.012
-  
-  
+
+
   ********************************
   Highest Flow Instability Indexes
   ********************************
@@ -63,8 +63,8 @@
   Link C4 (3)
   Link C6 (1)
   Link C15 (1)
-  
-  
+
+
   *************************
   Routing Time Step Summary
   *************************
@@ -74,12 +74,12 @@
   % of Time in Steady State   :     0.00
   Average Iterations per Step :     1.48
   % of Steps Not Converging   :     0.00
-  
-  
+
+
   ***************************
   Subcatchment Runoff Summary
   ***************************
-  
+
   ------------------------------------------------------------------------------------------------------------------------------
                             Total      Total      Total      Total     Imperv       Perv      Total       Total     Peak  Runoff
                            Precip      Runon       Evap      Infil     Runoff     Runoff     Runoff      Runoff   Runoff   Coeff
@@ -92,12 +92,12 @@
   S5                        18.10       0.00       0.00       7.68       4.46       4.48       8.94        2.86     1.31   0.494
   21                        18.10       0.00       0.00       3.17       4.52      10.41      14.93        0.75     0.40   0.825
   22                        18.10       0.00       0.00       3.17       4.52      10.41      14.93        0.75     0.40   0.825
-  
-  
+
+
   ******************
   Node Depth Summary
   ******************
-  
+
   ---------------------------------------------------------------------------------
                                  Average  Maximum  Maximum  Time of Max    Reported
                                    Depth    Depth      HGL   Occurrence   Max Depth
@@ -126,12 +126,12 @@
   J16                  JUNCTION     0.03     0.31   148.31     0  00:26        0.25
   O1                   OUTFALL      0.16     0.73   146.93     0  00:27        0.71
   O2                   OUTFALL      0.03     0.34   146.84     0  00:27        0.29
-  
-  
+
+
   *******************
   Node Inflow Summary
   *******************
-  
+
   -------------------------------------------------------------------------------------------------
                                   Maximum  Maximum                  Lateral       Total        Flow
                                   Lateral    Total  Time of Max      Inflow      Inflow     Balance
@@ -161,12 +161,12 @@
   J16                  JUNCTION     0.403    0.403     0  00:26       0.747       0.747       0.000
   O1                   OUTFALL      0.000    1.479     0  00:27           0        8.62       0.000
   O2                   OUTFALL      0.000    0.769     0  00:27           0        1.48       0.000
-  
-  
+
+
   *********************
   Node Flooding Summary
   *********************
-  
+
   Flooding refers to all water that overflows a node, whether it ponds or not.
   --------------------------------------------------------------------------
                                                              Total   Maximum
@@ -177,12 +177,12 @@
   J2                      0.75     2.461      0  00:26       2.695     0.000
   J1                      0.10     0.195      0  00:27       0.028     0.000
   J0                      0.08     0.329      0  00:26       0.050     0.000
-  
-  
+
+
   ***********************
   Outfall Loading Summary
   ***********************
-  
+
   -----------------------------------------------------------
                          Flow       Avg       Max       Total
                          Freq      Flow      Flow      Volume
@@ -192,12 +192,12 @@
   O2                    38.47     0.089     0.769       1.479
   -----------------------------------------------------------
   System                69.03     0.289     2.248      10.098
-  
-  
+
+
   ********************
   Link Flow Summary
   ********************
-  
+
   -----------------------------------------------------------------------------
                                  Maximum  Time of Max   Maximum    Max/    Max/
                                   |Flow|   Occurrence   |Veloc|    Full    Full
@@ -224,21 +224,21 @@
   C19                  CONDUIT     0.392     0  00:26      1.96    0.20    0.30
   C18                  CONDUIT     0.388     0  00:27      1.96    0.20    0.30
   C17                  CONDUIT     0.385     0  00:27      1.95    0.20    0.30
-  
-  
+
+
   *************************
   Conduit Surcharge Summary
   *************************
-  
+
   ----------------------------------------------------------------------------
-                                                           Hours        Hours 
+                                                           Hours        Hours
                          --------- Hours Full --------   Above Full   Capacity
   Conduit                Both Ends  Upstream  Dnstream   Normal Flow   Limited
   ----------------------------------------------------------------------------
   C3                          0.75      0.75      0.75      0.77         0.75
   C2                          0.10      0.10      0.10      0.08         0.10
   C1                          0.08      0.08      0.08      0.07         0.08
-  
+
 
   Analysis begun on:  Mon Jul 10 10:38:34 2023
   Analysis ended on:  Mon Jul 10 10:38:34 2023
