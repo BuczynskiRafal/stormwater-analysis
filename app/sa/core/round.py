@@ -34,7 +34,7 @@ def check_dimensions(filling: float, diameter: float) -> bool:
         raise ValueError("Filling must be less than or equal to the diameter")
     if not (0 <= filling <= 2.0 and 0.2 <= diameter <= 2.0):
         raise ValueError(
-            """Value out of bounds. Filling must be between 0.2 and 2.0
+            """Value out of bounds. Filling must be between 0 and 2.0
             meters and diameter must be between 0.2 and 2.0 meters"""
         )
     return True

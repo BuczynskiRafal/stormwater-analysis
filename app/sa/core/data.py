@@ -9,7 +9,7 @@ from pyswmm import Simulation
 from swmmio.utils.functions import trace_from_node
 
 from sa.core.predictor import classifier, recommendation
-from sa.core.round import common_diameters, max_depth_value, min_slope, max_velocity_value, max_filling
+from sa.core.round import common_diameters, max_depth_value, min_slope, max_slope, max_velocity_value, max_filling
 from sa.core.valid_round import (
     validate_filling,
     validate_max_slope,
@@ -713,6 +713,93 @@ class ConduitFeatureEngineeringService:
             valid_range
         ]
 
+    def normalize_slope(self) -> None:
+        """
+        Normalizes the slope values in the dataframe to a range [0, 1] based on both
+        minimum required slope and maximum allowable slope.
+
+        The normalization maps the slope values to a range where:
+        - 0 represents a slope at or below the minimum required slope
+        - 0.5 represents an optimal slope (midpoint between min and max)
+        - 1 represents a slope at or above the maximum allowable slope
+
+        This ensures that slopes are evaluated relative to their hydraulic requirements
+        based on pipe diameter and filling.
+        """
+        if self.dfc is None or self.dfc.empty:
+            return
+
+        # Calculate minimum required slope for each pipe based on its filling and diameter
+        self.dfc["MinRequiredSlope"] = self.dfc.apply(lambda r: min_slope(r["Filling"], r["Geom1"]), axis=1)
+
+        # Calculate maximum allowable slope for each pipe based on its diameter
+        self.dfc["MaxAllowableSlope"] = self.dfc.apply(lambda r: max_slope(r["Geom1"]), axis=1)
+
+        # Normalize slope to range [0, 1] where:
+        # 0 = at or below minimum required slope
+        # 1 = at or above maximum allowable slope
+        def normalize(row):
+            min_slope_val = row["MinRequiredSlope"]
+            max_slope_val = row["MaxAllowableSlope"]
+            actual_slope = row["SlopePerMile"]
+
+            # Handle edge cases
+            if min_slope_val >= max_slope_val:  # If min and max are too close
+                return 0.5 if actual_slope >= min_slope_val else 0.0
+
+            # Linear normalization between min and max
+            if actual_slope <= min_slope_val:
+                return 0.0
+            elif actual_slope >= max_slope_val:
+                return 1.0
+            else:
+                # Map to range [0, 1]
+                return (actual_slope - min_slope_val) / (max_slope_val - min_slope_val)
+
+        self.dfc["NSlope"] = self.dfc.apply(normalize, axis=1)
+
+    def slope_increase(self) -> None:
+        """
+        Identifies pipes that need slope increase because their current slope is too small.
+
+        This method adds a binary indicator column 'SlopeIncrease' to the dataframe where:
+        - 1 indicates the pipe needs slope increase (current slope < minimum required slope)
+        - 0 indicates the pipe does not need slope increase
+
+        The minimum required slope is calculated based on the pipe's filling height and diameter
+        using the min_slope function.
+        """
+        if self.dfc is None:
+            return
+
+        # Ensure MinRequiredSlope is calculated
+        if "MinRequiredSlope" not in self.dfc.columns:
+            self.dfc["MinRequiredSlope"] = self.dfc.apply(lambda r: min_slope(r["Filling"], r["Geom1"]), axis=1)
+
+        # Check if current slope is less than minimum required slope
+        self.dfc["IncreaseSlope"] = np.where(self.dfc["SlopePerMile"] < self.dfc["MinRequiredSlope"], 1, 0)
+
+    def slope_reduction(self) -> None:
+        """
+        Identifies pipes that need slope reduction because their current slope is too large.
+
+        This method adds a binary indicator column 'SlopeReduction' to the dataframe where:
+        - 1 indicates the pipe needs slope reduction (current slope > maximum allowable slope)
+        - 0 indicates the pipe does not need slope reduction
+
+        The maximum allowable slope is calculated based on the pipe's diameter
+        using the max_slope function.
+        """
+        if self.dfc is None or self.dfc.empty:
+            return
+
+        # Ensure MaxAllowableSlope is calculated
+        if "MaxAllowableSlope" not in self.dfc.columns:
+            self.dfc["MaxAllowableSlope"] = self.dfc.apply(lambda r: max_slope(r["Geom1"]), axis=1)
+
+        # Check if current slope is greater than maximum allowable slope
+        self.dfc["ReduceSlope"] = np.where(self.dfc["SlopePerMile"] > self.dfc["MaxAllowableSlope"], 1, 0)
+
     def conduits_subcatchment_info(self) -> None:
         """
         Maps subcatchment information to conduits based on their inlet and outlet nodes.
@@ -1184,7 +1271,6 @@ class DataManager(sw.Model):
         self.conduit_service.min_conduit_diameter()
         self.conduit_service.diameter_features()
 
-        # Nowe wywołania dla propagacji informacji o zlewniach
         self.conduit_service.conduits_subcatchment_info()
         self.conduit_service.propagate_subcatchment_info()
 
@@ -1194,6 +1280,9 @@ class DataManager(sw.Model):
         self.conduit_service.normalize_filling()
         self.conduit_service.normalize_max_q()
         self.conduit_service.normalize_ground_cover()
+        self.conduit_service.normalize_slope()
+        self.conduit_service.slope_increase()
+        self.conduit_service.slope_reduction()
 
     def recommendations(self) -> None:
         """
