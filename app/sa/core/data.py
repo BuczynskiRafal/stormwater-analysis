@@ -898,6 +898,43 @@ class ConduitFeatureEngineeringService:
             if not changes_made:
                 break
 
+    def encode_sbc_category(self) -> None:
+        """One-hot encodes the SbcCategory column for use in machine learning models.
+
+        Creates columns for all possible subcatchment categories, not just those present in the data,
+        ensuring consistent feature sets across different datasets.
+
+        This method adds one-hot encoded columns directly to the conduits dataframe (self.dfc).
+        Each column is named 'SbcCategory_{category}' and contains integer values (0 or 1).
+        """
+        if self.dfc is None or len(self.dfc) == 0:
+            return
+
+        if "SbcCategory" not in self.dfc.columns:
+            return
+
+        all_categories = [
+            "compact_urban_development",
+            "urban",
+            "loose_urban_development",
+            "wooded_area",
+            "grassy",
+            "loose_soil",
+            "steep_area",
+        ]
+
+        encoded_categories = pd.get_dummies(self.dfc["SbcCategory"], drop_first=False)
+
+        for category in all_categories:
+            col_name = f"{category}"
+            if col_name not in encoded_categories.columns:
+                encoded_categories[col_name] = 0
+            else:
+                encoded_categories[col_name] = encoded_categories[col_name].astype(int)
+
+        for col in encoded_categories.columns:
+            self.dfc[col] = encoded_categories[col]
+
 
 class SubcatchmentFeatureEngineeringService:
     def __init__(self, dfs: pd.DataFrame):
@@ -907,6 +944,46 @@ class SubcatchmentFeatureEngineeringService:
             dfs (pd.DataFrame): DataFrame containing subcatchment data.
         """
         self.dfs = dfs
+
+    def encode_category_column(self, category_column: str = "category") -> pd.DataFrame:
+        """One-hot encodes the category column for use in machine learning models.
+
+        Creates columns for all possible categories, not just those present in the data,
+        ensuring consistent feature sets across different datasets.
+
+        Args:
+            category_column (str, optional): Name of the category column to encode.
+                                            Defaults to "category".
+
+        Returns:
+            pd.DataFrame: DataFrame with one-hot encoded category columns added
+        """
+        if self.dfs is None or len(self.dfs) == 0:
+            return self.dfs
+
+        if category_column not in self.dfs.columns:
+            raise ValueError(f"Column '{category_column}' not found in dataframe")
+
+        all_categories = [
+            "compact_urban_development",
+            "urban",
+            "loose_urban_development",
+            "wooded_area",
+            "grassy",
+            "loose_soil",
+            "steep_area",
+        ]
+
+        encoded_categories = pd.get_dummies(self.dfs[category_column], prefix=None, drop_first=False)
+
+        for category in all_categories:
+            if category not in encoded_categories.columns:
+                encoded_categories[category] = 0
+            else:
+                encoded_categories[category] = encoded_categories[category].astype(int)
+
+        result_df = pd.concat([self.dfs, encoded_categories], axis=1)
+        return result_df
 
     def subcatchments_classify(self, categories: bool = True) -> None:
         """Classifies subcatchments using the classifier model (ANN).
@@ -921,11 +998,6 @@ class SubcatchmentFeatureEngineeringService:
 
         Returns:
             None: Adds 'category' column to the dataframe in-place.
-
-        Note:
-            Requires the following columns in the dataframe:
-            'Area', 'PercImperv', 'Width', 'PercSlope', 'PctZero',
-            'TotalPrecip', 'TotalRunoffMG', 'PeakRunoff', 'RunoffCoeff'
         """
         if self.dfs is None or len(self.dfs) == 0:
             return
@@ -1253,6 +1325,11 @@ class DataManager(sw.Model):
         # Subcatchments
         self.subcatchment_service.subcatchments_classify(categories=True)
 
+        # encoded_subcatchments = self.subcatchment_service.encode_category_column(category_column="category")
+        # # Update the subcatchment dataframe with the encoded version if needed
+        # if encoded_subcatchments is not None:
+        #     self.dfs = encoded_subcatchments
+
         # Nodes - zmienione z nodes_subcatchment_name() na nodes_subcatchment_info()
         self.node_service.nodes_subcatchment_info()
 
@@ -1283,6 +1360,7 @@ class DataManager(sw.Model):
         self.conduit_service.normalize_slope()
         self.conduit_service.slope_increase()
         self.conduit_service.slope_reduction()
+        self.conduit_service.encode_sbc_category()
 
     def recommendations(self) -> None:
         """
