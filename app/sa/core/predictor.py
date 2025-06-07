@@ -4,17 +4,17 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 from tensorflow.keras.models import load_model  # noqa
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
-catchment_classifier = os.path.join(current_directory, "catchemnt_classifier", "model.keras")
-recomendations_classifier = os.path.join(current_directory, "recomendations", "recomendations.keras")
+catchment_classifier_path = os.path.join(current_directory, "catchment_classifier", "model.keras")
+recommendations_classifier_path = os.path.join(current_directory, "recommendations", "recomendations.keras")
 
 try:
-    classifier = load_model(catchment_classifier)
+    classifier = load_model(catchment_classifier_path)
 except FileNotFoundError:
-    print(f"Cannot load model: {catchment_classifier}")
+    print(f"Cannot load model: {catchment_classifier_path}")
     raise FileNotFoundError("Cannot load model")
 
 try:
-    recommendation = load_model(recomendations_classifier)
+    recommendation = load_model(recommendations_classifier_path)
 except FileNotFoundError:
-    print(f"Cannot load model: {recomendations_classifier}")
+    print(f"Cannot load model: {recommendations_classifier_path}")
     raise FileNotFoundError("Cannot load model")
