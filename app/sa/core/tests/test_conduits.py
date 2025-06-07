@@ -395,23 +395,23 @@ class TestConduitsData:
         data_manager.conduit_service.calculate_ground_elevation()
 
         # Assertions for InletGroundElevation
-        assert data_manager.dfc.loc[0, "InletGroundElevation"] == pytest.approx(
-            12, abs=1e-9
-        ), "Incorrect result for row 0 (Inlet)"
-        assert data_manager.dfc.loc[1, "InletGroundElevation"] == pytest.approx(
-            24, abs=1e-9
-        ), "Incorrect result for row 1 (Inlet)"
-        assert data_manager.dfc.loc[2, "InletGroundElevation"] == pytest.approx(
-            36, abs=1e-9
-        ), "Incorrect result for row 2 (Inlet)"
+        assert data_manager.dfc.loc[0, "InletGroundElevation"] == pytest.approx(12, abs=1e-9), (
+            "Incorrect result for row 0 (Inlet)"
+        )
+        assert data_manager.dfc.loc[1, "InletGroundElevation"] == pytest.approx(24, abs=1e-9), (
+            "Incorrect result for row 1 (Inlet)"
+        )
+        assert data_manager.dfc.loc[2, "InletGroundElevation"] == pytest.approx(36, abs=1e-9), (
+            "Incorrect result for row 2 (Inlet)"
+        )
 
         # Assertions for OutletGroundElevation
-        assert data_manager.dfc.loc[0, "OutletGroundElevation"] == pytest.approx(
-            48, abs=1e-9
-        ), "Incorrect result for row 0 (Outlet)"
-        assert data_manager.dfc.loc[1, "OutletGroundElevation"] == pytest.approx(
-            60, abs=1e-9
-        ), "Incorrect result for row 1 (Outlet)"
-        assert data_manager.dfc.loc[2, "OutletGroundElevation"] == pytest.approx(
-            72, abs=1e-9
-        ), "Incorrect result for row 2 (Outlet)"
+        assert data_manager.dfc.loc[0, "OutletGroundElevation"] == pytest.approx(48, abs=1e-9), (
+            "Incorrect result for row 0 (Outlet)"
+        )
+        assert data_manager.dfc.loc[1, "OutletGroundElevation"] == pytest.approx(60, abs=1e-9), (
+            "Incorrect result for row 1 (Outlet)"
+        )
+        assert data_manager.dfc.loc[2, "OutletGroundElevation"] == pytest.approx(72, abs=1e-9), (
+            "Incorrect result for row 2 (Outlet)"
+        )

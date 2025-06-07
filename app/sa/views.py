@@ -10,8 +10,13 @@ from pyswmm import Simulation
 
 from sa.core.data import DataManager
 from sa.core.tests import TEST_FILE
-
 from .forms import SWMMModelForm
+
+
+with Simulation(TEST_FILE) as sim:
+    for step in sim:
+        pass
+
 
 logger = logging.getLogger(__name__)
 
@@ -72,33 +77,70 @@ def analysis(request):
     else:
         swmm_form = SWMMModelForm()
         with DataManager(TEST_FILE, zone=1.6) as model:
+            print(model.dfc.columns)
             dfc = model.dfc[
                 [
-                    "Name",
-                    "OutletNode",
-                    "InletNode",
-                    "InletGroundElevation",
-                    "InletNodeInvert",
-                    "InletGroundCover",
-                    "OutletGroundElevation",
-                    "OutletNodeInvert",
-                    "OutletGroundCover",
-                    "ValDepth",
-                    "ValCoverage",
-                    "Filling",
-                    "ValMaxFill",
+                    # "Name",
+                    # "MaxQ",
+                    "Geom1",
+                    # # "OutletNode",
+                    # # "InletNode",
+                    # # "InletGroundElevation",
+                    # # "InletNodeInvert",
+                    # "InletGroundCover",
+                    # # "OutletGroundElevation",
+                    # # "OutletNodeInvert",
+                    # "OutletGroundCover",
                     "MaxV",
-                    "ValMaxV",
-                    "ValMinV",
+                    "MaxV",
                     "SlopePerMile",
-                    "ValMaxSlope",
-                    "ValMinSlope",
+                    # "InletMaxDepth",
+                    # "OutletMaxDepth",
+                    "NInletDepth",
+                    "NOutletDepth",
                     "Geom1",
                     "MinDiameter",
+                    "Filling",
                     "isMinDiameter",
+                    "IncreaseDia",
+                    "ReduceDia",
+                    "InletGroundCover",
+                    "NInletGroundCover",
+                    "OutletGroundCover",
+                    "NOutletGroundCover",
+                    # "NSlope",
+                    # "IncreaseSlope",
+                    # "ReduceSlope",
+                    # 'Subcatchment', 'SbcCategory',
+                    # "recommendation",
+                    # "NRoughness",
+                    "ValDepth",
+                    "ValCoverage",
+                    "ValMaxFill",
+                    "NMaxV",
+                    "ValMaxV",
+                    "ValMinV",
+                    "ValMaxSlope",
+                    "ValMinSlope",
+                    "NFilling",
+                    "NMaxQ",
+                    "marshes",
+                    "suburban_highly_impervious",
+                    "suburban_weakly_impervious",
+                    "arable",
+                    "meadows",
+                    "forests",
+                    "rural",
+                    "urban_weakly_impervious",
+                    "urban_moderately_impervious",
+                    "urban_highly_impervious",
+                    "mountains_rocky",
+                    "mountains_vegetated",
+                    # 'Tag',
                     "recommendation",
                 ]
             ]
+            # print(model.dfn.columns)
             conduits_dict = dfc.reset_index().to_dict("records")
             nodes_dict = model.dfn.reset_index().to_dict("records")
             subcatchments_dict = model.dfs.reset_index().to_dict("records")

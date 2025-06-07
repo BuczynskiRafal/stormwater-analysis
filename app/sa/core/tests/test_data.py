@@ -267,8 +267,8 @@ def test_calc_velocity_invalid_slope(filling, diameter, slope):
     "filling, diameter, slope, expected",
     [
         (0.0, 1.0, 0.05, 0),  # Zero filling
-        (0.5, 1.0, 0.05, 2680.58),  # Normal case
-        (0.827, 1.0, 0.05, 5403.56),  # Max allowed filling
+        (0.5, 1.0, 0.05, 2.68),  # Normal case (converted from dm³/s to m³/s)
+        (0.827, 1.0, 0.05, 5.40),  # Max allowed filling (converted from dm³/s to m³/s)onverted from dm³/s to m³/s)
     ],
 )
 def test_calc_flow_valid(filling, diameter, slope, expected):
@@ -312,10 +312,10 @@ def test_calc_flow_invalid_inputs(filling, diameter, slope, expected):
     "q, diameter, slope, expected",
     [
         (0.0, 1.0, 0.05, 0.0),  # Flow equals 0
-        (1.0, 1.0, 0.05, 0.012),  # Small flow
-        (100, 1.0, 0.05, 0.095),  # Medium flow
-        (500, 1.0, 0.05, 0.207),  # Medium flow
-        (5397, 1.0, 0.05, 0.827),  # Maximum flow
+        (0.001, 1.0, 0.05, 0.012),  # Small flow (converted from dmu00b3/s to mu00b3/s)
+        (0.1, 1.0, 0.05, 0.095),  # Medium flow (converted from dmu00b3/s to mu00b3/s)
+        (0.5, 1.0, 0.05, 0.207),  # Medium flow (converted from dmu00b3/s to mu00b3/s)
+        (5.397, 1.0, 0.05, 0.827),  # Maximum flow (converted from dmu00b3/s to mu00b3/s)
     ],
 )
 def test_calc_filling_valid_values(q, diameter, slope, expected):
