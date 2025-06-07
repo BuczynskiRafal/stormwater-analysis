@@ -7,7 +7,7 @@ Submodules
 pipes.round module
 -------------------
 
-.. automodule:: stormwater_analysis.pipes.round
+.. automodule:: sa.core.round
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ pipes.round module
 pipes.valid_round module
 -------------------------------
 
-.. automodule:: stormwater_analysis.pipes.valid_round
+.. automodule:: sa.core.valid_round
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ pipes.valid_round module
 Module contents
 ----------------
 
-.. automodule:: stormwater_analysis.pipes
+.. automodule:: sa.core
    :members:
    :undoc-members:
    :show-inheritance:

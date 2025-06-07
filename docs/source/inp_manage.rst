@@ -7,7 +7,7 @@ Submodules
 inp_manage.inp module
 ----------------------
 
-.. automodule:: stormwater_analysis.inp_manage.inp
+.. automodule:: sa.core.data
    :members:
    :undoc-members:
    :show-inheritance:
@@ -16,7 +16,7 @@ inp_manage.inp module
 Module contents
 ----------------
 
-.. automodule:: stormwater_analysis.inp_manage
+.. automodule:: sa.core
    :members:
    :undoc-members:
    :show-inheritance:

@@ -7,7 +7,7 @@ Submodules
 utils.lazy_object module
 -------------------------
 
-.. automodule:: stormwater_analysis.utils.lazy_object
+.. automodule:: sa.core
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ utils.lazy_object module
 Module contents
 ----------------
 
-.. automodule:: stormwater_analysis.utils
+.. automodule:: sa.core
    :members:
    :undoc-members:
    :show-inheritance:

@@ -2,6 +2,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../../app"))
 
 project = "Stormwater analysis"
 copyright = "2023, Rafał Buczyński"

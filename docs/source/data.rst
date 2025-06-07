@@ -7,7 +7,7 @@ Submodules
 data.data module
 ----------------
 
-.. automodule:: stormwater_analysis.data.data
+.. automodule:: sa.core.data
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +15,7 @@ data.data module
 data.feature_engineering module
 -------------------------------
 
-.. automodule:: stormwater_analysis.data.feature_engineering
+.. automodule:: sa.core.data
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ data.feature_engineering module
 Module contents
 ---------------
 
-.. automodule:: stormwater_analysis.data
+.. automodule:: sa.core
    :members:
    :undoc-members:
    :show-inheritance:
