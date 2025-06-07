@@ -44,9 +44,9 @@ def test_slope_reduction_standard_diameters(diameter):
             assert service.dfc["MaxAllowableSlope"].iloc[0] == pytest.approx(max_allowable_slope, rel=1e-3)
 
             assert "ReduceSlope" in service.dfc.columns
-            assert (
-                service.dfc["ReduceSlope"].iloc[0] == expected
-            ), f"Failed for diameter={diameter}, slope={slope}, max_slope={max_allowable_slope}"
+            assert service.dfc["ReduceSlope"].iloc[0] == expected, (
+                f"Failed for diameter={diameter}, slope={slope}, max_slope={max_allowable_slope}"
+            )
     except ValueError as e:
         pytest.skip(f"Skipping test due to error: {str(e)}")
 
@@ -70,9 +70,9 @@ def test_slope_reduction_boundary_values(diameter):
             service = ConduitFeatureEngineeringService(df, None, 1.0)
             service.slope_reduction()
 
-            assert (
-                service.dfc["ReduceSlope"].iloc[0] == expected
-            ), f"Failed for diameter={diameter}, slope={slope}, max_slope={max_allowable_slope}"
+            assert service.dfc["ReduceSlope"].iloc[0] == expected, (
+                f"Failed for diameter={diameter}, slope={slope}, max_slope={max_allowable_slope}"
+            )
     except ValueError as e:
         pytest.skip(f"Skipping test due to error: {str(e)}")
 
@@ -90,9 +90,9 @@ def test_slope_reduction_negative_slopes(diameter):
             service = ConduitFeatureEngineeringService(df, None, 1.0)
             service.slope_reduction()
 
-            assert (
-                service.dfc["ReduceSlope"].iloc[0] == expected
-            ), f"Failed for diameter={diameter}, slope={slope}, max_slope={max_allowable_slope}"
+            assert service.dfc["ReduceSlope"].iloc[0] == expected, (
+                f"Failed for diameter={diameter}, slope={slope}, max_slope={max_allowable_slope}"
+            )
     except ValueError as e:
         pytest.skip(f"Skipping test due to error: {str(e)}")
 
@@ -142,9 +142,9 @@ def test_slope_reduction_multiple_pipes():
         slope_reduction = service.dfc["ReduceSlope"].iloc[i]
 
         expected = 1 if slope > max_allowable else 0
-        assert (
-            slope_reduction == expected
-        ), f"Failed for pipe {i}: diameter={diameter}, slope={slope}, max_allowable={max_allowable}"
+        assert slope_reduction == expected, (
+            f"Failed for pipe {i}: diameter={diameter}, slope={slope}, max_allowable={max_allowable}"
+        )
 
 
 def test_slope_reduction_calls_max_slope():

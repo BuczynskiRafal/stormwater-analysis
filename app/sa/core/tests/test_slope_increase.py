@@ -55,9 +55,9 @@ def test_slope_increase_standard_diameters(diameter):
         assert service.dfc["MinRequiredSlope"].iloc[0] == pytest.approx(min_required_slope, rel=1e-3)
 
         assert "IncreaseSlope" in service.dfc.columns
-        assert (
-            service.dfc["IncreaseSlope"].iloc[0] == expected
-        ), f"Failed for diameter={diameter}, filling={filling}, slope={slope}, min_slope={min_required_slope}"
+        assert service.dfc["IncreaseSlope"].iloc[0] == expected, (
+            f"Failed for diameter={diameter}, filling={filling}, slope={slope}, min_slope={min_required_slope}"
+        )
 
 
 @pytest.mark.parametrize("diameter", [0.5, 1.0])
@@ -75,9 +75,9 @@ def test_slope_increase_filling_levels(diameter, filling_ratio):
 
     service.slope_increase()
 
-    assert (
-        service.dfc["IncreaseSlope"].iloc[0] == 1
-    ), f"Failed for diameter={diameter}, filling_ratio={filling_ratio}, slope={slope}, min_slope={min_required_slope}"
+    assert service.dfc["IncreaseSlope"].iloc[0] == 1, (
+        f"Failed for diameter={diameter}, filling_ratio={filling_ratio}, slope={slope}, min_slope={min_required_slope}"
+    )
 
 
 @pytest.mark.parametrize("diameter", [0.5, 1.0])
@@ -101,9 +101,9 @@ def test_slope_increase_boundary_values(diameter):
 
         service.slope_increase()
 
-        assert (
-            service.dfc["IncreaseSlope"].iloc[0] == expected
-        ), f"Failed for diameter={diameter}, slope={slope}, min_slope={min_required_slope}"
+        assert service.dfc["IncreaseSlope"].iloc[0] == expected, (
+            f"Failed for diameter={diameter}, slope={slope}, min_slope={min_required_slope}"
+        )
 
 
 @pytest.mark.parametrize("diameter", [0.5, 1.0])
@@ -121,9 +121,9 @@ def test_slope_increase_negative_slopes(diameter):
 
         service.slope_increase()
 
-        assert (
-            service.dfc["IncreaseSlope"].iloc[0] == expected
-        ), f"Failed for diameter={diameter}, slope={slope}, min_slope={min_required_slope}"
+        assert service.dfc["IncreaseSlope"].iloc[0] == expected, (
+            f"Failed for diameter={diameter}, slope={slope}, min_slope={min_required_slope}"
+        )
 
 
 @pytest.mark.parametrize("diameter", [0.25, 0.35, 1.1, 1.8])

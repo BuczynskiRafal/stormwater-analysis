@@ -69,9 +69,9 @@ def test_normalize_slope_standard_diameters(create_test_df, diameter):
 
         assert "NSlope" in service.dfc.columns
         actual = service.dfc["NSlope"].iloc[0]
-        assert (
-            actual == pytest.approx(expected, abs=1e-6)
-        ), f"Failed for diameter={diameter}, filling={filling}, slope={slope}, min={min_required_slope}, max={max_allowable_slope}, actual={actual}"
+        assert actual == pytest.approx(expected, abs=1e-6), (
+            f"Failed for diameter={diameter}, filling={filling}, slope={slope}, min={min_required_slope}, max={max_allowable_slope}, actual={actual}"
+        )
 
 
 @pytest.mark.parametrize("diameter", [0.5, 1.0])
@@ -113,9 +113,9 @@ def test_normalize_slope_boundary_values(create_test_df, diameter):
         service.normalize_slope()
 
         actual = service.dfc["NSlope"].iloc[0]
-        assert actual == pytest.approx(
-            expected, abs=1e-6
-        ), f"Failed for diameter={diameter}, slope={slope}, expected={expected}, actual={actual}"
+        assert actual == pytest.approx(expected, abs=1e-6), (
+            f"Failed for diameter={diameter}, slope={slope}, expected={expected}, actual={actual}"
+        )
 
 
 @pytest.mark.parametrize("diameter", [0.5, 1.0])
@@ -242,9 +242,9 @@ def test_normalize_slope_multiple_pipes(create_test_df):
     service.normalize_slope()
 
     for i in range(len(df)):
-        assert service.dfc["NSlope"].iloc[i] == pytest.approx(
-            expected_results[i], abs=0.5
-        ), f"Failed for pipe {i}: diameter={diameters[i]}, filling={fillings[i]}, slope={slopes[i]}"
+        assert service.dfc["NSlope"].iloc[i] == pytest.approx(expected_results[i], abs=0.5), (
+            f"Failed for pipe {i}: diameter={diameters[i]}, filling={fillings[i]}, slope={slopes[i]}"
+        )
 
 
 def test_normalize_slope_empty_dataframe():
