@@ -8,7 +8,7 @@ import swmmio as sw
 from pyswmm import Simulation
 from swmmio.utils.functions import trace_from_node
 
-from sa.core.predictor import classifier, recommendation
+from sa.core.predictor import recommendation
 from sa.core.round import common_diameters, max_depth_value, min_slope, max_slope, max_velocity_value, max_filling
 from sa.core.valid_round import (
     validate_filling,
@@ -17,6 +17,9 @@ from sa.core.valid_round import (
     validate_min_slope,
     validate_min_velocity,
 )
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class RecommendationCategory(Enum):
@@ -28,7 +31,6 @@ class RecommendationCategory(Enum):
     SLOPE_INCREASE = "slope_increase"
     SLOPE_REDUCTION = "slope_reduction"
     DEPTH_INCREASE = "depth_increase"
-    DEPTH_REDUCTION = "depth_reduction"
     VALID = "valid"
 
 
@@ -244,7 +246,6 @@ class HydraulicCalculationsService:
 
         if filling > diameter:
             raise ValueError("Filling exceeds diameter without achieving desired flow")
-
         return filling
 
 
@@ -342,7 +343,6 @@ class ConduitFeatureEngineeringService:
             return
         if "InletGroundCover" not in self.dfc.columns:
             self.ground_cover()
-
         self.dfc["ValCoverage"] = (
             (self.dfc["InletGroundCover"] >= self.frost_zone) & (self.dfc["OutletGroundCover"] >= self.frost_zone)
         ).astype(int)
@@ -383,8 +383,8 @@ class ConduitFeatureEngineeringService:
 
         def get_max_filling_height(diameter: float) -> float:
             """Calculate maximum allowed filling height for a given diameter."""
-            filling_value = max_filling(diameter) if callable(max_filling) else max_filling
-            return filling_value * diameter if filling_value <= 1 else (filling_value / 100) * diameter
+            calculated_max_filling_height = max_filling(diameter)
+            return calculated_max_filling_height
 
         def find_larger_diameter(current_diam: float, required_filling: float) -> float:
             """Find the next larger diameter that can handle the required filling."""
@@ -393,15 +393,12 @@ class ConduitFeatureEngineeringService:
                 for larger_diam in common_diameters_sorted[idx + 1 :]:
                     max_filling_height = get_max_filling_height(larger_diam)
                     if required_filling <= max_filling_height:
-                        logger.info(f"Increasing diameter from {current_diam}m to {larger_diam}m")
                         return larger_diam
-            # If no suitable larger diameter found, keep current
             logger.warning(f"Could not find a suitable larger diameter for filling: {required_filling}")
             return current_diam
 
         def handle_excessive_filling(row: pd.Series) -> float:
             """Handle case where filling already exceeds limits."""
-            logger.info(f"ROW {row.name}: Filling already exceeds limits - need to increase diameter")
             current_diam = row["Geom1"]
             current_filling = row.get("Filling", 0.0)
             new_diam = find_larger_diameter(current_diam, current_filling)
@@ -470,9 +467,7 @@ class ConduitFeatureEngineeringService:
 
             # Step 2: Check if current filling exceeds maximum allowed
             max_allowed_filling_height = get_max_filling_height(current_diam)
-
             if current_filling > max_allowed_filling_height:
-                logger.info(f"ROW {row.name}: Current filling exceeds max allowed - need to increase diameter")
                 return find_larger_diameter(current_diam, current_filling)
 
             # Step 3: Handle very small flows
@@ -914,13 +909,18 @@ class ConduitFeatureEngineeringService:
             return
 
         all_categories = [
-            "compact_urban_development",
-            "urban",
-            "loose_urban_development",
-            "wooded_area",
-            "grassy",
-            "loose_soil",
-            "steep_area",
+            "marshes",
+            "arable",
+            "meadows",
+            "forests",
+            "rural",
+            "suburban_weakly_impervious",
+            "suburban_highly_impervious",
+            "urban_weakly_impervious",
+            "urban_moderately_impervious",
+            "urban_highly_impervious",
+            "mountains_rocky",
+            "mountains_vegetated",
         ]
 
         encoded_categories = pd.get_dummies(self.dfc["SbcCategory"], drop_first=False)
@@ -937,13 +937,15 @@ class ConduitFeatureEngineeringService:
 
 
 class SubcatchmentFeatureEngineeringService:
-    def __init__(self, dfs: pd.DataFrame):
-        """Initialize the service with subcatchment dataframe.
+    def __init__(self, dfs: pd.DataFrame, model: sw.Model):
+        """Initialize the service with subcatchment dataframe and SWMM model.
 
         Args:
             dfs (pd.DataFrame): DataFrame containing subcatchment data.
+            model (sw.Model): SWMM model instance.
         """
         self.dfs = dfs
+        self.model = model
 
     def encode_category_column(self, category_column: str = "category") -> pd.DataFrame:
         """One-hot encodes the category column for use in machine learning models.
@@ -965,13 +967,18 @@ class SubcatchmentFeatureEngineeringService:
             raise ValueError(f"Column '{category_column}' not found in dataframe")
 
         all_categories = [
-            "compact_urban_development",
-            "urban",
-            "loose_urban_development",
-            "wooded_area",
-            "grassy",
-            "loose_soil",
-            "steep_area",
+            "marshes",
+            "arable",
+            "meadows",
+            "forests",
+            "rural",
+            "suburban_weakly_impervious",
+            "suburban_highly_impervious",
+            "urban_weakly_impervious",
+            "urban_moderately_impervious",
+            "urban_highly_impervious",
+            "mountains_rocky",
+            "mountains_vegetated",
         ]
 
         encoded_categories = pd.get_dummies(self.dfs[category_column], prefix=None, drop_first=False)
@@ -986,14 +993,14 @@ class SubcatchmentFeatureEngineeringService:
         return result_df
 
     def subcatchments_classify(self, categories: bool = True) -> None:
-        """Classifies subcatchments using the classifier model (ANN).
+        """Assigns subcatchment categories from the TAGS section.
 
-        Uses a pre-trained neural network to classify subcatchments into different
-        categories based on their physical and hydrological characteristics.
+        Gets the category for each subcatchment from the TAGS section of the INP file.
+        The category is stored as a tag for each subcatchment.
 
         Args:
-            categories (bool, optional): If True, adds category labels as strings.
-                                        If False, adds numeric category codes.
+            categories (bool, optional): Not used in this implementation as we always use string categories.
+                                        Kept for backward compatibility.
                                         Defaults to True.
 
         Returns:
@@ -1002,46 +1009,27 @@ class SubcatchmentFeatureEngineeringService:
         if self.dfs is None or len(self.dfs) == 0:
             return
 
-        # Required columns for the model
-        cols = [
-            "Area",
-            "PercImperv",
-            "Width",
-            "PercSlope",
-            "PctZero",
-            "TotalPrecip",
-            "TotalRunoffMG",
-            "PeakRunoff",
-            "RunoffCoeff",
-        ]
+        # Get tags from the model
+        if not hasattr(self.model.inp, "tags") or self.model.inp.tags is None:
+            logging.warning("No TAGS section found in the model")
+            return
 
-        # Check if all required columns exist
-        missing_cols = [col for col in cols if col not in self.dfs.columns]
-        if missing_cols:
-            raise ValueError(f"Missing required columns: {missing_cols}")
+        # Filter tags for subcatchments
+        subcatch_tags = self.model.inp.tags[self.model.inp.tags.index.str.startswith("Subcatch")]
 
-        # Prepare data for prediction
-        df = self.dfs[cols].copy()
-        df["TotalPrecip"] = pd.to_numeric(df["TotalPrecip"], errors="coerce").fillna(0)
+        if subcatch_tags.empty:
+            logging.warning("No subcatchment tags found in TAGS section")
+            return
 
-        # Make predictions
-        preds = classifier.predict(df)
-        preds_cls = preds.argmax(axis=-1)
+        # Create a mapping of subcatchment names to their categories
+        category_map = dict(zip(subcatch_tags["Name"], subcatch_tags["Tag"]))
 
-        # Add category column
-        if categories:
-            labels = [
-                "compact_urban_development",
-                "urban",
-                "loose_urban_development",
-                "wooded_area",
-                "grassy",
-                "loose_soil",
-                "steep_area",
-            ]
-            self.dfs["category"] = [labels[i] for i in preds_cls]
-        else:
-            self.dfs["category"] = preds_cls
+        # Assign categories to subcatchments
+        self.dfs["category"] = self.dfs.index.map(category_map)
+
+        # Log the number of categorized subcatchments
+        categorized_count = self.dfs["category"].notna().sum()
+        logging.info(f"Assigned categories to {categorized_count} subcatchments from TAGS section")
 
 
 class NodeFeatureEngineeringService:
@@ -1100,14 +1088,13 @@ class RecommendationService:
     def __init__(self, dfc: pd.DataFrame):
         self.dfc = dfc
 
-    def recommendations(self, categories: bool = True) -> None:
+    def recommendations(self) -> None:
         """
-        Generates recommendations via 'recommendation' model and adds 'recommendation' column.
+        Generates recommendations via 'recommendations.keras' model and adds 'recommendation' column.
         """
         if self.dfc is None:
             return
-
-        cols = [
+        feature_columns = [
             "ValMaxFill",
             "ValMaxV",
             "ValMinV",
@@ -1116,23 +1103,43 @@ class RecommendationService:
             "ValDepth",
             "ValCoverage",
             "isMinDiameter",
+            "IncreaseDia",
+            "ReduceDia",
+            "IncreaseSlope",
+            "ReduceSlope",
+            "NRoughness",
+            "NMaxV",
+            "NInletDepth",
+            "NOutletDepth",
+            "NFilling",
+            "NMaxQ",
+            "NInletGroundCover",
+            "NOutletGroundCover",
+            "NSlope",
+            "marshes",
+            "suburban_highly_impervious",
+            "suburban_weakly_impervious",
+            "arable",
+            "meadows",
+            "forests",
+            "rural",
+            "urban_weakly_impervious",
+            "urban_moderately_impervious",
+            "urban_highly_impervious",
+            "mountains_rocky",
+            "mountains_vegetated",
         ]
-        for c in cols:
+
+        for c in feature_columns:
             if c not in self.dfc.columns:
                 self.dfc[c] = 0
 
-        preds = recommendation.predict(self.dfc[cols])
+        input_data = self.dfc[feature_columns]
+        preds = recommendation.predict(input_data)
         preds_cls = preds.argmax(axis=-1)
 
-        if categories:
-            labels = [
-                RecommendationCategory.DIAMETER_REDUCTION.value,
-                RecommendationCategory.VALID.value,
-                RecommendationCategory.DEPTH_INCREASE.value,
-            ]
-            self.dfc["recommendation"] = [labels[i] for i in preds_cls]
-        else:
-            self.dfc["recommendation"] = preds_cls
+        labels = [category.value for category in RecommendationCategory]
+        self.dfc["recommendation"] = [labels[i] for i in preds_cls]
 
 
 class TraceAnalysisService:
@@ -1140,10 +1147,10 @@ class TraceAnalysisService:
     Class contains the logic for analyzing flows and overflows in the SWMM network.
     """
 
-    def __init__(self, model: sw.Model):
+    def __init__(self, model: "DataManager"):
         self.model = model
 
-    def all_traces(self) -> Dict[str, List[str]]:
+    def all_traces(self):
         """
         Returns the route (trace) for each outfall in the model.
         """
@@ -1154,7 +1161,7 @@ class TraceAnalysisService:
         """
         Returns all conduits that exceeded the allowed filling (ValMaxFill == 0).
         """
-        return self.model.conduits_data.conduits[self.model.conduits_data.conduits["ValMaxFill"] == 0]
+        return self.model.dfc[self.model.dfc["ValMaxFill"] == 0]
 
     def overflowing_traces(self) -> Dict[str, Dict[str, List[str]]]:
         """
@@ -1172,7 +1179,7 @@ class TraceAnalysisService:
 
         return {
             key: trace_from_node(
-                conduits=self.model.conduits_data.conduits,
+                conduits=self.model.dfc,
                 startnode=overflow_df.loc[list(value)[-1]]["InletNode"],
                 mode="down",
                 stopnode=overflow_df.loc[list(value)[0]]["OutletNode"],
@@ -1219,7 +1226,7 @@ class DataManager(sw.Model):
 
     def __init__(self, inp_file_path: str, crs: Optional[str] = None, include_rpt: bool = True, zone: float = 1.2):
         super().__init__(inp_file_path, crs=crs, include_rpt=include_rpt)
-        self._frost_zone: float = None
+        self._frost_zone: float = zone
         self.frost_zone = zone
 
         # ---------------------------
@@ -1232,7 +1239,7 @@ class DataManager(sw.Model):
         # ---------------------------
         # Initialization of services
         # ---------------------------
-        self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs)
+        self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs, self)
         self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
         self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
         self.recommendation_service = RecommendationService(self.dfc)
@@ -1254,7 +1261,9 @@ class DataManager(sw.Model):
         Safely retrieve DataFrame from swmmio object or existing DataFrame.
         """
         df = getattr(df_source, "dataframe", df_source)
-        return df.copy() if df is not None else None
+        if df is None:
+            raise ValueError("DataFrame source is None")
+        return df.copy()
 
     def __enter__(self):
         self.calculate()
@@ -1293,8 +1302,6 @@ class DataManager(sw.Model):
             "InOffset",
             "coords",
             "Geom2",
-            "Geom3",
-            "Geom4",
             "SlopeFtPerFt",
             "Type",
         ]
@@ -1324,11 +1331,6 @@ class DataManager(sw.Model):
         """
         # Subcatchments
         self.subcatchment_service.subcatchments_classify(categories=True)
-
-        # encoded_subcatchments = self.subcatchment_service.encode_category_column(category_column="category")
-        # # Update the subcatchment dataframe with the encoded version if needed
-        # if encoded_subcatchments is not None:
-        #     self.dfs = encoded_subcatchments
 
         # Nodes - zmienione z nodes_subcatchment_name() na nodes_subcatchment_info()
         self.node_service.nodes_subcatchment_info()
@@ -1366,12 +1368,12 @@ class DataManager(sw.Model):
         """
         Generates recommendations using the 'recommendation' model.
         """
-        self.recommendation_service.recommendations(categories=True)
+        self.recommendation_service.recommendations()
 
     ############################################################################
     #      ROUTING / OVERFLOW / RECOMMENDATION METHODS
     ############################################################################
-    def all_traces(self) -> Dict[str, List[str]]:
+    def all_traces(self):
         """
         Returns all traces from the SWMM model.
         """
@@ -1412,11 +1414,8 @@ class DataManager(sw.Model):
         """
         # self.model.conduits in swmmio is an object,
         # here you can insert logical updates for slopes, etc.
-        self.model.conduits.SlopeFtPerFt = min_slope(
-            filling=self.model.conduits.Filling,
-            diameter=self.model.conduits.Geom1,
-        )
-
-    def optimize_conduit_depth(self) -> None:
-        """[Prototype] Modifies conduit depths if needed."""
+        # self.model.conduits.SlopeFtPerFt = min_slope(
+        #     filling=self.model.conduits.Filling,
+        #     diameter=self.model.conduits.Geom1,
+        # )
         pass

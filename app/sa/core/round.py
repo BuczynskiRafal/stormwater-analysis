@@ -217,6 +217,7 @@ def min_slope(filling: float, diameter: float, theta: float = 1.5, g: float = 9.
         slope (int, float): The minimum slope of the channel [‰]
     """
     if check_dimensions(filling, diameter):
+        filling = max(0.001, filling)
         return 4 * (theta / g) * ((diameter / 4) / calc_rh(filling, diameter)) * (1 / diameter)
 
 
