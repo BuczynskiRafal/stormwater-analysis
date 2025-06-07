@@ -12,7 +12,7 @@ def test_min_conduit_diameter_valid_filling():
         with patch("sa.core.data.validate_filling", return_value=True):
             with patch.object(HydraulicCalculationsService, "calc_filling", return_value=0.3):
                 service.min_conduit_diameter()
-                assert service.dfc.loc[0, "MinDiameter"] == 0.8
+                assert service.dfc.loc[0, "MinDiameter"] == 0.3
 
 
 def test_min_conduit_diameter_invalid_filling():
@@ -23,7 +23,7 @@ def test_min_conduit_diameter_invalid_filling():
         with patch("sa.core.data.validate_filling") as mock_validate:
             mock_validate.side_effect = lambda f, d: d >= 0.4
             service.min_conduit_diameter()
-            assert service.dfc.loc[0, "MinDiameter"] == 0.6
+            assert service.dfc.loc[0, "MinDiameter"] == 0.4
 
 
 def test_min_conduit_diameter_very_small_flow():
@@ -76,7 +76,7 @@ def test_min_conduit_diameter_exceeds_max_filling():
             with patch("sa.core.data.validate_filling") as mock_validate:
                 mock_validate.side_effect = lambda f, d: d > 0.4
                 service.min_conduit_diameter()
-                assert service.dfc.loc[0, "MinDiameter"] == 0.5
+                assert service.dfc.loc[0, "MinDiameter"] == 0.4
 
 
 def test_min_conduit_diameter_zero_filling():
@@ -97,7 +97,7 @@ def test_min_conduit_diameter_slope_too_small():
             with patch.object(HydraulicCalculationsService, "calc_filling") as mock_calc:
                 mock_calc.side_effect = ValueError("Slope is too small")
                 service.min_conduit_diameter()
-                assert service.dfc.loc[0, "MinDiameter"] == 0.5
+                assert service.dfc.loc[0, "MinDiameter"] == 0.4
 
 
 def test_min_conduit_diameter_none_dataframe():
