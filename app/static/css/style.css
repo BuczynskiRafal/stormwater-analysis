@@ -11,16 +11,16 @@ html, body {
     -webkit-tap-highlight-color: transparent;
 }
 body {
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol";
-    font-size:1rem;
-    font-weight:400;
-    line-height:1.5;
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.6;
     overflow-y: scroll;
-    color:#212529;
-    text-align:left;
+    color: #333;
+    text-align: left;
     display: flex;
     flex-direction: column;
-    background-color: whitesmoke;
+    background-color: #f8f9fa;
     border-bottom: 0px solid black;
     margin: 0;
 }
@@ -48,9 +48,6 @@ header {
 
 .center-text {
     text-align: center;
-}
-.scrollable-accordion-body {
-    overflow-x: auto;
 }
 
 .dropdown-menu {
@@ -200,97 +197,67 @@ label {
 }
 
 
-/* --- Global Font & Base Styles --- */
-body {
-    font-family: 'Inter', sans-serif;
-    font-size: 16px; /* Bootstrap default is 1rem */
-    line-height: 1.6; /* Slightly increased line height */
-    color: #333; /* Darker gray for better contrast */
-    background-color: #f8f9fa; /* Light background */
-}
+
 
 h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', sans-serif; /* Ensure headings use the new font */
-    font-weight: 600; /* Adjust weight as needed */
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
 }
 
-/* --- Modern Table Styles --- */
 
-.table {
-    border-collapse: separate; /* Allows border-radius */
-    border-spacing: 0;
-    margin-bottom: 1.5rem; /* More space below table */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Subtle shadow */
-    border-radius: 8px; /* Rounded corners for the table */
-    overflow: hidden; /* Ensures shadow and border-radius work */
-}
-
-/* Table header styling */
-.table thead th {
-    background-color: #f8f9fa; /* Very light gray header */
-    color: #495057; /* Darker gray text */
-    font-weight: 600; /* Bold font */
-    text-transform: uppercase; /* Uppercase text */
-    font-size: 0.85em; /* Slightly smaller header font */
-    padding: 0.9rem 1rem; /* Adjusted padding */
-    border-bottom: 2px solid #dee2e6; /* Clearer bottom border */
-    border-top: none;
-    border-left: 1px solid #f1f3f5; /* Thin vertical border */
-    vertical-align: middle;
-}
-
-/* Table cell styling */
-.table tbody td {
-    padding: 0.9rem 1rem; /* Consistent padding with header */
-    vertical-align: middle; /* Align text vertically */
-    border-top: 1px solid #f1f3f5; /* Thin horizontal border */
-    border-left: 1px solid #f1f3f5; /* Thin vertical border */
-    color: #495057; /* Cell text color */
-}
-
-/* Remove left border from the first cell in header and body rows */
-.table thead th:first-child,
-.table tbody td:first-child {
-    border-left: none;
-}
-
-/* Remove top border for the first body row (already done by border-collapse: separate and overflow: hidden on .table) */
-/* .table tbody tr:first-child td {
-    border-top: none;
-} */ /* This might not be needed anymore */
-
-
-/* Striped table styling */
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: #fbfdff; /* Very light blue tint for striping */
-}
-
-/* Hover effect styling */
-.table-hover tbody tr:hover {
-    background-color: #f5faff; /* Slightly more noticeable light blue tint for hover */
-    cursor: pointer; /* Indicate interactivity */
-}
-
-/* Optional: If you still want to remove the main outer border if .table-bordered is used */
-.table-bordered {
-     border: none;
-}
-/* The specific removal of inner borders for .table-bordered th/td is removed
-   to allow the new thin borders to show. */
-
-
-.scrollable-table-container {
-    overflow-x: auto;
-    white-space: nowrap;
-}
 
 .table {
     width: 100%;
-    max-width: 100%;
-    margin-bottom: 1rem;
-    background-color: whitesmoke;
     border-collapse: separate;
     border-spacing: 0;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
+}
+
+
+.table thead th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    padding: 0.9rem 1rem;
+    border-bottom: 2px solid #dee2e6;
+    border-top: none;
+    border-left: 1px solid #f1f3f5;
+    vertical-align: middle;
+}
+
+
+.table tbody td {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+    border-top: 1px solid #f1f3f5;
+    border-left: 1px solid #f1f3f5;
+    color: #495057;
+}
+
+
+
+
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #fbfdff;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f5faff;
+    cursor: pointer;
+}
+
+.table-bordered {
+     border: none;
+}
+
+.scrollable-table-container {
+    overflow-x: auto;
+    position: relative;
 }
 
 .table-title {
@@ -301,18 +268,6 @@ h1, h2, h3, h4, h5, h6 {
     text-decoration: none;
     font-size: 18px;
     white-space: nowrap;
-}
-
-table {
-    width: 100%;
-    margin-bottom: 1rem;
-    background-color: transparent;
-    border-collapse: collapse;
-    box-sizing: border-box;
-    text-indent: initial;
-    unicode-bidi: isolate;
-    border-spacing: 0;
-    border-color: gray;
 }
 
 th {
