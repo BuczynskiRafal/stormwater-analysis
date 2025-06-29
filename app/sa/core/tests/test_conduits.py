@@ -109,6 +109,7 @@ class TestConduitsData:
         dataframe after calling slopes_is_valid() method.
         """
         data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.normalize_slope()
         data_manager.conduit_service.slopes_is_valid()
         assert "ValMaxSlope" in data_manager.dfc.columns
         assert "ValMinSlope" in data_manager.dfc.columns
@@ -119,6 +120,7 @@ class TestConduitsData:
         calling the slopes_is_valid() method.
         """
         data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.normalize_slope()
         data_manager.conduit_service.slopes_is_valid()
         expected_values = [
             1,
@@ -131,6 +133,7 @@ class TestConduitsData:
         Test if the minimum slope validation is correct after calling the slopes_is_valid() method.
         """
         data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.normalize_slope()
         data_manager.conduit_service.slopes_is_valid()
         expected_values = [
             1,
@@ -190,7 +193,7 @@ class TestConduitsData:
         """
         Test setting frost_zone attribute with invalid values.
         """
-        invalid_values = [0.9, 1.7, -1.0, 2.0]
+        invalid_values = [0.5, 1.7, -1.0, 2.0]
 
         for value in invalid_values:
             with pytest.raises(ValueError):
@@ -211,7 +214,7 @@ class TestConduitsData:
         """
         Test setting frost_zone attribute using the setter with invalid values.
         """
-        invalid_values = [0.9, 1.7, -1.0, 2.0]
+        invalid_values = [0.5, 1.7, -1.0, 2.0]
         with DataManager(TEST_FILE) as data_manager:
             for value in invalid_values:
                 with pytest.raises(ValueError):

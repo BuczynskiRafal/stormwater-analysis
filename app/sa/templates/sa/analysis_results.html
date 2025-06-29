@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %} Analysis Results {% endblock %}
+
+{% block content %}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>Analysis Results</h2>
+                    <p class="text-muted">
+                        Session created: {{ session.created_at|date:"Y-m-d H:i" }} |
+                        Model: {{ session.swmm_model.file.name }} |
+                        Frost Zone: {{ session.swmm_model.get_zone_display_name }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'sa:analysis' %}" class="btn btn-success">New Analysis</a>
+                    <a href="{% url 'sa:history' %}" class="btn btn-secondary">View History</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="bootstrap-snippet">
+                <div class="tab-content">
+                    <div class="accordion" id="accordionMenu">
+                        {% for dataset_name, dataset in data.items %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ dataset_name|slugify }}">
+                                    <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ dataset_name|slugify }}" aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" aria-controls="collapse{{ dataset_name|slugify }}">
+                                        <strong>{{ dataset_name }} ({{ dataset|length }} items)</strong>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ dataset_name|slugify }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" aria-labelledby="heading{{ dataset_name|slugify }}">
+                                    <div class="accordion-body scrollable-accordion-body">
+                                        {% if dataset %}
+                                            <div class="scrollable-table-container">
+                                                <table class="table table-hover data-table">
+                                                    <thead>
+                                                        <tr>
+                                                            {% for key in dataset.0.keys %}
+                                                            <th class="center-text">{{ key }}</th>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for item in dataset %}
+                                                        <tr>
+                                                            {% for value in item.values %}
+                                                            <td class="center-text">
+                                                                {% if value|floatformat %}
+                                                                    {{ value|floatformat:3 }}
+                                                                {% else %}
+                                                                    {{ value }}
+                                                                {% endif %}
+                                                            </td>
+                                                            {% endfor %}
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        {% else %}
+                                            <p class="text-muted">No data available for {{ dataset_name }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Analysis Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h6>Conduits</h6>
+                                <h4 class="text-primary">{{ data.0|length|default:0 }}</h4>
+                                <small class="text-muted">Total analyzed</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h6>Nodes</h6>
+                                <h4 class="text-info">{{ data.1|length|default:0 }}</h4>
+                                <small class="text-muted">Total analyzed</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h6>Subcatchments</h6>
+                                <h4 class="text-success">{{ data.2|length|default:0 }}</h4>
+                                <small class="text-muted">Total analyzed</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

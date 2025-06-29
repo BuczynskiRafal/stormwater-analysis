@@ -1,6 +1,174 @@
 {% extends "base.html" %}
 
+{% block title %} History {% endblock %}
+
 {% block content %}
-    <h2 style="text-align: center">History</h2>
-    <p>Last 10 analysis.</p>
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Analysis History</h2>
+                <a href="{% url 'sa:analysis' %}" class="btn btn-primary">New Analysis</a>
+            </div>
+            <p class="text-muted">Your past calculation sessions</p>
+        </div>
+    </div>
+
+    {% if sessions %}
+        <div class="row">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date & Time</th>
+                                <th>Model File</th>
+                                <th>Frost Zone</th>
+                                <th>Status</th>
+                                <th>Conduits</th>
+                                <th>Nodes</th>
+                                <th>Subcatchments</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in sessions %}
+                            <tr>
+                                <td>
+                                    <strong>{{ session.created_at|date:"Y-m-d H:i" }}</strong>
+                                    {% if session.updated_at != session.created_at %}
+                                        <br><small class="text-muted">Updated: {{ session.updated_at|date:"H:i" }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ session.swmm_model.file.name|truncatechars:30 }}</span>
+                                </td>
+                                <td>{{ session.swmm_model.get_zone_display_name }}</td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif session.status == 'processing' %}
+                                        <span class="badge bg-warning">Processing</span>
+                                    {% elif session.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                        <span class="badge bg-primary">{{ session.conduits.count }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                        <span class="badge bg-info">{{ session.nodes.count }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                        <span class="badge bg-success">{{ session.subcatchments.count }}</span>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                        <a href="{% url 'sa:analysis_results' session.id %}" class="btn btn-sm btn-outline-primary">
+                                            View Results
+                                        </a>
+                                    {% elif session.status == 'failed' and session.error_message %}
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                data-bs-toggle="tooltip"
+                                                title="{{ session.error_message|truncatechars:100 }}">
+                                            View Error
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted">Processing...</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mt-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Sessions</h5>
+                        <h3 class="text-primary">{{ sessions|length }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Completed</h5>
+                        <h3 class="text-success">
+                            {% for session in sessions %}
+                                {% if session.status == 'completed' %}{{ forloop.counter0|add:1 }}{% endif %}
+                            {% empty %}0{% endfor %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Failed</h5>
+                        <h3 class="text-danger">
+                            {% for session in sessions %}
+                                {% if session.status == 'failed' %}{{ forloop.counter0|add:1 }}{% endif %}
+                            {% empty %}0{% endfor %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Processing</h5>
+                        <h3 class="text-warning">
+                            {% for session in sessions %}
+                                {% if session.status == 'processing' %}{{ forloop.counter0|add:1 }}{% endif %}
+                            {% empty %}0{% endfor %}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <svg width="64" height="64" fill="currentColor" class="text-muted" viewBox="0 0 16 16">
+                            <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+                            <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/>
+                        </svg>
+                    </div>
+                    <h4>No Analysis History</h4>
+                    <p class="text-muted">You haven't performed any analyses yet.</p>
+                    <a href="{% url 'sa:analysis' %}" class="btn btn-primary">Start Your First Analysis</a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+</script>
+
 {% endblock %}
