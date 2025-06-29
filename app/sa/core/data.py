@@ -8,7 +8,7 @@ import swmmio as sw
 from pyswmm import Simulation
 from swmmio.utils.functions import trace_from_node
 
-from sa.core.predictor import recommendation
+from sa.core.predictor import recommendation, classifier
 from sa.core.round import common_diameters, max_depth_value, min_slope, max_slope, max_velocity_value, max_filling
 from sa.core.valid_round import (
     validate_filling,
@@ -297,12 +297,9 @@ class ConduitFeatureEngineeringService:
 
     def slopes_is_valid(self) -> None:
         if self.dfc is not None:
-            self.dfc["ValMaxSlope"] = self.dfc.apply(lambda r: validate_max_slope(r["SlopePerMile"], r["Geom1"]), axis=1).astype(
-                int
-            )
-            self.dfc["ValMinSlope"] = self.dfc.apply(
-                lambda r: validate_min_slope(r["SlopePerMile"], r["Filling"], r["Geom1"]), axis=1
-            ).astype(int)
+            # Use the same functions as in normalize_slope for consistency
+            self.dfc["ValMaxSlope"] = self.dfc.apply(lambda r: 1 if r["SlopePerMile"] <= r["MaxAllowableSlope"] else 0, axis=1)
+            self.dfc["ValMinSlope"] = self.dfc.apply(lambda r: 1 if r["SlopePerMile"] >= r["MinRequiredSlope"] else 0, axis=1)
 
     def max_depth(self) -> None:
         if self.dfc is not None and self.dfn is not None:
@@ -1009,27 +1006,73 @@ class SubcatchmentFeatureEngineeringService:
         if self.dfs is None or len(self.dfs) == 0:
             return
 
-        # Get tags from the model
-        if not hasattr(self.model.inp, "tags") or self.model.inp.tags is None:
-            logging.warning("No TAGS section found in the model")
-            return
+        required_cols = [
+            "PercImperv",
+            "PercSlope",
+            "N-Imperv",
+            "N-Perv",
+            "S-Imperv",
+            "S-Perv",
+            "PctZero",
+            "RunoffCoeff",
+            "TotalInfil",
+            "ImpervRunoff",
+            "TotalRunoffMG",
+            "PeakRunoff",
+            "Area",
+        ]
 
-        # Filter tags for subcatchments
-        subcatch_tags = self.model.inp.tags[self.model.inp.tags.index.str.startswith("Subcatch")]
+        df = self.dfs[required_cols].copy()
 
-        if subcatch_tags.empty:
-            logging.warning("No subcatchment tags found in TAGS section")
-            return
+        # Convert numeric columns
+        numeric_cols = ["TotalInfil", "ImpervRunoff", "TotalRunoffMG", "PeakRunoff"]
+        for col in numeric_cols:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        # Create a mapping of subcatchment names to their categories
-        category_map = dict(zip(subcatch_tags["Name"], subcatch_tags["Tag"]))
+        # Normalize by area (as done in training)
+        df["TotalInfil"] = df["TotalInfil"] / df["Area"]
+        df["ImpervRunoff"] = df["ImpervRunoff"] / df["Area"]
+        df["TotalRunoffMG"] = df["TotalRunoffMG"] / df["Area"]
+        df["PeakRunoff"] = df["PeakRunoff"] / df["Area"]
 
-        # Assign categories to subcatchments
-        self.dfs["category"] = self.dfs.index.map(category_map)
+        # Select features in the same order as training
+        feature_cols = [
+            "PercImperv",
+            "PercSlope",
+            "N-Imperv",
+            "N-Perv",
+            "S-Imperv",
+            "S-Perv",
+            "PctZero",
+            "RunoffCoeff",
+            "TotalInfil",
+            "ImpervRunoff",
+            "TotalRunoffMG",
+            "PeakRunoff",
+        ]
+        features = df[feature_cols]
 
-        # Log the number of categorized subcatchments
-        categorized_count = self.dfs["category"].notna().sum()
-        logging.info(f"Assigned categories to {categorized_count} subcatchments from TAGS section")
+        preds = classifier.predict(features)
+        preds_cls = preds.argmax(axis=-1)
+
+        if categories:
+            labels = [
+                "marshes",
+                "arable",
+                "meadows",
+                "forests",
+                "rural",
+                "suburban_weakly_impervious",
+                "suburban_highly_impervious",
+                "urban_weakly_impervious",
+                "urban_moderately_impervious",
+                "urban_highly_impervious",
+                "mountains_rocky",
+                "mountains_vegetated",
+            ]
+            self.dfs["category"] = [labels[i] for i in preds_cls]
+        else:
+            self.dfs["category"] = preds_cls
 
 
 class NodeFeatureEngineeringService:
@@ -1234,7 +1277,12 @@ class DataManager(sw.Model):
         # ---------------------------
         self.dfs = self._get_df_safe(self.subcatchments.dataframe)
         self.dfn = self._get_df_safe(self.nodes.dataframe)
-        self.dfc = self._get_df_safe(self.conduits())
+        # Fix for pandas merge error - ensure consistent column types
+        conduits_df = self.conduits()
+        if hasattr(conduits_df, "InletNode") and hasattr(conduits_df, "OutletNode"):
+            conduits_df["InletNode"] = conduits_df["InletNode"].astype(str)
+            conduits_df["OutletNode"] = conduits_df["OutletNode"].astype(str)
+        self.dfc = self._get_df_safe(conduits_df)
 
         # ---------------------------
         # Initialization of services
@@ -1252,7 +1300,7 @@ class DataManager(sw.Model):
 
     @frost_zone.setter
     def frost_zone(self, value: float) -> None:
-        if not (1.0 <= value <= 1.6):
+        if not (0.8 <= value <= 1.6):
             raise ValueError("Frost zone must be between 1.0 and 1.6 meters")
         self._frost_zone = value
 
@@ -1340,7 +1388,6 @@ class DataManager(sw.Model):
         self.conduit_service.filling_is_valid()
         self.conduit_service.velocity_is_valid()
         self.conduit_service.slope_per_mile()
-        self.conduit_service.slopes_is_valid()
         self.conduit_service.max_depth()
         self.conduit_service.calculate_max_depth()
         self.conduit_service.calculate_ground_elevation()
@@ -1360,6 +1407,7 @@ class DataManager(sw.Model):
         self.conduit_service.normalize_max_q()
         self.conduit_service.normalize_ground_cover()
         self.conduit_service.normalize_slope()
+        self.conduit_service.slopes_is_valid()
         self.conduit_service.slope_increase()
         self.conduit_service.slope_reduction()
         self.conduit_service.encode_sbc_category()
