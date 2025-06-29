@@ -152,7 +152,39 @@ models/*
 *migrations*
 app/media/*
 app/recomendtions.ipynb
+app/sa/core/catchment_classifier/*
+app/sa/core/recommendations/*
 
 .idea/
 app/staticfiles/*
 main.ipynb
+
+# Katalogi, które chcemy zachować lokalnie, ale usunąć z repozytorium
+stormwater_analysis/data/catchment_classification_model/
+stormwater_analysis/data/catchment_classification_model/dataset/
+stormwater_analysis backup
+
+# Pliki, ktu00f3re chcemy zachowau0107 lokalnie, ale usunu0105u0107 z PR
+recomendations_data.xlsx
+notatnik.ipynb
+.DS_Store
+.codellm/*
+thesaurus_ready.txt
+unique_keywords.txt
+vos.ipynb
+.vscode/settings.json
+conduits_classifier.py
+.gitignore
+conduits_generator.py
+app/sa/core/data.py
+confusion_matrices.xlsx
+nn_cm.xlsx
+feature_importance.xlsx
+.gitignore
+recomendations.xlsx
+xgb_cm.xlsx
+svm_cm.xlsx
+comparison_results.xlsx
+rf_cm.xlsx
+app/dfc.xlsx
+sensitivity_analysis_results.png

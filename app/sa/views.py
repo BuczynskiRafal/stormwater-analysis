@@ -4,16 +4,20 @@ import os
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.timezone import now
 from pyswmm import Simulation
 
 from sa.core.data import DataManager
 from sa.core.tests import TEST_FILE
 from .forms import SWMMModelForm
+from .models import CalculationSession
+from .services import CalculationPersistenceService, CalculationRetrievalService
 
+# TEST_FILE = "/Users/rafalbuczynski/Git/stormwater-analysis/models/recomendations/dataset/proba/generated/01_recomendation_template_D300_EulerExtreme120_S1_0_rural.inp"
+FILE = "/Users/rafalbuczynski/Git/stormwater-analysis/models/recomendations/wroclaw_pipes.inp"
 
-with Simulation(TEST_FILE) as sim:
+with Simulation(FILE) as sim:
     for step in sim:
         pass
 
@@ -65,82 +69,71 @@ def analysis(request):
             instance.file = new_filename
             instance.save()
 
+            # Create calculation session using frost zone from the model
+            frost_zone = instance.get_frost_zone_value()
+            session = CalculationPersistenceService.create_session(
+                user=request.user,
+                swmm_model=instance,
+                frost_zone=frost_zone
+            )
+
             try:
-                with Simulation(TEST_FILE) as sim:
-                    for _ in sim:
-                        pass
-                return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
+                # Run calculations with DataManager
+                with DataManager(file_path, zone=frost_zone) as model:
+                    # Save results to database
+                    success = CalculationPersistenceService.save_calculation_results(session, model)
+                    
+                    if success:
+                        messages.success(request, "Analysis completed successfully!")
+                        return redirect('sa:analysis_results', session_id=session.id)
+                    else:
+                        messages.error(request, "Error occurred while saving calculation results.")
+                        
             except Exception as e:
-                logger.error(e)
-                messages.error(request, "Error occurred while performing calculations: {}".format(str(e)))
+                logger.error(f"Analysis error: {e}")
+                session.status = 'failed'
+                session.error_message = str(e)
+                session.save()
+                messages.error(request, f"Error occurred while performing calculations: {str(e)}")
+            
             return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
     else:
+        # GET request - show demo data using FILE
         swmm_form = SWMMModelForm()
-        with DataManager(TEST_FILE, zone=1.6) as model:
+        with DataManager(FILE, zone=0.8) as model:
             print(model.dfc.columns)
-            dfc = model.dfc[
-                [
-                    # "Name",
-                    # "MaxQ",
-                    "Geom1",
-                    # # "OutletNode",
-                    # # "InletNode",
-                    # # "InletGroundElevation",
-                    # # "InletNodeInvert",
-                    # "InletGroundCover",
-                    # # "OutletGroundElevation",
-                    # # "OutletNodeInvert",
-                    # "OutletGroundCover",
-                    "MaxV",
-                    "MaxV",
-                    "SlopePerMile",
-                    # "InletMaxDepth",
-                    # "OutletMaxDepth",
-                    "NInletDepth",
-                    "NOutletDepth",
-                    "Geom1",
-                    "MinDiameter",
-                    "Filling",
-                    "isMinDiameter",
-                    "IncreaseDia",
-                    "ReduceDia",
-                    "InletGroundCover",
-                    "NInletGroundCover",
-                    "OutletGroundCover",
-                    "NOutletGroundCover",
-                    # "NSlope",
-                    # "IncreaseSlope",
-                    # "ReduceSlope",
-                    # 'Subcatchment', 'SbcCategory',
-                    # "recommendation",
-                    # "NRoughness",
-                    "ValDepth",
-                    "ValCoverage",
-                    "ValMaxFill",
-                    "NMaxV",
-                    "ValMaxV",
-                    "ValMinV",
-                    "ValMaxSlope",
-                    "ValMinSlope",
-                    "NFilling",
-                    "NMaxQ",
-                    "marshes",
-                    "suburban_highly_impervious",
-                    "suburban_weakly_impervious",
-                    "arable",
-                    "meadows",
-                    "forests",
-                    "rural",
-                    "urban_weakly_impervious",
-                    "urban_moderately_impervious",
-                    "urban_highly_impervious",
-                    "mountains_rocky",
-                    "mountains_vegetated",
-                    # 'Tag',
-                    "recommendation",
-                ]
+            feature_columns = [ 
+                'ValMaxFill', 'ValMaxV',
+                'ValMinV', 'ValMaxSlope', 'ValMinSlope',
+                'ValDepth', 'ValCoverage',
+                'isMinDiameter', 'IncreaseDia', 'ReduceDia',
+                "IncreaseSlope", "ReduceSlope",
+                'NRoughness',
+                'NMaxV', 'NInletDepth', 'NOutletDepth', 'NFilling', 'NMaxQ',
+                'NInletGroundCover', 'NOutletGroundCover', "NSlope", 
+                'InletNode', 'OutletNode',
+                'Subcatchment', 
+                'SbcCategory',
+                "recommendation",
+                "Geom1",
+                "MaxV",
+                "SlopePerMile",
+                "MinRequiredSlope",
+                "MaxAllowableSlope",
+                "Filling",
+                "InletGroundElevation",
+                "InletNodeInvert",
+                "InletGroundCover",
+                "InletMaxDepth",
+                "OutletGroundElevation",
+                "OutletNodeInvert",
+                "OutletGroundCover",
+                "OutletMaxDepth",
+                "MinDiameter",
             ]
-            # print(model.dfn.columns)
+            dfc = model.dfc[feature_columns]
+            # dfc.to_excel("recomendations_output.xlsx")
+            
             conduits_dict = dfc.reset_index().to_dict("records")
             nodes_dict = model.dfn.reset_index().to_dict("records")
             subcatchments_dict = model.dfs.reset_index().to_dict("records")
@@ -162,5 +155,28 @@ def analysis(request):
 
 
 @login_required(login_url="/accounts/login/")
+def analysis_results(request, session_id):
+    """Display results for a specific calculation session."""
+    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+    
+    if session.status != 'completed':
+        messages.warning(request, f"Analysis session is {session.status}.")
+        return redirect('sa:analysis')
+    
+    # Format data for template
+    data = CalculationRetrievalService.format_session_data_for_template(session)
+    
+    return render(request, "sa/analysis_results.html", {
+        "session": session,
+        "data": data
+    })
+
+
+@login_required(login_url="/accounts/login/")
 def history(request):
-    return render(request, "sa/history.html")
+    """Display user's calculation history."""
+    sessions = CalculationRetrievalService.get_user_sessions(request.user)
+    
+    return render(request, "sa/history.html", {
+        "sessions": sessions
+    })
