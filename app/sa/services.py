@@ -18,6 +18,25 @@ class CalculationPersistenceService:
     """Service for saving calculation results to the database."""
 
     @staticmethod
+    def _safe_float(value, default=0.0):
+        """
+        Safely convert value to float, handling None, NaN, and invalid values.
+        """
+        import math
+
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            if math.isnan(value) if isinstance(value, float) else False:
+                return default
+            return float(value)
+        try:
+            result = float(value)
+            return result if not math.isnan(result) else default
+        except (ValueError, TypeError):
+            return default
+
+    @staticmethod
     def create_session(user, swmm_model: SWMMModel, frost_zone: float) -> CalculationSession:
         """Create a new calculation session."""
         return CalculationSession.objects.create(user=user, swmm_model=swmm_model, frost_zone=frost_zone, status="processing")
@@ -87,7 +106,9 @@ class CalculationPersistenceService:
                     is_min_diameter=int(row.get("isMinDiameter", 0)),
                     increase_dia=int(row.get("IncreaseDia", 0)),
                     reduce_dia=int(row.get("ReduceDia", 0)),
+                    min_required_slope=float(row.get("MinRequiredSlope", 0)),
                     increase_slope=int(row.get("IncreaseSlope", 0)),
+                    max_allowable_slope=float(row.get("MaxAllowableSlope", 0)),
                     reduce_slope=int(row.get("ReduceSlope", 0)),
                     inlet_node=str(row.get("InletNode", "")),
                     outlet_node=str(row.get("OutletNode", "")),
@@ -100,6 +121,22 @@ class CalculationPersistenceService:
                     subcatchment=str(row.get("Subcatchment", "-")),
                     sbc_category=str(row.get("SbcCategory", "-")),
                     recommendation=str(row.get("recommendation", "")),
+                    # Confidence scores - handle NaN and None values
+                    confidence_pump=CalculationPersistenceService._safe_float(row.get("confidence_pump"), 0),
+                    confidence_tank=CalculationPersistenceService._safe_float(row.get("confidence_tank"), 0),
+                    confidence_seepage_boxes=CalculationPersistenceService._safe_float(row.get("confidence_seepage_boxes"), 0),
+                    confidence_diameter_increase=CalculationPersistenceService._safe_float(
+                        row.get("confidence_diameter_increase"), 0
+                    ),
+                    confidence_diameter_reduction=CalculationPersistenceService._safe_float(
+                        row.get("confidence_diameter_reduction"), 0
+                    ),
+                    confidence_slope_increase=CalculationPersistenceService._safe_float(row.get("confidence_slope_increase"), 0),
+                    confidence_slope_reduction=CalculationPersistenceService._safe_float(
+                        row.get("confidence_slope_reduction"), 0
+                    ),
+                    confidence_depth_increase=CalculationPersistenceService._safe_float(row.get("confidence_depth_increase"), 0),
+                    confidence_valid=CalculationPersistenceService._safe_float(row.get("confidence_valid"), 0),
                 )
                 conduit_objects.append(conduit_obj)
             except (ValueError, TypeError, KeyError) as e:
@@ -185,20 +222,31 @@ class CalculationRetrievalService:
         }
 
     @staticmethod
-    def get_user_sessions(user, limit: Optional[int] = None) -> list:
+    def get_user_sessions(user, limit: Optional[int] = None, status_filter: Optional[str] = None) -> list:
         """
         Get calculation sessions for a user.
 
         Args:
             user: User instance
             limit: Maximum number of sessions to return
+            status_filter: Filter by session status
 
         Returns:
             List of CalculationSession instances
         """
-        queryset = CalculationSession.objects.filter(user=user).order_by("-created_at")
+        queryset = (
+            CalculationSession.objects.filter(user=user)
+            .select_related("swmm_model")
+            .prefetch_related("conduits", "nodes", "subcatchments")
+            .order_by("-created_at")
+        )
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
         if limit:
             queryset = queryset[:limit]
+
         return list(queryset)
 
     @staticmethod

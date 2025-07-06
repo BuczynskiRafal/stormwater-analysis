@@ -1184,6 +1184,11 @@ class RecommendationService:
         labels = [category.value for category in RecommendationCategory]
         self.dfc["recommendation"] = [labels[i] for i in preds_cls]
 
+        # Add prediction confidence columns for each class
+        for i, category in enumerate(RecommendationCategory):
+            rounded_values = [round(float(val), 3) for val in preds[:, i]]
+            self.dfc[f"confidence_{category.value}"] = rounded_values
+
 
 class TraceAnalysisService:
     """
@@ -1301,7 +1306,7 @@ class DataManager(sw.Model):
     @frost_zone.setter
     def frost_zone(self, value: float) -> None:
         if not (0.8 <= value <= 1.6):
-            raise ValueError("Frost zone must be between 1.0 and 1.6 meters")
+            raise ValueError("Frost zone must be between 0.8 and 1.6 meters")
         self._frost_zone = value
 
     def _get_df_safe(self, df_source):
@@ -1332,11 +1337,17 @@ class DataManager(sw.Model):
     def _round_float_columns(self) -> None:
         """
         Rounds float columns in dfs, dfn, and dfc to 2 decimal places.
+        Excludes confidence columns which are already properly rounded.
         """
+        confidence_cols = [f"confidence_{cat.value}" for cat in RecommendationCategory]
+
         for df in [self.dfs, self.dfn, self.dfc]:
             if df is not None:
                 float_cols = df.select_dtypes(include=["float"]).columns
-                df[float_cols] = df[float_cols].round(2)
+                # Exclude confidence columns from rounding
+                cols_to_round = [col for col in float_cols if col not in confidence_cols]
+                if cols_to_round:
+                    df[cols_to_round] = df[cols_to_round].round(2)
 
     def _drop_unused(self) -> None:
         """
@@ -1371,6 +1382,32 @@ class DataManager(sw.Model):
         Runs the simulation to update model values.
         """
         self.simulation_service.run_simulation()
+
+        # Reinitialize parent sw.Model to include newly generated .rpt file
+        try:
+            super().__init__(self.inp.path, crs=self.crs, include_rpt=True)
+
+            # Update DataManager's DataFrames with new data from reinitialized model
+            new_conduits_df = self.conduits()
+            if new_conduits_df is not None and not new_conduits_df.empty:
+                self.dfc = new_conduits_df.copy()
+
+            new_nodes_df = self.nodes()
+            if new_nodes_df is not None and not new_nodes_df.empty:
+                self.dfn = new_nodes_df.copy()
+
+            new_subcatch_df = self.subcatchments()
+            if new_subcatch_df is not None and not new_subcatch_df.empty:
+                self.dfs = new_subcatch_df.copy()
+
+            # Reinitialize services with updated DataFrames
+            self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs, self)
+            self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
+            self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
+            self.recommendation_service = RecommendationService(self.dfc)
+
+        except Exception as e:
+            logging.warning(f"Could not reinitialize with report file: {e}")
 
     def feature_engineering(self) -> None:
         """
@@ -1444,26 +1481,3 @@ class DataManager(sw.Model):
         Determines which nodes require technical intervention.
         """
         return self.trace_analysis_service.place_to_change()
-
-    def generate_technical_recommendation(self) -> None:
-        """Further technical recommendations generation possible."""
-        pass
-
-    def apply_class(self) -> None:
-        """
-        Example method that can classify nodes or other elements
-        based on data in dfn/dfc/dfs.
-        """
-        pass
-
-    def optimize_conduit_slope(self) -> None:
-        """
-        [Prototype] Modifies conduit slopes, e.g., based on min_slope from sa.core.round.
-        """
-        # self.model.conduits in swmmio is an object,
-        # here you can insert logical updates for slopes, etc.
-        # self.model.conduits.SlopeFtPerFt = min_slope(
-        #     filling=self.model.conduits.Filling,
-        #     diameter=self.model.conduits.Geom1,
-        # )
-        pass
