@@ -10,7 +10,7 @@ from pyswmm import Simulation
 from sa.core.data import DataManager
 from .forms import SWMMModelForm
 from .models import CalculationSession, SWMMModel
-from .services import CalculationPersistenceService, CalculationRetrievalService
+from .services import CalculationPersistenceService, CalculationRetrievalService, NavigationService
 
 TEST_FILE = "/Users/rafalbuczynski/Git/stormwater-analysis/models/recomendations/wroclaw_pipes.inp"
 
@@ -228,6 +228,9 @@ def conduit_detail(request, session_id, conduit_name):
     # Get related subcatchment
     subcatchment = session.subcatchments.filter(subcatchment_name=conduit_data.subcatchment).first()
 
+    # Get navigation context
+    navigation = NavigationService.get_navigation_context(session, "conduit", conduit_name)
+
     context = {
         "session": session,
         "conduit": conduit_data,
@@ -235,6 +238,7 @@ def conduit_detail(request, session_id, conduit_name):
         "outlet_node": outlet_node,
         "subcatchment": subcatchment,
         "data_type": "conduit",
+        "navigation": navigation,
     }
 
     return render(request, "sa/detail.html", context)
@@ -258,11 +262,15 @@ def node_detail(request, session_id, node_name):
     # Get related conduits (where this node is inlet or outlet)
     related_conduits = session.conduits.filter(inlet_node=node_name).union(session.conduits.filter(outlet_node=node_name))
 
+    # Get navigation context
+    navigation = NavigationService.get_navigation_context(session, "node", node_name)
+
     context = {
         "session": session,
         "node": node_data,
         "related_conduits": related_conduits,
         "data_type": "node",
+        "navigation": navigation,
     }
 
     return render(request, "sa/detail.html", context)
@@ -286,11 +294,15 @@ def subcatchment_detail(request, session_id, subcatchment_name):
     # Get related conduits
     related_conduits = session.conduits.filter(subcatchment=subcatchment_name)
 
+    # Get navigation context
+    navigation = NavigationService.get_navigation_context(session, "subcatchment", subcatchment_name)
+
     context = {
         "session": session,
         "subcatchment": subcatchment_data,
         "related_conduits": related_conduits,
         "data_type": "subcatchment",
+        "navigation": navigation,
     }
 
     return render(request, "sa/detail.html", context)

@@ -111,7 +111,6 @@ html, body {
     -ms-overflow-style: scrollbar;
     -webkit-tap-highlight-color: transparent;
     color: var(--gray-800);
-    background-color: var(--gray-50);
 }
 
 /* Custom background colors for validation results - Modern Design */
@@ -132,6 +131,22 @@ html, body {
 
 .border-left-success {
     border-left: 4px solid var(--success-600) !important;
+}
+
+.border-left-warning {
+    border-left: 4px solid var(--warning-600) !important;
+}
+
+.border-left-danger {
+    border-left: 4px solid var(--danger-600) !important;
+}
+
+.border-left-info {
+    border-left: 4px solid var(--primary-500) !important;
+}
+
+.border-left-secondary {
+    border-left: 4px solid var(--gray-200) !important;
 }
 
 .bg-warning-subtle {
@@ -1128,4 +1143,140 @@ footer {
 
 .mt-4 {
     margin-top: var(--space-6) !important;
+}
+
+/* Navigation Arrows */
+.navigation-arrows {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.nav-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: auto;
+    z-index: 1001;
+}
+
+.nav-arrow-left {
+    left: 0;
+    width: 80px;
+    height: 100vh;
+    background: linear-gradient(to right, rgba(59, 130, 246, 0.1), transparent);
+}
+
+.nav-arrow-right {
+    right: 0;
+    width: 80px;
+    height: 100vh;
+    background: linear-gradient(to left, rgba(59, 130, 246, 0.1), transparent);
+}
+
+.nav-arrow:hover {
+    opacity: 1;
+}
+
+.nav-arrow .nav-link {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    background: #d5e3f5;
+    color: #2563eb;
+    border-radius: 50%;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    margin: 0 15px;
+}
+
+.nav-arrow-left .nav-link {
+    left: 0;
+}
+
+.nav-arrow-right .nav-link {
+    right: 0;
+}
+
+.nav-arrow .nav-link:hover {
+    background: #c1d7ed;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.nav-arrow .nav-icon {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.5;
+}
+
+.nav-tooltip {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--gray-900);
+    color: white;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1002;
+}
+
+.nav-arrow-left .nav-tooltip {
+    left: 70px;
+}
+
+.nav-arrow-right .nav-tooltip {
+    right: 70px;
+}
+
+.nav-arrow:hover .nav-tooltip {
+    opacity: 1;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .nav-arrow {
+        width: 60px;
+    }
+
+    .nav-arrow .nav-link {
+        width: 40px;
+        height: 40px;
+        margin: 0 10px;
+    }
+
+    .nav-arrow .nav-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    .nav-tooltip {
+        font-size: 0.75rem;
+        padding: 6px 8px;
+    }
+
+    .nav-arrow-left .nav-tooltip {
+        left: 55px;
+    }
+
+    .nav-arrow-right .nav-tooltip {
+        right: 55px;
+    }
 }
