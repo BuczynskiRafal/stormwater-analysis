@@ -52,12 +52,32 @@
                                                     <tbody>
                                                         {% for item in dataset %}
                                                         <tr>
-                                                            {% for value in item.values %}
+                                                            {% for key, value in item.items %}
                                                             <td class="center-text">
-                                                                {% if value|floatformat %}
-                                                                    {{ value|floatformat:3 }}
+                                                                {% if forloop.first %}
+                                                                    <!-- First column is clickable -->
+                                                                    {% if "Conduits" in dataset_name %}
+                                                                        <a href="{% url 'sa:conduit_detail' session.id value %}" class="text-decoration-none fw-bold">
+                                                                            {{ value }}
+                                                                        </a>
+                                                                    {% elif "Nodes" in dataset_name %}
+                                                                        <a href="{% url 'sa:node_detail' session.id value %}" class="text-decoration-none fw-bold">
+                                                                            {{ value }}
+                                                                        </a>
+                                                                    {% elif "Subcatchments" in dataset_name %}
+                                                                        <a href="{% url 'sa:subcatchment_detail' session.id value %}" class="text-decoration-none fw-bold">
+                                                                            {{ value }}
+                                                                        </a>
+                                                                    {% else %}
+                                                                        {{ value }}
+                                                                    {% endif %}
                                                                 {% else %}
-                                                                    {{ value }}
+                                                                    <!-- Other columns are not clickable -->
+                                                                    {% if value|floatformat %}
+                                                                        {{ value|floatformat:3 }}
+                                                                    {% else %}
+                                                                        {{ value }}
+                                                                    {% endif %}
                                                                 {% endif %}
                                                             </td>
                                                             {% endfor %}

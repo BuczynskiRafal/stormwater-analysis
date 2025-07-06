@@ -1,19 +1,17 @@
 import logging
 import os
+import tempfile
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils.timezone import now
 from pyswmm import Simulation
 
 from sa.core.data import DataManager
 from .forms import SWMMModelForm
-from .models import CalculationSession
-from .services import CalculationPersistenceService, CalculationRetrievalService
+from .models import CalculationSession, SWMMModel
+from .services import CalculationPersistenceService, CalculationRetrievalService, NavigationService
 
-# TEST_FILE = "/Users/rafalbuczynski/Git/stormwater-analysis/models/recomendations/dataset/proba/generated/01_recomendation_template_D300_EulerExtreme120_S1_0_rural.inp"
 TEST_FILE = "/Users/rafalbuczynski/Git/stormwater-analysis/models/recomendations/wroclaw_pipes.inp"
 
 with Simulation(TEST_FILE) as sim:
@@ -32,135 +30,121 @@ def about(request):
     return render(request, "sa/about.html")
 
 
-def unique_filename(file):
-    filename_base, filename_ext = os.path.splitext(file.name)
-    unique_sufix = now().strftime("%Y%m%d%H%M%S%f")
-    new_filename = f"{filename_base}_{unique_sufix}{filename_ext}"
-    file_path = os.path.join(settings.MEDIA_ROOT, "user_models", new_filename)
-    return file_path, new_filename
-
-
-def save_uploaded_file(file_path, uploaded_file):
+def create_temp_file(uploaded_file):
     """
-    Saves an uploaded file to disk.
+    Creates a temporary file from uploaded file.
 
     Args:
-        file_path (str): The path where the file should be saved.
         uploaded_file (UploadedFile): The uploaded file object obtained from a Django form.
+
+    Returns:
+        str: Path to the temporary file
     """
-    with open(file_path, "wb+") as destination:
-        for chunk in uploaded_file.chunks():
-            destination.write(chunk)
+    # Create a temporary file with .inp extension
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".inp")
+
+    # Write the uploaded file content to the temporary file
+    for chunk in uploaded_file.chunks():
+        temp_file.write(chunk)
+
+    temp_file.close()
+    return temp_file.name
 
 
 @login_required(login_url="/accounts/login/")
 def analysis(request):
     if request.method == "POST":
-        swmm_form = SWMMModelForm(request.POST, request.FILES)
-        if swmm_form.is_valid():
-            instance = swmm_form.save(commit=False)
-            instance.user = request.user
-            uploaded_file = request.FILES["file"]
-
-            file_path, new_filename = unique_filename(uploaded_file)
-            save_uploaded_file(file_path, uploaded_file)
-
-            instance.file = new_filename
-            instance.save()
-
-            # Create calculation session using frost zone from the model
-            frost_zone = instance.get_frost_zone_value()
-            session = CalculationPersistenceService.create_session(user=request.user, swmm_model=instance, frost_zone=frost_zone)
-
+        # Check if it's a TEST_FILE mock request
+        if request.POST.get("use_test_file") == "true":
+            # Use TEST_FILE for quick testing
             try:
-                # Run calculations with DataManager
-                with DataManager(file_path, zone=frost_zone) as model:
-                    # Save results to database
+                # Create mock SWMM model
+                mock_swmm_model = SWMMModel.objects.create(user=request.user, file="test_wroclaw_pipes.inp", zone=0.8)
+
+                # Create session
+                session = CalculationPersistenceService.create_session(
+                    user=request.user, swmm_model=mock_swmm_model, frost_zone=0.8
+                )
+
+                # Run analysis with TEST_FILE
+                with DataManager(TEST_FILE, zone=0.8) as model:
                     success = CalculationPersistenceService.save_calculation_results(session, model)
 
                     if success:
-                        messages.success(request, "Analysis completed successfully!")
-                        return redirect("sa:analysis_results", session_id=session.id)
+                        # Format data for display with clickable links
+                        data = CalculationRetrievalService.format_session_data_for_template(session)
+                        messages.success(request, "Test file analysis completed successfully!")
+                        return render(
+                            request,
+                            "sa/analysis.html",
+                            {"swmm_form": SWMMModelForm(), "data": data, "session": session, "show_results": True},
+                        )
                     else:
-                        messages.error(request, "Error occurred while saving calculation results.")
+                        messages.error(request, "Error occurred while processing test file.")
 
             except Exception as e:
-                logger.error(f"Analysis error: {e}")
-                session.status = "failed"
-                session.error_message = str(e)
-                session.save()
-                messages.error(request, f"Error occurred while performing calculations: {str(e)}")
+                logger.error(f"Test file analysis error: {e}")
+                messages.error(request, f"Error occurred while analyzing test file: {str(e)}")
 
-            return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
+        else:
+            # Regular file upload
+            swmm_form = SWMMModelForm(request.POST, request.FILES)
+            if swmm_form.is_valid():
+                instance = swmm_form.save(commit=False)
+                instance.user = request.user
+                uploaded_file = request.FILES["file"]
+
+                # Create temporary file instead of permanent storage
+                temp_file_path = create_temp_file(uploaded_file)
+
+                # Set a simple filename for the database record
+                instance.file = uploaded_file.name
+                instance.save()
+
+                # Create calculation session using frost zone from the model
+                frost_zone = instance.get_frost_zone_value()
+                session = CalculationPersistenceService.create_session(
+                    user=request.user, swmm_model=instance, frost_zone=frost_zone
+                )
+
+                try:
+                    # Run calculations with DataManager using temporary file
+                    with DataManager(temp_file_path, zone=frost_zone) as model:
+                        # Save results to database
+                        success = CalculationPersistenceService.save_calculation_results(session, model)
+
+                        if success:
+                            # Format data for display with clickable links
+                            data = CalculationRetrievalService.format_session_data_for_template(session)
+                            messages.success(request, "Analysis completed successfully!")
+                            return render(
+                                request,
+                                "sa/analysis.html",
+                                {"swmm_form": SWMMModelForm(), "data": data, "session": session, "show_results": True},
+                            )
+                        else:
+                            messages.error(request, "Error occurred while saving calculation results.")
+
+                except Exception as e:
+                    logger.error(f"Analysis error: {e}")
+                    session.status = "failed"
+                    session.error_message = str(e)
+                    session.save()
+                    messages.error(request, f"Error occurred while performing calculations: {str(e)}")
+
+                finally:
+                    # Clean up temporary file
+                    try:
+                        os.unlink(temp_file_path)
+                    except OSError:
+                        pass
+
+        return render(request, "sa/analysis.html", {"swmm_form": SWMMModelForm()})
+
     else:
-        # GET request - show demo data using TEST_FILE
+        # GET request - show only form without any data processing
         swmm_form = SWMMModelForm()
-        with DataManager(TEST_FILE, zone=0.8) as model:
-            print(model.dfc.columns)
-            feature_columns = [
-                "ValMaxFill",
-                "ValMaxV",
-                "ValMinV",
-                "ValMaxSlope",
-                "ValMinSlope",
-                "ValDepth",
-                "ValCoverage",
-                "isMinDiameter",
-                "IncreaseDia",
-                "ReduceDia",
-                "IncreaseSlope",
-                "ReduceSlope",
-                "NRoughness",
-                "NMaxV",
-                "NInletDepth",
-                "NOutletDepth",
-                "NFilling",
-                "NMaxQ",
-                "NInletGroundCover",
-                "NOutletGroundCover",
-                "NSlope",
-                "InletNode",
-                "OutletNode",
-                "Subcatchment",
-                "SbcCategory",
-                "recommendation",
-                "Geom1",
-                "MaxV",
-                "SlopePerMile",
-                "MinRequiredSlope",
-                "MaxAllowableSlope",
-                "Filling",
-                "InletGroundElevation",
-                "InletNodeInvert",
-                "InletGroundCover",
-                "InletMaxDepth",
-                "OutletGroundElevation",
-                "OutletNodeInvert",
-                "OutletGroundCover",
-                "OutletMaxDepth",
-                "MinDiameter",
-            ]
-            dfc = model.dfc[feature_columns]
-            # dfc.to_excel("recomendations_output.xlsx")
-
-            conduits_dict = dfc.reset_index().to_dict("records")
-            nodes_dict = model.dfn.reset_index().to_dict("records")
-            subcatchments_dict = model.dfs.reset_index().to_dict("records")
-
-            formatted_dataset_names = {
-                "conduits_data": "Conduits Data",
-                "nodes_data": "Nodes Data",
-                "subcatchments_data": "Subcatchments Data",
-            }
-            data = {
-                formatted_dataset_names[key]: value
-                for key, value in [
-                    ("conduits_data", conduits_dict),
-                    ("nodes_data", nodes_dict),
-                    ("subcatchments_data", subcatchments_dict),
-                ]
-            }
-            return render(request, "sa/analysis.html", {"swmm_form": swmm_form, "data": data})
+        return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
 
 
 @login_required(login_url="/accounts/login/")
@@ -180,7 +164,145 @@ def analysis_results(request, session_id):
 
 @login_required(login_url="/accounts/login/")
 def history(request):
-    """Display user's calculation history."""
+    """Display user's calculation history with detailed statistics."""
     sessions = CalculationRetrievalService.get_user_sessions(request.user)
 
-    return render(request, "sa/history.html", {"sessions": sessions})
+    # Calculate statistics
+    total_sessions = len(sessions)
+    completed_sessions = sum(1 for s in sessions if s.status == "completed")
+    failed_sessions = sum(1 for s in sessions if s.status == "failed")
+    processing_sessions = sum(1 for s in sessions if s.status == "processing")
+
+    # Calculate percentages
+    completed_percentage = round((completed_sessions * 100 / total_sessions) if total_sessions > 0 else 0)
+    failed_percentage = round((failed_sessions * 100 / total_sessions) if total_sessions > 0 else 0)
+    processing_percentage = round((processing_sessions * 100 / total_sessions) if total_sessions > 0 else 0)
+
+    # Calculate totals for completed sessions
+    total_conduits = sum(s.conduits.count() for s in sessions if s.status == "completed")
+    total_nodes = sum(s.nodes.count() for s in sessions if s.status == "completed")
+    total_subcatchments = sum(s.subcatchments.count() for s in sessions if s.status == "completed")
+
+    # Get most recent session details
+    latest_session = sessions[0] if sessions else None
+
+    context = {
+        "sessions": sessions,
+        "stats": {
+            "total_sessions": total_sessions,
+            "completed_sessions": completed_sessions,
+            "failed_sessions": failed_sessions,
+            "processing_sessions": processing_sessions,
+            "completed_percentage": completed_percentage,
+            "failed_percentage": failed_percentage,
+            "processing_percentage": processing_percentage,
+            "total_conduits": total_conduits,
+            "total_nodes": total_nodes,
+            "total_subcatchments": total_subcatchments,
+        },
+        "latest_session": latest_session,
+    }
+
+    return render(request, "sa/history.html", context)
+
+
+@login_required(login_url="/accounts/login/")
+def conduit_detail(request, session_id, conduit_name):
+    """Display detailed view for a specific conduit."""
+    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+
+    if session.status != "completed":
+        messages.warning(request, f"Analysis session is {session.status}.")
+        return redirect("sa:analysis")
+
+    # Get conduit data
+    conduit_data = session.conduits.filter(conduit_name=conduit_name).first()
+    if not conduit_data:
+        messages.error(request, f"Conduit '{conduit_name}' not found in this session.")
+        return redirect("sa:analysis_results", session_id=session_id)
+
+    # Get related nodes
+    inlet_node = session.nodes.filter(node_name=conduit_data.inlet_node).first()
+    outlet_node = session.nodes.filter(node_name=conduit_data.outlet_node).first()
+
+    # Get related subcatchment
+    subcatchment = session.subcatchments.filter(subcatchment_name=conduit_data.subcatchment).first()
+
+    # Get navigation context
+    navigation = NavigationService.get_navigation_context(session, "conduit", conduit_name)
+
+    context = {
+        "session": session,
+        "conduit": conduit_data,
+        "inlet_node": inlet_node,
+        "outlet_node": outlet_node,
+        "subcatchment": subcatchment,
+        "data_type": "conduit",
+        "navigation": navigation,
+    }
+
+    return render(request, "sa/detail.html", context)
+
+
+@login_required(login_url="/accounts/login/")
+def node_detail(request, session_id, node_name):
+    """Display detailed view for a specific node."""
+    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+
+    if session.status != "completed":
+        messages.warning(request, f"Analysis session is {session.status}.")
+        return redirect("sa:analysis")
+
+    # Get node data
+    node_data = session.nodes.filter(node_name=node_name).first()
+    if not node_data:
+        messages.error(request, f"Node '{node_name}' not found in this session.")
+        return redirect("sa:analysis_results", session_id=session_id)
+
+    # Get related conduits (where this node is inlet or outlet)
+    related_conduits = session.conduits.filter(inlet_node=node_name).union(session.conduits.filter(outlet_node=node_name))
+
+    # Get navigation context
+    navigation = NavigationService.get_navigation_context(session, "node", node_name)
+
+    context = {
+        "session": session,
+        "node": node_data,
+        "related_conduits": related_conduits,
+        "data_type": "node",
+        "navigation": navigation,
+    }
+
+    return render(request, "sa/detail.html", context)
+
+
+@login_required(login_url="/accounts/login/")
+def subcatchment_detail(request, session_id, subcatchment_name):
+    """Display detailed view for a specific subcatchment."""
+    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+
+    if session.status != "completed":
+        messages.warning(request, f"Analysis session is {session.status}.")
+        return redirect("sa:analysis")
+
+    # Get subcatchment data
+    subcatchment_data = session.subcatchments.filter(subcatchment_name=subcatchment_name).first()
+    if not subcatchment_data:
+        messages.error(request, f"Subcatchment '{subcatchment_name}' not found in this session.")
+        return redirect("sa:analysis_results", session_id=session_id)
+
+    # Get related conduits
+    related_conduits = session.conduits.filter(subcatchment=subcatchment_name)
+
+    # Get navigation context
+    navigation = NavigationService.get_navigation_context(session, "subcatchment", subcatchment_name)
+
+    context = {
+        "session": session,
+        "subcatchment": subcatchment_data,
+        "related_conduits": related_conduits,
+        "data_type": "subcatchment",
+        "navigation": navigation,
+    }
+
+    return render(request, "sa/detail.html", context)
