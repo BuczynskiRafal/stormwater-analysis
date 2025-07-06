@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                             clonedTh.style.zIndex = '1019';
                                         } else {
                                             // Other columns - apply scroll offset but maintain exact positioning
-                                            clonedTh.style.transform = `translateX(-${scrollLeft}px)`;
+                                            clonedTh.style.transform = `translateX(-${Math.round(scrollLeft)}px)`;
                                         }
 
                                         // Enable sorting by forwarding clicks to original header
@@ -324,8 +324,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                                 wrapperDiv.appendChild(fixedTable);
 
-                                // Add immediate horizontal scroll listener for this container
-                                const immediateScrollHandler = () => {
+                                // Scroll handler for drag-induced scrolling
+                                const scrollHandler = () => {
                                     const scrollLeft = container.scrollLeft;
                                     const clonedHeaders = fixedTable.querySelectorAll('thead th');
                                     clonedHeaders.forEach((clonedTh, index) => {
@@ -335,11 +335,35 @@ document.addEventListener('DOMContentLoaded', function() {
                                     });
                                 };
 
-                                // Store reference to handler for later removal
-                                container._stickyScrollHandler = immediateScrollHandler;
+                                // Wheel handler that mimics drag-to-scroll behavior exactly
+                                const wheelHandler = (e) => {
+                                    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+                                        e.preventDefault();
 
-                                // Use passive listener for better performance and immediate response
-                                container.addEventListener('scroll', immediateScrollHandler, { passive: true });
+                                        // Reduce wheel sensitivity for smoother feel (like drag multiplier)
+                                        const walk = e.deltaX * 0.1; // Much smaller steps
+                                        const maxScrollLeft = container.scrollWidth - container.clientWidth;
+                                        const newScrollLeft = Math.max(0, Math.min(maxScrollLeft, container.scrollLeft + walk));
+
+                                        container.scrollLeft = newScrollLeft;
+
+                                        // Update headers immediately, same as drag does
+                                        const clonedHeaders = fixedTable.querySelectorAll('thead th');
+                                        clonedHeaders.forEach((clonedTh, index) => {
+                                            if (index > 0) {
+                                                clonedTh.style.transform = `translateX(-${newScrollLeft}px)`;
+                                            }
+                                        });
+                                    }
+                                };
+
+                                // Store references for cleanup
+                                container._stickyScrollHandler = scrollHandler;
+                                container._wheelHandler = wheelHandler;
+
+                                // Add both listeners - scroll for drag, wheel for mouse wheel
+                                container.addEventListener('scroll', scrollHandler, { passive: true });
+                                container.addEventListener('wheel', wheelHandler, { passive: false });
                             } else {
                                 // Update wrapper position and bounds to stay within accordion
                                 const wrapperDiv = item.querySelector('.fixed-table-wrapper');
@@ -365,11 +389,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Remove fixed header clone and show original
                             const wrapperDiv = item.querySelector('.fixed-table-wrapper');
                             if (wrapperDiv) {
-                                // Remove specific scroll listener from this container
+                                // Remove unified scroll listener from this container
                                 const container = th.closest('.scrollable-table-container');
                                 if (container._stickyScrollHandler) {
                                     container.removeEventListener('scroll', container._stickyScrollHandler);
                                     container._stickyScrollHandler = null;
+                                }
+                                if (container._wheelHandler) {
+                                    container.removeEventListener('wheel', container._wheelHandler);
+                                    container._wheelHandler = null;
                                 }
                                 wrapperDiv.remove();
                             }
@@ -392,12 +420,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         wrapper.remove();
                     });
 
-                    // Clean up specific scroll listeners
+                    // Clean up unified scroll listeners
                     const containers = item.querySelectorAll('.scrollable-table-container');
                     containers.forEach(container => {
                         if (container._stickyScrollHandler) {
                             container.removeEventListener('scroll', container._stickyScrollHandler);
                             container._stickyScrollHandler = null;
+                        }
+                        if (container._wheelHandler) {
+                            container.removeEventListener('wheel', container._wheelHandler);
+                            container._wheelHandler = null;
                         }
                     });
 
@@ -420,12 +452,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     wrapper.remove();
                 });
 
-                // Clean up specific scroll listeners
+                // Clean up unified scroll listeners
                 const containers = item.querySelectorAll('.scrollable-table-container');
                 containers.forEach(container => {
                     if (container._stickyScrollHandler) {
                         container.removeEventListener('scroll', container._stickyScrollHandler);
                         container._stickyScrollHandler = null;
+                    }
+                    if (container._wheelHandler) {
+                        container.removeEventListener('wheel', container._wheelHandler);
+                        container._wheelHandler = null;
                     }
                 });
 

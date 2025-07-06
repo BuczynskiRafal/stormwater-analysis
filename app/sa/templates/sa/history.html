@@ -15,10 +15,39 @@
     </div>
 
     {% if sessions %}
+        <!-- Filter Controls -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                        </svg>
+                    </span>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search sessions...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="statusFilter">
+                    <option value="">All Statuses</option>
+                    <option value="completed">Completed</option>
+                    <option value="processing">Processing</option>
+                    <option value="failed">Failed</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" id="sortOrder">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="filename">File Name</option>
+                </select>
+            </div>
+        </div>
+
         <div class="row">
             <div class="col-12">
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" id="sessionsTable">
                         <thead>
                             <tr>
                                 <th>Date & Time</th>
@@ -100,50 +129,126 @@
         <!-- Statistics Cards -->
         <div class="row mt-4">
             <div class="col-md-3">
-                <div class="card text-center">
+                <div class="card text-center border-primary">
                     <div class="card-body">
                         <h5 class="card-title">Total Sessions</h5>
-                        <h3 class="text-primary">{{ sessions|length }}</h3>
+                        <h3 class="text-primary">{{ stats.total_sessions }}</h3>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
+                <div class="card text-center border-success">
                     <div class="card-body">
                         <h5 class="card-title">Completed</h5>
-                        <h3 class="text-success">
-                            {% for session in sessions %}
-                                {% if session.status == 'completed' %}{{ forloop.counter0|add:1 }}{% endif %}
-                            {% empty %}0{% endfor %}
-                        </h3>
+                        <h3 class="text-success">{{ stats.completed_sessions }}</h3>
+                        <small class="text-muted">
+                            {% if stats.total_sessions > 0 %}
+                                {{ stats.completed_sessions }}/{{ stats.total_sessions }} ({{ stats.completed_percentage }}%)
+                            {% endif %}
+                        </small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
+                <div class="card text-center border-danger">
                     <div class="card-body">
                         <h5 class="card-title">Failed</h5>
-                        <h3 class="text-danger">
-                            {% for session in sessions %}
-                                {% if session.status == 'failed' %}{{ forloop.counter0|add:1 }}{% endif %}
-                            {% empty %}0{% endfor %}
-                        </h3>
+                        <h3 class="text-danger">{{ stats.failed_sessions }}</h3>
+                        <small class="text-muted">
+                            {% if stats.total_sessions > 0 %}
+                                {{ stats.failed_sessions }}/{{ stats.total_sessions }} ({{ stats.failed_percentage }}%)
+                            {% endif %}
+                        </small>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card text-center">
+                <div class="card text-center border-warning">
                     <div class="card-body">
                         <h5 class="card-title">Processing</h5>
-                        <h3 class="text-warning">
-                            {% for session in sessions %}
-                                {% if session.status == 'processing' %}{{ forloop.counter0|add:1 }}{% endif %}
-                            {% empty %}0{% endfor %}
-                        </h3>
+                        <h3 class="text-warning">{{ stats.processing_sessions }}</h3>
+                        <small class="text-muted">
+                            {% if stats.total_sessions > 0 %}
+                                {{ stats.processing_sessions }}/{{ stats.total_sessions }} ({{ stats.processing_percentage }}%)
+                            {% endif %}
+                        </small>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Analysis Summary Cards -->
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Total Conduits Analyzed</h6>
+                        <h4 class="text-info">{{ stats.total_conduits|default:0 }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Total Nodes Analyzed</h6>
+                        <h4 class="text-info">{{ stats.total_nodes|default:0 }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">Total Subcatchments Analyzed</h6>
+                        <h4 class="text-info">{{ stats.total_subcatchments|default:0 }}</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if latest_session %}
+        <!-- Latest Session Info -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Latest Analysis Session</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Date:</strong><br>
+                                {{ latest_session.created_at|date:"Y-m-d H:i" }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Model File:</strong><br>
+                                {{ latest_session.swmm_model.file.name|truncatechars:25 }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Status:</strong><br>
+                                {% if latest_session.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                {% elif latest_session.status == 'processing' %}
+                                    <span class="badge bg-warning">Processing</span>
+                                {% elif latest_session.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Action:</strong><br>
+                                {% if latest_session.status == 'completed' %}
+                                    <a href="{% url 'sa:analysis_results' latest_session.id %}" class="btn btn-sm btn-primary">
+                                        View Results
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">{{ latest_session.status|capfirst }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     {% else %}
         <div class="row">
             <div class="col-12">
@@ -169,6 +274,72 @@
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     })
+
+    // Filtering and sorting functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const sortOrder = document.getElementById('sortOrder');
+        const table = document.getElementById('sessionsTable');
+        const tbody = table.querySelector('tbody');
+
+        // Store original rows
+        const originalRows = Array.from(tbody.querySelectorAll('tr'));
+
+        function filterAndSort() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusValue = statusFilter.value.toLowerCase();
+            const sortValue = sortOrder.value;
+
+            // Filter rows
+            let filteredRows = originalRows.filter(row => {
+                const filename = row.cells[1].textContent.toLowerCase();
+                const status = row.querySelector('.badge').textContent.toLowerCase();
+                const date = row.cells[0].textContent.toLowerCase();
+
+                const matchesSearch = !searchTerm ||
+                    filename.includes(searchTerm) ||
+                    date.includes(searchTerm);
+
+                const matchesStatus = !statusValue || status.includes(statusValue);
+
+                return matchesSearch && matchesStatus;
+            });
+
+            // Sort rows
+            filteredRows.sort((a, b) => {
+                switch(sortValue) {
+                    case 'oldest':
+                        return new Date(a.cells[0].textContent) - new Date(b.cells[0].textContent);
+                    case 'filename':
+                        return a.cells[1].textContent.localeCompare(b.cells[1].textContent);
+                    case 'newest':
+                    default:
+                        return new Date(b.cells[0].textContent) - new Date(a.cells[0].textContent);
+                }
+            });
+
+            // Clear and repopulate tbody
+            tbody.innerHTML = '';
+            filteredRows.forEach(row => tbody.appendChild(row));
+
+            // Show "no results" message if needed
+            if (filteredRows.length === 0) {
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.innerHTML = `
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <em>No sessions match your current filters</em>
+                    </td>
+                `;
+                tbody.appendChild(noResultsRow);
+            }
+        }
+
+        // Add event listeners
+        searchInput.addEventListener('input', filterAndSort);
+        statusFilter.addEventListener('change', filterAndSort);
+        sortOrder.addEventListener('change', filterAndSort);
+    });
 </script>
 
 {% endblock %}

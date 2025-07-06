@@ -18,6 +18,25 @@ class CalculationPersistenceService:
     """Service for saving calculation results to the database."""
 
     @staticmethod
+    def _safe_float(value, default=0.0):
+        """
+        Safely convert value to float, handling None, NaN, and invalid values.
+        """
+        import math
+
+        if value is None:
+            return default
+        if isinstance(value, (int, float)):
+            if math.isnan(value) if isinstance(value, float) else False:
+                return default
+            return float(value)
+        try:
+            result = float(value)
+            return result if not math.isnan(result) else default
+        except (ValueError, TypeError):
+            return default
+
+    @staticmethod
     def create_session(user, swmm_model: SWMMModel, frost_zone: float) -> CalculationSession:
         """Create a new calculation session."""
         return CalculationSession.objects.create(user=user, swmm_model=swmm_model, frost_zone=frost_zone, status="processing")
@@ -87,7 +106,9 @@ class CalculationPersistenceService:
                     is_min_diameter=int(row.get("isMinDiameter", 0)),
                     increase_dia=int(row.get("IncreaseDia", 0)),
                     reduce_dia=int(row.get("ReduceDia", 0)),
+                    min_required_slope=float(row.get("MinRequiredSlope", 0)),
                     increase_slope=int(row.get("IncreaseSlope", 0)),
+                    max_allowable_slope=float(row.get("MaxAllowableSlope", 0)),
                     reduce_slope=int(row.get("ReduceSlope", 0)),
                     inlet_node=str(row.get("InletNode", "")),
                     outlet_node=str(row.get("OutletNode", "")),
@@ -100,6 +121,22 @@ class CalculationPersistenceService:
                     subcatchment=str(row.get("Subcatchment", "-")),
                     sbc_category=str(row.get("SbcCategory", "-")),
                     recommendation=str(row.get("recommendation", "")),
+                    # Confidence scores - handle NaN and None values
+                    confidence_pump=CalculationPersistenceService._safe_float(row.get("confidence_pump"), 0),
+                    confidence_tank=CalculationPersistenceService._safe_float(row.get("confidence_tank"), 0),
+                    confidence_seepage_boxes=CalculationPersistenceService._safe_float(row.get("confidence_seepage_boxes"), 0),
+                    confidence_diameter_increase=CalculationPersistenceService._safe_float(
+                        row.get("confidence_diameter_increase"), 0
+                    ),
+                    confidence_diameter_reduction=CalculationPersistenceService._safe_float(
+                        row.get("confidence_diameter_reduction"), 0
+                    ),
+                    confidence_slope_increase=CalculationPersistenceService._safe_float(row.get("confidence_slope_increase"), 0),
+                    confidence_slope_reduction=CalculationPersistenceService._safe_float(
+                        row.get("confidence_slope_reduction"), 0
+                    ),
+                    confidence_depth_increase=CalculationPersistenceService._safe_float(row.get("confidence_depth_increase"), 0),
+                    confidence_valid=CalculationPersistenceService._safe_float(row.get("confidence_valid"), 0),
                 )
                 conduit_objects.append(conduit_obj)
             except (ValueError, TypeError, KeyError) as e:
@@ -185,20 +222,31 @@ class CalculationRetrievalService:
         }
 
     @staticmethod
-    def get_user_sessions(user, limit: Optional[int] = None) -> list:
+    def get_user_sessions(user, limit: Optional[int] = None, status_filter: Optional[str] = None) -> list:
         """
         Get calculation sessions for a user.
 
         Args:
             user: User instance
             limit: Maximum number of sessions to return
+            status_filter: Filter by session status
 
         Returns:
             List of CalculationSession instances
         """
-        queryset = CalculationSession.objects.filter(user=user).order_by("-created_at")
+        queryset = (
+            CalculationSession.objects.filter(user=user)
+            .select_related("swmm_model")
+            .prefetch_related("conduits", "nodes", "subcatchments")
+            .order_by("-created_at")
+        )
+
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
         if limit:
             queryset = queryset[:limit]
+
         return list(queryset)
 
     @staticmethod
@@ -259,3 +307,95 @@ class CalculationRetrievalService:
             "Nodes Data": nodes_data,
             "Subcatchments Data": subcatchments_data,
         }
+
+
+class NavigationService:
+    """Service for handling navigation between elements."""
+
+    @staticmethod
+    def get_navigation_context(session: CalculationSession, element_type: str, element_name: str) -> Dict[str, Any]:
+        """
+        Get navigation context for an element (previous/next URLs).
+
+        Args:
+            session: CalculationSession instance
+            element_type: Type of element ('conduit', 'node', 'subcatchment')
+            element_name: Name of the current element
+
+        Returns:
+            Dict containing previous and next element names and URLs
+        """
+        if element_type == "conduit":
+            return NavigationService._get_conduit_navigation(session, element_name)
+        elif element_type == "node":
+            return NavigationService._get_node_navigation(session, element_name)
+        elif element_type == "subcatchment":
+            return NavigationService._get_subcatchment_navigation(session, element_name)
+        else:
+            return {"previous": None, "next": None}
+
+    @staticmethod
+    def _get_conduit_navigation(session: CalculationSession, current_name: str) -> Dict[str, Any]:
+        """Get navigation context for conduits."""
+        conduits = list(session.conduits.all().order_by("id"))
+        conduit_names = [c.conduit_name for c in conduits]
+
+        try:
+            current_index = conduit_names.index(current_name)
+            previous_name = conduit_names[current_index - 1] if current_index > 0 else None
+            next_name = conduit_names[current_index + 1] if current_index < len(conduit_names) - 1 else None
+
+            return {
+                "previous": {
+                    "name": previous_name,
+                    "url": f"/analysis/results/{session.id}/conduit/{previous_name}/" if previous_name else None,
+                },
+                "next": {"name": next_name, "url": f"/analysis/results/{session.id}/conduit/{next_name}/" if next_name else None},
+            }
+        except ValueError:
+            return {"previous": None, "next": None}
+
+    @staticmethod
+    def _get_node_navigation(session: CalculationSession, current_name: str) -> Dict[str, Any]:
+        """Get navigation context for nodes."""
+        nodes = list(session.nodes.all().order_by("id"))
+        node_names = [n.node_name for n in nodes]
+
+        try:
+            current_index = node_names.index(current_name)
+            previous_name = node_names[current_index - 1] if current_index > 0 else None
+            next_name = node_names[current_index + 1] if current_index < len(node_names) - 1 else None
+
+            return {
+                "previous": {
+                    "name": previous_name,
+                    "url": f"/analysis/results/{session.id}/node/{previous_name}/" if previous_name else None,
+                },
+                "next": {"name": next_name, "url": f"/analysis/results/{session.id}/node/{next_name}/" if next_name else None},
+            }
+        except ValueError:
+            return {"previous": None, "next": None}
+
+    @staticmethod
+    def _get_subcatchment_navigation(session: CalculationSession, current_name: str) -> Dict[str, Any]:
+        """Get navigation context for subcatchments."""
+        subcatchments = list(session.subcatchments.all().order_by("id"))
+        subcatchment_names = [s.subcatchment_name for s in subcatchments]
+
+        try:
+            current_index = subcatchment_names.index(current_name)
+            previous_name = subcatchment_names[current_index - 1] if current_index > 0 else None
+            next_name = subcatchment_names[current_index + 1] if current_index < len(subcatchment_names) - 1 else None
+
+            return {
+                "previous": {
+                    "name": previous_name,
+                    "url": f"/analysis/results/{session.id}/subcatchment/{previous_name}/" if previous_name else None,
+                },
+                "next": {
+                    "name": next_name,
+                    "url": f"/analysis/results/{session.id}/subcatchment/{next_name}/" if next_name else None,
+                },
+            }
+        except ValueError:
+            return {"previous": None, "next": None}

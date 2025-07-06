@@ -49,7 +49,7 @@ class CalculationSession(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M')} - {self.status}"
+        return f"{self.user.email} - {self.created_at.strftime('%Y-%m-%d %H:%M')} - {self.status}"
 
 
 class ConduitData(models.Model):
@@ -80,7 +80,9 @@ class ConduitData(models.Model):
     reduce_dia = models.IntegerField(help_text="Can reduce diameter (0/1)")
 
     # Slope analysis
+    min_required_slope = models.FloatField(help_text="Minimum reqiured slope")
     increase_slope = models.IntegerField(help_text="Should increase slope (0/1)")
+    max_allowable_slope = models.FloatField(help_text="Minimum reqiured slope")
     reduce_slope = models.IntegerField(help_text="Should reduce slope (0/1)")
 
     # Node information
@@ -100,6 +102,29 @@ class ConduitData(models.Model):
     # Recommendation
     recommendation = models.CharField(max_length=50, help_text="AI-generated recommendation")
 
+    # Confidence scores from neural network model
+    confidence_pump = models.FloatField(help_text="Confidence for pump recommendation [0-1]", null=True, blank=True)
+    confidence_tank = models.FloatField(help_text="Confidence for tank recommendation [0-1]", null=True, blank=True)
+    confidence_seepage_boxes = models.FloatField(
+        help_text="Confidence for seepage boxes recommendation [0-1]", null=True, blank=True
+    )
+    confidence_diameter_increase = models.FloatField(
+        help_text="Confidence for diameter increase recommendation [0-1]", null=True, blank=True
+    )
+    confidence_diameter_reduction = models.FloatField(
+        help_text="Confidence for diameter reduction recommendation [0-1]", null=True, blank=True
+    )
+    confidence_slope_increase = models.FloatField(
+        help_text="Confidence for slope increase recommendation [0-1]", null=True, blank=True
+    )
+    confidence_slope_reduction = models.FloatField(
+        help_text="Confidence for slope reduction recommendation [0-1]", null=True, blank=True
+    )
+    confidence_depth_increase = models.FloatField(
+        help_text="Confidence for depth increase recommendation [0-1]", null=True, blank=True
+    )
+    confidence_valid = models.FloatField(help_text="Confidence for valid (no changes needed) [0-1]", null=True, blank=True)
+
     class Meta:
         unique_together = ["session", "conduit_name"]
         indexes = [
@@ -116,7 +141,7 @@ class NodeData(models.Model):
     node_name = models.CharField(max_length=100, db_index=True)
 
     # Node properties
-    max_depth = models.FloatField(help_text="Maximum depth [m]")
+    max_depth = models.FloatField(help_text="Maximum depth [m]", null=True, blank=True)
     invert_elevation = models.FloatField(help_text="Invert elevation [m]", null=True, blank=True)
 
     # Subcatchment information

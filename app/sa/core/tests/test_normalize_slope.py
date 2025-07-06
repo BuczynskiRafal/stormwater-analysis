@@ -249,11 +249,7 @@ def test_normalize_slope_multiple_pipes(create_test_df):
 
 def test_normalize_slope_empty_dataframe():
     df = pd.DataFrame(columns=["Geom1", "SlopePerMile", "Filling"])
-    print("1" * 50)
     service = ConduitFeatureEngineeringService(df, None, 1.0)
-    print("2" * 50)
-
     service.normalize_slope()
-    print("3" * 50)
 
     assert "NSlope" not in service.dfc.columns
