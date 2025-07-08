@@ -5,6 +5,8 @@ import tempfile
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from pyswmm import Simulation
 
 from sa.core.data import DataManager
@@ -260,7 +262,13 @@ def node_detail(request, session_id, node_name):
         return redirect("sa:analysis_results", session_id=session_id)
 
     # Get related conduits (where this node is inlet or outlet)
-    related_conduits = session.conduits.filter(inlet_node=node_name).union(session.conduits.filter(outlet_node=node_name))
+    from django.db.models import Q
+
+    related_conduits = session.conduits.filter(Q(inlet_node=node_name) | Q(outlet_node=node_name))
+
+    # Get related subcatchments (through connected conduits)
+    subcatchment_names = related_conduits.values_list("subcatchment", flat=True).distinct()
+    related_subcatchments = session.subcatchments.filter(subcatchment_name__in=subcatchment_names)
 
     # Get navigation context
     navigation = NavigationService.get_navigation_context(session, "node", node_name)
@@ -269,6 +277,7 @@ def node_detail(request, session_id, node_name):
         "session": session,
         "node": node_data,
         "related_conduits": related_conduits,
+        "related_subcatchments": related_subcatchments,
         "data_type": "node",
         "navigation": navigation,
     }
@@ -294,6 +303,12 @@ def subcatchment_detail(request, session_id, subcatchment_name):
     # Get related conduits
     related_conduits = session.conduits.filter(subcatchment=subcatchment_name)
 
+    # Get related nodes (through connected conduits - inlet and outlet nodes)
+    inlet_node_names = related_conduits.values_list("inlet_node", flat=True)
+    outlet_node_names = related_conduits.values_list("outlet_node", flat=True)
+    all_node_names = set(inlet_node_names) | set(outlet_node_names)
+    related_nodes = session.nodes.filter(node_name__in=all_node_names)
+
     # Get navigation context
     navigation = NavigationService.get_navigation_context(session, "subcatchment", subcatchment_name)
 
@@ -301,8 +316,27 @@ def subcatchment_detail(request, session_id, subcatchment_name):
         "session": session,
         "subcatchment": subcatchment_data,
         "related_conduits": related_conduits,
+        "related_nodes": related_nodes,
         "data_type": "subcatchment",
         "navigation": navigation,
     }
 
     return render(request, "sa/detail.html", context)
+
+
+@login_required(login_url="/accounts/login/")
+@require_POST
+def delete_session(request, session_id):
+    """Delete a calculation session and all its related data."""
+    logger.info(f"Delete session view reached! session_id: {session_id}, user: {request.user}")
+
+    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+
+    try:
+        session_name = f"Session {session.id}"
+        session.delete()
+        logger.info(f"Successfully deleted session {session_id}")
+        return JsonResponse({"success": True, "message": f"{session_name} deleted successfully."})
+    except Exception as e:
+        logger.error(f"Error deleting session {session_id}: {str(e)}")
+        return JsonResponse({"success": False, "message": "An error occurred while deleting the session."}, status=500)

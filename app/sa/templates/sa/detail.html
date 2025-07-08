@@ -136,22 +136,23 @@
 
                                 {% if data_type == "node" %}
                                     <tr><td><strong>Name</strong></td><td>{{ node.node_name }}</td></tr>
-                                    <tr><td>Elevation</td><td>{{ node.elevation|floatformat:2 }} m</td></tr>
-                                    <tr><td>Max Depth</td><td>{{ node.max_depth|floatformat:2 }} m</td></tr>
-                                    <tr><td>Init Depth</td><td>{{ node.init_depth|floatformat:2 }} m</td></tr>
-                                    <tr><td>Surcharge Depth</td><td>{{ node.surcharge_depth|floatformat:2 }} m</td></tr>
-                                    <tr><td>Ponded Area</td><td>{{ node.ponded_area|floatformat:2 }} m²</td></tr>
+                                    <tr><td>Max Depth</td><td>{% if node.max_depth %}{{ node.max_depth|floatformat:2 }} m{% else %}N/A{% endif %}</td></tr>
+                                    <tr><td>Invert Elevation</td><td>{% if node.invert_elevation %}{{ node.invert_elevation|floatformat:2 }} m{% else %}N/A{% endif %}</td></tr>
+                                    <tr><td>Subcatchment</td><td>{{ node.subcatchment }}</td></tr>
+                                    <tr><td>Subcatchment Category</td><td>{{ node.sbc_category }}</td></tr>
+                                    <tr><td>Session ID</td><td>{{ node.session.id }}</td></tr>
                                 {% endif %}
 
                                 {% if data_type == "subcatchment" %}
                                     <tr><td><strong>Name</strong></td><td>{{ subcatchment.subcatchment_name }}</td></tr>
-                                    <tr><td>Rain Gauge</td><td>{{ subcatchment.rain_gauge }}</td></tr>
                                     <tr><td>Outlet</td><td>{{ subcatchment.outlet }}</td></tr>
                                     <tr><td>Area</td><td>{{ subcatchment.area|floatformat:2 }} ha</td></tr>
-                                    <tr><td>Imperviousness</td><td>{{ subcatchment.imperviousness|floatformat:1 }}%</td></tr>
-                                    <tr><td>Width</td><td>{{ subcatchment.width|floatformat:2 }} m</td></tr>
-                                    <tr><td>Slope</td><td>{{ subcatchment.slope|floatformat:3 }}%</td></tr>
-                                    <tr><td>Curve Number</td><td>{{ subcatchment.curve_number|floatformat:1 }}</td></tr>
+                                    <tr><td>Imperviousness</td><td>{{ subcatchment.perc_imperv|floatformat:1 }}%</td></tr>
+                                    <tr><td>Slope</td><td>{{ subcatchment.perc_slope|floatformat:3 }}%</td></tr>
+                                    <tr><td>Category</td><td>{{ subcatchment.category }}</td></tr>
+                                    {% if subcatchment.total_runoff_mg %}<tr><td>Total Runoff</td><td>{{ subcatchment.total_runoff_mg|floatformat:2 }} MG</td></tr>{% endif %}
+                                    {% if subcatchment.peak_runoff %}<tr><td>Peak Runoff</td><td>{{ subcatchment.peak_runoff|floatformat:2 }} CFS</td></tr>{% endif %}
+                                    {% if subcatchment.runoff_coeff %}<tr><td>Runoff Coefficient</td><td>{{ subcatchment.runoff_coeff|floatformat:3 }}</td></tr>{% endif %}
                                 {% endif %}
                             </tbody>
                         </table>
@@ -456,7 +457,7 @@
                 <div class="card mb-4">
                     <div class="card-header">
                         <h6 class="mb-0">
-                            <i class="fas fa-brain me-2"></i>
+                            <i class="fas fa-chart-bar me-2"></i>
                             Neural Network Prediction Distribution
                         </h6>
                     </div>
@@ -631,10 +632,10 @@
 
             {% if data_type == "node" %}
                 <!-- Connected Conduits -->
-                <div class="card">
+                <div class="card mb-3">
                     <div class="card-header">
                         <h6 class="mb-0">
-                            <i class="fas fa-road me-2"></i>
+                            <i class="fas fa-project-diagram me-2"></i>
                             Connected Conduits
                         </h6>
                     </div>
@@ -643,10 +644,7 @@
                             {% for conduit in related_conduits %}
                             <div class="mb-2">
                                 <a href="{% url 'sa:conduit_detail' session.id conduit.conduit_name %}" class="btn btn-sm btn-outline-primary w-100">
-                                    <i class="fas fa-road me-1"></i>{{ conduit.conduit_name }}
-                                    {% if conduit.recommendation %}
-                                    <span class="badge bg-warning text-dark ms-1">Rec</span>
-                                    {% endif %}
+                                    <i class="fas fa-stream me-1"></i>{{ conduit.conduit_name }}
                                 </a>
                             </div>
                             {% endfor %}
@@ -655,15 +653,38 @@
                         {% endif %}
                     </div>
                 </div>
+
+                <!-- Connected Subcatchments -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-project-diagram me-2"></i>
+                            Connected Elements - Subcatchments
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if related_subcatchments %}
+                            {% for subcatchment in related_subcatchments %}
+                            <div class="mb-2">
+                                <a href="{% url 'sa:subcatchment_detail' session.id subcatchment.subcatchment_name %}" class="btn btn-sm btn-outline-success w-100">
+                                    <i class="fas fa-map me-1"></i>{{ subcatchment.subcatchment_name }}
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No connected subcatchments found.</p>
+                        {% endif %}
+                    </div>
+                </div>
             {% endif %}
 
             {% if data_type == "subcatchment" %}
                 <!-- Connected Conduits -->
-                <div class="card">
+                <div class="card mb-3">
                     <div class="card-header">
                         <h6 class="mb-0">
-                            <i class="fas fa-road me-2"></i>
-                            Related Conduits
+                            <i class="fas fa-project-diagram me-2"></i>
+                            Connected Conduits
                         </h6>
                     </div>
                     <div class="card-body">
@@ -671,15 +692,35 @@
                             {% for conduit in related_conduits %}
                             <div class="mb-2">
                                 <a href="{% url 'sa:conduit_detail' session.id conduit.conduit_name %}" class="btn btn-sm btn-outline-primary w-100">
-                                    <i class="fas fa-road me-1"></i>{{ conduit.conduit_name }}
-                                    {% if conduit.recommendation %}
-                                    <span class="badge bg-warning text-dark ms-1">Rec</span>
-                                    {% endif %}
+                                    <i class="fas fa-stream me-1"></i>{{ conduit.conduit_name }}
                                 </a>
                             </div>
                             {% endfor %}
                         {% else %}
                             <p class="text-muted">No related conduits found.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Connected Nodes -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-project-diagram me-2"></i>
+                            Connected Elements - Nodes
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if related_nodes %}
+                            {% for node in related_nodes %}
+                            <div class="mb-2">
+                                <a href="{% url 'sa:node_detail' session.id node.node_name %}" class="btn btn-sm btn-outline-info w-100">
+                                    <i class="fas fa-circle me-1"></i>{{ node.node_name }}
+                                </a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No connected nodes found.</p>
                         {% endif %}
                     </div>
                 </div>
@@ -950,6 +991,39 @@ function generateConduitDiagram() {
     draw.line(outletAxisX, outletBottom, outletAxisX, outletCoverTop)
         .stroke({ color: '#000000', width: 0.5 }).attr('stroke-dasharray', '6,2,1,2');
 
+    // Calculate water level positions in manholes (same level as in pipe)
+    const fillingHeightVisual = (conduitData.filling / conduitData.diameter) * pipeHeight;
+    const inletWaterLevel = inletPipeBottomY - fillingHeightVisual;
+    const outletWaterLevel = outletPipeBottomY - fillingHeightVisual;
+
+    // Draw water in inlet manhole
+    const inletManholeBottom = Math.max(inletY, inletGroundY);
+    if (inletWaterLevel < inletManholeBottom) {
+        draw.rect(manholeWidth, inletManholeBottom - inletWaterLevel)
+            .move(inletX, inletWaterLevel)
+            .fill('#d5e3f5')
+            .opacity(0.4)
+            .stroke({ width: 0 });
+
+        // Water level line in inlet manhole
+        draw.line(inletX, inletWaterLevel, inletX + manholeWidth, inletWaterLevel)
+            .stroke({ color: 'var(--gray-500)', width: 0.5 });
+    }
+
+    // Draw water in outlet manhole
+    const outletManholeBottom = Math.max(outletY, outletGroundY);
+    if (outletWaterLevel < outletManholeBottom) {
+        draw.rect(manholeWidth, outletManholeBottom - outletWaterLevel)
+            .move(outletX, outletWaterLevel)
+            .fill('#d5e3f5')
+            .opacity(0.4)
+            .stroke({ width: 0 });
+
+        // Water level line in outlet manhole
+        draw.line(outletX, outletWaterLevel, outletX + manholeWidth, outletWaterLevel)
+            .stroke({ color: 'var(--gray-500)', width: 0.5 });
+    }
+
     // Draw pipe - aligned with manhole bottoms
     const pipeStartX = inletX + manholeWidth;
     const pipeStartY = inletPipeBottomY - pipeHeight; // Top of pipe at manhole bottom
@@ -965,8 +1039,7 @@ function generateConduitDiagram() {
     ]).fill('none').stroke({ color: '#000000', width: 1 });
 
     // Water level filling with horizontal hatching (based on diameter and filling in meters)
-    // Convert actual filling height to visual representation
-    const fillingHeightVisual = (conduitData.filling / conduitData.diameter) * pipeHeight;
+    // Note: fillingHeightVisual already calculated above for manholes
     const waterLevelStartY = pipeStartY + pipeHeight - fillingHeightVisual;
     const waterLevelEndY = pipeEndY + pipeHeight - fillingHeightVisual;
 
@@ -987,13 +1060,13 @@ function generateConduitDiagram() {
     // Conduit name
     draw.text(conduitData.name).move(containerWidth/2, 80).fill('#7a7a7a').font({ size: 20, weight: 'bold' });
 
-    // Calculate table position (where dimension line was)
-    const lengthY = pipeStartY + pipeHeight + 30;
+    // Calculate table position relative to the lower manhole
     const inletCenterX = inletX + manholeWidth/2;
     const outletCenterX = outletX + manholeWidth/2;
 
-    // Data table at dimension line level
-    const tableY = lengthY; // Start position for data table (at dimension level)
+    // Find the lower manhole (higher Y coordinate) and position table below it
+    const lowerManholeY = Math.max(inletY, outletY);
+    const tableY = lowerManholeY + manholeHeight - 50; // Position table below the lower manhole (reduced spacing)
     const tableStartX = inletCenterX; // Start of table (inlet center)
     const tableEndX = outletCenterX; // End of table (outlet center)
     const dataX = outletX + manholeWidth + 10; // Data position (right of outlet manhole)
