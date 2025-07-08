@@ -1,16 +1,17 @@
 {% extends "base.html" %}
+{% load crispy_forms_tags %}
 
 {% block title %} History {% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
-                <h2>Analysis History</h2>
-                <a href="{% url 'sa:analysis' %}" class="btn btn-primary">New Analysis</a>
+                <h3>Your past calculation sessions</h3>
+                <a href="{% url 'sa:analysis' %}" class="btn btn-outline-primary">New Analysis</a>
             </div>
-            <p class="text-muted">Your past calculation sessions</p>
         </div>
     </div>
 
@@ -84,7 +85,7 @@
                                 </td>
                                 <td>
                                     {% if session.status == 'completed' %}
-                                        <span class="badge bg-primary">{{ session.conduits.count }}</span>
+                                        <span class="badge bg-info">{{ session.conduits.count }}</span>
                                     {% else %}
                                         -
                                     {% endif %}
@@ -98,25 +99,42 @@
                                 </td>
                                 <td>
                                     {% if session.status == 'completed' %}
-                                        <span class="badge bg-success">{{ session.subcatchments.count }}</span>
+                                        <span class="badge bg-info">{{ session.subcatchments.count }}</span>
                                     {% else %}
                                         -
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if session.status == 'completed' %}
-                                        <a href="{% url 'sa:analysis_results' session.id %}" class="btn btn-sm btn-outline-primary">
-                                            View Results
-                                        </a>
-                                    {% elif session.status == 'failed' and session.error_message %}
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                                data-bs-toggle="tooltip"
-                                                title="{{ session.error_message|truncatechars:100 }}">
-                                            View Error
+                                    <div class="d-flex gap-1">
+                                        {% if session.status == 'completed' %}
+                                            <a href="{% url 'sa:analysis_results' session.id %}" class="btn btn-sm btn-outline-primary">
+                                                View Results
+                                            </a>
+                                        {% elif session.status == 'processing' %}
+                                            <button type="button" class="btn btn-sm btn-outline-warning" disabled>
+                                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                Processing...
+                                            </button>
+                                        {% elif session.status == 'failed' and session.error_message %}
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    data-bs-toggle="tooltip"
+                                                    title="{{ session.error_message|truncatechars:100 }}">
+                                                View Error
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">Unknown status</span>
+                                        {% endif %}
+
+                                        <!-- Delete button for all sessions -->
+                                        <button type="button" class="btn btn-sm btn-outline-danger delete-btn"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal"
+                                                data-session-id="{{ session.id }}"
+                                                data-session-name="Session {{ session.id }}"
+                                                title="{% if session.status == 'processing' %}Cancel processing{% else %}Delete{% endif %}">
+                                            <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
-                                    {% else %}
-                                        <span class="text-muted">Processing...</span>
-                                    {% endif %}
+                                    </div>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -236,7 +254,7 @@
                             <div class="col-md-3">
                                 <strong>Action:</strong><br>
                                 {% if latest_session.status == 'completed' %}
-                                    <a href="{% url 'sa:analysis_results' latest_session.id %}" class="btn btn-sm btn-primary">
+                                    <a href="{% url 'sa:analysis_results' latest_session.id %}" class="btn btn-sm btn-outline-primary">
                                         View Results
                                     </a>
                                 {% else %}
@@ -261,11 +279,39 @@
                     </div>
                     <h4>No Analysis History</h4>
                     <p class="text-muted">You haven't performed any analyses yet.</p>
-                    <a href="{% url 'sa:analysis' %}" class="btn btn-primary">Start Your First Analysis</a>
+                    <a href="{% url 'sa:analysis' %}" class="btn btn-outline-primary">Start Your First Analysis</a>
                 </div>
             </div>
         </div>
     {% endif %}
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete <strong id="sessionToDelete"></strong>?</p>
+                <p class="text-muted" id="deleteDescription">This action cannot be undone. All related data (conduits, nodes, subcatchments) will be permanently deleted.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-danger" id="confirmDelete">
+                    <span class="delete-text">
+                        <i class="fas fa-trash me-1" aria-hidden="true"></i>Delete Session
+                    </span>
+                    <span class="delete-loading d-none">
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Deleting...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -310,12 +356,18 @@
             filteredRows.sort((a, b) => {
                 switch(sortValue) {
                     case 'oldest':
-                        return new Date(a.cells[0].textContent) - new Date(b.cells[0].textContent);
+                        // Extract date from the strong tag
+                        const dateA = a.cells[0].querySelector('strong').textContent;
+                        const dateB = b.cells[0].querySelector('strong').textContent;
+                        return new Date(dateA) - new Date(dateB);
                     case 'filename':
                         return a.cells[1].textContent.localeCompare(b.cells[1].textContent);
                     case 'newest':
                     default:
-                        return new Date(b.cells[0].textContent) - new Date(a.cells[0].textContent);
+                        // Extract date from the strong tag
+                        const dateA_newest = a.cells[0].querySelector('strong').textContent;
+                        const dateB_newest = b.cells[0].querySelector('strong').textContent;
+                        return new Date(dateB_newest) - new Date(dateA_newest);
                 }
             });
 
@@ -339,6 +391,121 @@
         searchInput.addEventListener('input', filterAndSort);
         statusFilter.addEventListener('change', filterAndSort);
         sortOrder.addEventListener('change', filterAndSort);
+    });
+
+    // Handle delete session functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteModal');
+        const sessionToDeleteElement = document.getElementById('sessionToDelete');
+        const confirmDeleteButton = document.getElementById('confirmDelete');
+        let sessionIdToDelete = null;
+
+        // Handle delete button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('[data-bs-target="#deleteModal"]')) {
+                const button = e.target.closest('[data-bs-target="#deleteModal"]');
+                sessionIdToDelete = button.getAttribute('data-session-id');
+                const sessionName = button.getAttribute('data-session-name');
+                sessionToDeleteElement.textContent = sessionName;
+
+                // Check if this is a processing session
+                const row = button.closest('tr');
+                const statusBadge = row.querySelector('.badge');
+                const isProcessing = statusBadge && statusBadge.textContent.trim() === 'Processing';
+
+                // Update modal content based on session status
+                const deleteDescription = document.getElementById('deleteDescription');
+                const modalTitle = document.getElementById('deleteModalLabel');
+
+                if (isProcessing) {
+                    modalTitle.textContent = 'Cancel Processing';
+                    deleteDescription.textContent = 'This will cancel the current processing and remove the session. This action cannot be undone.';
+                } else {
+                    modalTitle.textContent = 'Confirm Deletion';
+                    deleteDescription.textContent = 'This action cannot be undone. All related data (conduits, nodes, subcatchments) will be permanently deleted.';
+                }
+
+                // Reset modal state
+                const deleteText = confirmDeleteButton.querySelector('.delete-text');
+                const deleteLoading = confirmDeleteButton.querySelector('.delete-loading');
+                const cancelButton = deleteModal.querySelector('[data-bs-dismiss="modal"]');
+
+                const buttonText = isProcessing ? 'Cancel Processing' : 'Delete Session';
+                deleteText.innerHTML = `<i class="fas fa-trash me-1" aria-hidden="true"></i>${buttonText}`;
+                deleteText.classList.remove('d-none');
+                deleteLoading.classList.add('d-none');
+                confirmDeleteButton.disabled = false;
+                cancelButton.disabled = false;
+                confirmDeleteButton.classList.remove('btn-success');
+                confirmDeleteButton.classList.add('btn-outline-danger');
+            }
+        });
+
+        // Handle confirm delete
+        confirmDeleteButton.addEventListener('click', function() {
+            if (sessionIdToDelete) {
+                // Show loading state
+                const deleteText = confirmDeleteButton.querySelector('.delete-text');
+                const deleteLoading = confirmDeleteButton.querySelector('.delete-loading');
+                const cancelButton = deleteModal.querySelector('[data-bs-dismiss="modal"]');
+
+                deleteText.classList.add('d-none');
+                deleteLoading.classList.remove('d-none');
+                confirmDeleteButton.disabled = true;
+                cancelButton.disabled = true;
+
+                const deleteUrl = `/session/${sessionIdToDelete}/delete/`;
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                console.log('Delete URL:', deleteUrl);
+                console.log('CSRF Token:', csrfToken);
+
+                fetch(deleteUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success state briefly before redirect
+                        deleteLoading.classList.add('d-none');
+
+                        // Check if this was a processing session for different success message
+                        const modalTitle = document.getElementById('deleteModalLabel');
+                        const isProcessing = modalTitle.textContent === 'Cancel Processing';
+                        const successText = isProcessing ? 'Cancelled' : 'Deleted';
+
+                        deleteText.innerHTML = `<i class="fas fa-check me-1"></i>${successText}`;
+                        deleteText.classList.remove('d-none');
+                        confirmDeleteButton.classList.remove('btn-outline-danger');
+                        confirmDeleteButton.classList.add('btn-success');
+
+                        // Redirect after short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 800);
+                    } else {
+                        // Reset loading state on error
+                        deleteLoading.classList.add('d-none');
+                        deleteText.classList.remove('d-none');
+                        confirmDeleteButton.disabled = false;
+                        cancelButton.disabled = false;
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    // Reset loading state on error
+                    deleteLoading.classList.add('d-none');
+                    deleteText.classList.remove('d-none');
+                    confirmDeleteButton.disabled = false;
+                    cancelButton.disabled = false;
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the session.');
+                });
+            }
+        });
     });
 </script>
 

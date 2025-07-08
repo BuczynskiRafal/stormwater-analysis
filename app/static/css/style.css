@@ -1,6 +1,4 @@
-/* Modern Design System - CSS Custom Properties */
 :root {
-    /* Primary Colors - Modern Deep Blues */
     --primary-50: #eff6ff;
     --primary-100: #dbeafe;
     --primary-200: #bfdbfe;
@@ -12,7 +10,6 @@
     --primary-800: #1e40af;
     --primary-900: #1e3a8a;
 
-    /* Success Colors - Vibrant Greens */
     --success-50: #ecfdf5;
     --success-100: #d1fae5;
     --success-200: #a7f3d0;
@@ -24,7 +21,6 @@
     --success-800: #065f46;
     --success-900: #064e3b;
 
-    /* Warning Colors - Modern Oranges */
     --warning-50: #fffbeb;
     --warning-100: #fef3c7;
     --warning-200: #fde68a;
@@ -36,7 +32,6 @@
     --warning-800: #92400e;
     --warning-900: #78350f;
 
-    /* Danger Colors - Modern Reds */
     --danger-50: #fef2f2;
     --danger-100: #fee2e2;
     --danger-200: #fecaca;
@@ -48,7 +43,6 @@
     --danger-800: #991b1b;
     --danger-900: #7f1d1d;
 
-    /* Neutral Colors - Soft Grays */
     --gray-50: #f9fafb;
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
@@ -60,25 +54,21 @@
     --gray-800: #1f2937;
     --gray-900: #111827;
 
-    /* Gradients */
     --gradient-primary: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-700) 100%);
     --gradient-success: linear-gradient(135deg, var(--success-500) 0%, var(--success-600) 100%);
     --gradient-hero: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 50%, var(--primary-900) 100%);
 
-    /* Shadows */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 
-    /* Typography */
     --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --line-height-tight: 1.25;
     --line-height-normal: 1.5;
     --line-height-relaxed: 1.75;
 
-    /* Spacing */
     --space-1: 0.25rem;
     --space-2: 0.5rem;
     --space-3: 0.75rem;
@@ -90,7 +80,6 @@
     --space-12: 3rem;
     --space-16: 4rem;
 
-    /* Border Radius */
     --radius-sm: 0.125rem;
     --radius: 0.25rem;
     --radius-md: 0.375rem;
@@ -113,7 +102,6 @@ html, body {
     color: var(--gray-800);
 }
 
-/* Custom background colors for validation results - Modern Design */
 .bg-light-success {
     background-color: var(--success-100) !important;
     border: 1px solid var(--success-200);
@@ -124,7 +112,6 @@ html, body {
     border: 1px solid var(--danger-200);
 }
 
-/* Technical recommendations styling - Modern Design */
 .border-left-primary {
     border-left: 4px solid var(--primary-600) !important;
 }
@@ -167,7 +154,6 @@ html, body {
     border-color: var(--primary-400) !important;
 }
 
-/* Enhanced progress bars for technical recommendations */
 .progress {
     border-radius: 0.375rem;
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -177,7 +163,6 @@ html, body {
     transition: width 0.6s ease;
 }
 
-/* Technical recommendation cards */
 .card .card-body {
     transition: all 0.3s ease;
 }
@@ -437,7 +422,7 @@ h5, h6 {
 
 
 .table thead th {
-    background-color: #f8f9fa;
+    background-color: #d5e3f5;
     color: #495057;
     font-weight: 600;
     text-transform: uppercase;
@@ -459,10 +444,6 @@ h5, h6 {
     background-color: white;
     transition: all 0.2s ease;
 }
-
-
-
-
 
 .table-striped tbody tr:nth-of-type(odd) {
     background-color: var(--gray-50);
@@ -514,7 +495,6 @@ h5, h6 {
     user-select: none;
 }
 
-/* Visual hint for drag scrolling */
 .scrollable-table-container::before {
     content: "↔ Przeciągnij aby przewinąć";
     position: absolute;
@@ -537,7 +517,6 @@ h5, h6 {
     opacity: 1;
 }
 
-/* Hide badge after user has scrolled */
 .scrollable-table-container.hide-badge::before {
     opacity: 0 !important;
 }
@@ -733,9 +712,149 @@ a {
     overflow-x: auto;
 }
 
-/* Sticky accordion headers */
+.accordion {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
 .accordion-item {
     position: relative;
+    margin-bottom: 12px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    overflow: hidden;
+}
+
+.accordion-item .accordion-header {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.accordion-item .accordion-header .accordion-button {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.accordion-item .accordion-collapse {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.accordion-item .accordion-body {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.accordion-item .scrollable-accordion-body {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.accordion-item .scrollable-table-container {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.accordion-item .table {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    overflow: hidden;
+}
+
+.accordion-item .table thead th:first-child {
+    border-top-left-radius: 12px !important;
+}
+
+.accordion-item .table thead th:last-child {
+    border-top-right-radius: 12px !important;
+}
+
+.accordion-item .table tbody td {
+    border-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+
+.accordion-item .table thead th:not(:first-child):not(:last-child) {
+    border-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+
+#sessionsTable {
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    overflow: hidden;
+}
+
+#sessionsTable thead th:first-child {
+    border-top-left-radius: 12px !important;
+}
+
+#sessionsTable thead th:last-child {
+    border-top-right-radius: 12px !important;
+}
+
+#sessionsTable thead th:not(:first-child):not(:last-child) {
+    border-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+
+#sessionsTable tbody td {
+    border-radius: 0 !important;
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+}
+
+.accordion-item .accordion-button:not(.collapsed) {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.accordion-item .accordion-button::before,
+.accordion-item .accordion-button::after {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+
+.accordion-item:first-child {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.accordion-item:first-child .accordion-header {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.accordion-item:first-child .accordion-button {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.accordion > .accordion-item:first-of-type {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.accordion > .accordion-item:first-of-type .accordion-header {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+.accordion > .accordion-item:first-of-type .accordion-button {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+
+#accordionMenu .accordion-item:first-child,
+#accordionMenu .accordion-item:first-child .accordion-header,
+#accordionMenu .accordion-item:first-child .accordion-button {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+    border-radius: 12px 12px 0 0 !important;
 }
 
 .accordion-header {
@@ -766,7 +885,6 @@ a {
     position: relative;
 }
 
-/* Enhanced table headers - controlled by JavaScript */
 .scrollable-table-container .table thead th {
     position: sticky;
     top: 0;
@@ -783,12 +901,10 @@ a {
     z-index: 15 !important;
 }
 
-/* When accordion header is sticky, adjust table header position dynamically */
 .accordion-item.header-sticky .scrollable-table-container .table thead th {
     z-index: 9;
 }
 
-/* Sticky table headers when attached to accordion */
 .table thead th.table-header-sticky {
     background-color: #d5e3f5;
     color: var(--gray-800);
@@ -800,19 +916,15 @@ a {
     z-index: 10;
 }
 
-/* Override DataTables styles for table headers */
 .scrollable-table-container .table thead th[style*="top"] {
     position: sticky !important;
 }
 
-/* Sticky spacing when accordion header is fixed - will be handled by JS dynamically */
 
-/* Improve accordion button styling when sticky */
 .accordion-header.sticky .accordion-button {
     border: 1px solid #dee2e6;
 }
 
-/* Modern Card Styling */
 .card {
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(12px);
@@ -849,7 +961,6 @@ a {
     margin-bottom: 0;
 }
 
-/* Modern Button Styling */
 .btn {
     font-weight: 600;
     border-radius: var(--radius-lg);
@@ -927,7 +1038,91 @@ a {
     box-shadow: var(--shadow-md);
 }
 
-/* Modern Badge Styling */
+.btn-outline-secondary {
+    border: 2px solid var(--gray-400);
+    color: var(--gray-600);
+    background: transparent;
+}
+
+.btn-outline-secondary:hover {
+    background: var(--gray-400);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-outline-danger {
+    border: 2px solid var(--danger-500);
+    color: var(--danger-600);
+    background: transparent;
+}
+
+.btn-outline-danger:hover {
+    background: var(--danger-500);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.input-group .form-control,
+.form-select {
+    height: calc(2.25rem + 2px);
+    padding: 0.375rem 0.75rem;
+    border: 1px solid var(--gray-300) !important;
+    border-radius: var(--radius-lg);
+}
+
+.input-group-text {
+    height: calc(2.25rem + 2px);
+    padding: 0.375rem 0.75rem;
+}
+
+.fas, .far, .fab, .fal, .fad {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    font-style: normal !important;
+    display: inline-block;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+}
+
+.far {
+    font-weight: 400 !important;
+}
+
+.fab {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-weight: 400 !important;
+}
+
+.btn-outline-danger:focus,
+.btn-outline-danger:active,
+.delete-btn:focus,
+.delete-btn:active {
+    box-shadow: none !important;
+    outline: none !important;
+    border-color: #dc3545 !important;
+}
+
+/* Center buttons in Actions column */
+#sessionsTable tbody td:last-child {
+    text-align: center !important;
+}
+
+#sessionsTable tbody td:last-child .d-flex {
+    justify-content: center !important;
+}
+
+/* Center "Latest Analysis Session" card header */
+.card-header h5 {
+    text-align: center !important;
+}
+
+/* Center content in Latest Analysis Session card */
+.card-body .col-md-3 {
+    text-align: center !important;
+}
+
 .badge {
     font-weight: 600;
     padding: var(--space-1) var(--space-3);
@@ -961,7 +1156,6 @@ a {
     color: white;
 }
 
-/* Modern Progress Bar Styling */
 .progress {
     background-color: var(--gray-200);
     border-radius: var(--radius-lg);
@@ -987,7 +1181,6 @@ a {
     background: linear-gradient(135deg, var(--danger-500) 0%, var(--danger-600) 100%) !important;
 }
 
-/* Enhanced Layout and Spacing */
 .container-fluid {
     padding-left: var(--space-6);
     padding-right: var(--space-6);
@@ -998,7 +1191,6 @@ a {
     padding-right: var(--space-8);
 }
 
-/* Modern Alert Styling */
 .alert {
     border: none;
     border-radius: var(--radius-xl);
@@ -1031,9 +1223,8 @@ a {
     color: var(--primary-800);
 }
 
-/* Enhanced Form Controls */
 .form-control {
-    border: 2px solid var(--gray-300);
+    border: 1px solid var(--gray-300);
     border-radius: var(--radius-lg);
     transition: all 0.2s ease;
     padding: var(--space-3);
@@ -1128,7 +1319,6 @@ a {
     color: var(--success-800);
 }
 
-/* Modern Footer */
 footer {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(12px);
@@ -1136,7 +1326,6 @@ footer {
     margin-top: var(--space-16);
 }
 
-/* Enhanced spacing between sections */
 .mb-4 {
     margin-bottom: var(--space-6) !important;
 }
@@ -1145,7 +1334,6 @@ footer {
     margin-top: var(--space-6) !important;
 }
 
-/* Navigation Arrows */
 .navigation-arrows {
     position: fixed;
     top: 0;
@@ -1250,7 +1438,6 @@ footer {
     opacity: 1;
 }
 
-/* Mobile responsiveness */
 @media (max-width: 768px) {
     .nav-arrow {
         width: 60px;

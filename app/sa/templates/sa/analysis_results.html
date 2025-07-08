@@ -18,8 +18,8 @@
                     </p>
                 </div>
                 <div>
-                    <a href="{% url 'sa:analysis' %}" class="btn btn-success">New Analysis</a>
-                    <a href="{% url 'sa:history' %}" class="btn btn-secondary">View History</a>
+                    <a href="{% url 'sa:analysis' %}" class="btn btn-outline-success">New Analysis</a>
+                    <a href="{% url 'sa:history' %}" class="btn btn-outline-secondary">View History</a>
                 </div>
             </div>
         </div>
@@ -99,41 +99,6 @@
         </div>
     </div>
 
-    <!-- Summary Statistics -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Analysis Summary</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h6>Conduits</h6>
-                                <h4 class="text-primary">{{ data.0|length|default:0 }}</h4>
-                                <small class="text-muted">Total analyzed</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h6>Nodes</h6>
-                                <h4 class="text-info">{{ data.1|length|default:0 }}</h4>
-                                <small class="text-muted">Total analyzed</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h6>Subcatchments</h6>
-                                <h4 class="text-success">{{ data.2|length|default:0 }}</h4>
-                                <small class="text-muted">Total analyzed</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 {% endblock %}
