@@ -1038,8 +1038,6 @@ function generateConduitDiagram() {
         [pipeStartX, pipeStartY + pipeHeight]
     ]).fill('none').stroke({ color: '#000000', width: 1 });
 
-    // Water level filling with horizontal hatching (based on diameter and filling in meters)
-    // Note: fillingHeightVisual already calculated above for manholes
     const waterLevelStartY = pipeStartY + pipeHeight - fillingHeightVisual;
     const waterLevelEndY = pipeEndY + pipeHeight - fillingHeightVisual;
 
@@ -1067,6 +1065,7 @@ function generateConduitDiagram() {
     // Find the lower manhole (higher Y coordinate) and position table below it
     const lowerManholeY = Math.max(inletY, outletY);
     const tableY = lowerManholeY + manholeHeight - 50; // Position table below the lower manhole (reduced spacing)
+
     const tableStartX = inletCenterX; // Start of table (inlet center)
     const tableEndX = outletCenterX; // End of table (outlet center)
     const dataX = outletX + manholeWidth + 10; // Data position (right of outlet manhole)
