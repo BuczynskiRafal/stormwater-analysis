@@ -1,5 +1,4 @@
 import math
-from enum import Enum
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -26,7 +25,7 @@ from .constants import (
     FEATURE_COLUMNS,
 )
 from .enums import RecommendationCategory
-from .predictor import recommendation, classifier, gnn_recommendation
+from .predictor import recommendation, gnn_recommendation
 from .round import common_diameters, max_depth_value, min_slope, max_slope, max_velocity_value, max_filling
 from .valid_round import (
     validate_filling,
@@ -37,10 +36,7 @@ from .valid_round import (
 )
 import logging
 
-logging.basicConfig(
-    level=logging.INFO, 
-    format="%(asctime)s - %(levelname)-8s [%(filename)s:%(lineno)d] - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)-8s [%(filename)s:%(lineno)d] - %(message)s")
 
 
 ###############################################################################
@@ -429,7 +425,7 @@ class ConduitFeatureEngineeringService:
                             break  # This diameter doesn't work even with this slope
                     except ValueError as e:
                         error_msg = str(e)
-                        if "Slope is too small" in error_msg and multiplier < slope_multipliers[-1]:
+                        if "Slope is too small" in error_msg and multiplier < SLOPE_MULTIPLIERS[-1]:
                             # Try next multiplier
                             continue
                         else:
@@ -1130,7 +1126,7 @@ class RecommendationService:
         """
         Generate recommendations using the provided model.
         Adds 'recommendation' column and confidence scores for each category.
-        
+
         Returns:
             pd.DataFrame: DataFrame with added recommendation results.
         """
@@ -1156,6 +1152,7 @@ class GNNRecommendationService:
     GNN-based recommendation service that uses graph neural networks
     for generating conduit recommendations and updating the DataFrame in-place.
     """
+
     def __init__(self, dfc: pd.DataFrame, model: Optional[object] = None):
         self.dfc = dfc
         self.model = model
@@ -1201,7 +1198,6 @@ class GNNRecommendationService:
         #     self.dfc['recommendation'] = self.dfc['Tag'].map(label_to_idx)
 
         #     logging.info("Mock GNNService: Successfully encoded 'Tag' column to integer recommendations.")
-
 
 
 class TraceAnalysisService:
@@ -1309,7 +1305,7 @@ class DataManager(sw.Model):
         self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs, self)
         self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
         self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
-        
+
         # MLP Recommendation Service is always available for fallback or experiments
         self.mlp_recommendation_service = RecommendationService(self.dfc, model=recommendation)
         logging.info("MLP Recommendation Service initialized.")
@@ -1320,7 +1316,7 @@ class DataManager(sw.Model):
             logging.info("GNN model is available and loaded.")
         else:
             logging.info("GNN model is not available.")
-        
+
         self.simulation_service = SimulationRunnerService(self.inp.path)
         self.trace_analysis_service = TraceAnalysisService(self)
 
@@ -1429,7 +1425,7 @@ class DataManager(sw.Model):
             self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs, self)
             self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
             self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
-            
+
             # Choose recommendation service based on available models
             if gnn_recommendation is not None:
                 self.recommendation_service = GNNRecommendationService(self.dfc, model=gnn_recommendation)
