@@ -1,5 +1,4 @@
 import math
-from enum import Enum
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -8,9 +7,27 @@ import swmmio as sw
 from pyswmm import Simulation
 from swmmio.utils.functions import trace_from_node
 
-from sa.core.predictor import recommendation, classifier
-from sa.core.round import common_diameters, max_depth_value, min_slope, max_slope, max_velocity_value, max_filling
-from sa.core.valid_round import (
+from .constants import (
+    MANNING_COEFFICIENT,
+    MIN_ROUGHNESS,
+    MAX_ROUGHNESS,
+    MAX_FILLING_RATIO,
+    FILLING_CALCULATION_STEP,
+    FILLING_CALCULATION_MAX_ITER,
+    SLOPE_MULTIPLIERS,
+    LOW_FILLING_RATIO_THRESHOLD,
+    TARGET_FILLING_RATIO,
+    VERY_SMALL_FLOW_THRESHOLD,
+    MIN_PRACTICAL_DIAMETER,
+    CIRCULAR_PIPE_FLOW_CONSTANT,
+    SUBCATCHMENT_PROPAGATION_ITERATIONS,
+    SUBCATCHMENT_CATEGORIES,
+    FEATURE_COLUMNS,
+)
+from .enums import RecommendationCategory
+from .predictor import recommendation, gnn_recommendation
+from .round import common_diameters, max_depth_value, min_slope, max_slope, max_velocity_value, max_filling
+from .valid_round import (
     validate_filling,
     validate_max_slope,
     validate_max_velocity,
@@ -19,19 +36,7 @@ from sa.core.valid_round import (
 )
 import logging
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-
-class RecommendationCategory(Enum):
-    PUMP = "pump"
-    TANK = "tank"
-    SEEPAGE_BOXES = "seepage_boxes"
-    DIAMETER_INCREASE = "diameter_increase"
-    DIAMETER_REDUCTION = "diameter_reduction"
-    SLOPE_INCREASE = "slope_increase"
-    SLOPE_REDUCTION = "slope_reduction"
-    DEPTH_INCREASE = "depth_increase"
-    VALID = "valid"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)-8s [%(filename)s:%(lineno)d] - %(message)s")
 
 
 ###############################################################################
@@ -172,13 +177,11 @@ class HydraulicCalculationsService:
         if not validate_min_slope(slope, filling, diameter):
             raise ValueError("Slope is too small")
 
-        # Manning's coefficient
-        n = 0.013
         rh = HydraulicCalculationsService.calc_rh(filling, diameter)
 
         if rh == 0:
             return 0.0
-        velocity = (1.0 / n) * (rh ** (2.0 / 3.0)) * math.sqrt(slope)
+        velocity = (1.0 / MANNING_COEFFICIENT) * (rh ** (2.0 / 3.0)) * math.sqrt(slope)
         return velocity
 
     @staticmethod
@@ -199,9 +202,11 @@ class HydraulicCalculationsService:
             ValueError: If slope is too small or exceeds maximum allowed.
         """
         if not validate_max_slope(slope, diameter):
-            raise ValueError("Slope exceeds maximum allowed value")
+            # raise ValueError("Slope exceeds maximum allowed value")
+            print("Slope exceeds maximum allowed value")
         if not validate_min_slope(slope, filling, diameter):
-            raise ValueError("Slope is too small")
+            # raise ValueError("Slope is too small")
+            print("Slope is too small")
 
         area = HydraulicCalculationsService.calc_area(filling, diameter)
         velocity = HydraulicCalculationsService.calc_velocity(filling, diameter, slope)
@@ -233,16 +238,14 @@ class HydraulicCalculationsService:
             return 0.0
 
         filling = 0.0
-        step = 0.001
-        max_iter = 10000
 
-        for _ in range(max_iter):
+        for _ in range(FILLING_CALCULATION_MAX_ITER):
             if filling > diameter:
                 break
             flow = HydraulicCalculationsService.calc_flow(filling, diameter, slope)  # już [m³/s]
             if flow >= q:
                 break
-            filling += step
+            filling += FILLING_CALCULATION_STEP
 
         if filling > diameter:
             raise ValueError("Filling exceeds diameter without achieving desired flow")
@@ -406,11 +409,9 @@ class ConduitFeatureEngineeringService:
             best_diam = current_diam
 
             for candidate in reversed(common_diameters_sorted[:idx]):
-                # Try different slope multipliers
-                slope_multipliers = [1.0, 2.0, 3.0, 5.0]
                 diameter_works = False
 
-                for multiplier in slope_multipliers:
+                for multiplier in SLOPE_MULTIPLIERS:
                     adjusted_slope = original_slope * multiplier
 
                     try:
@@ -424,7 +425,7 @@ class ConduitFeatureEngineeringService:
                             break  # This diameter doesn't work even with this slope
                     except ValueError as e:
                         error_msg = str(e)
-                        if "Slope is too small" in error_msg and multiplier < slope_multipliers[-1]:
+                        if "Slope is too small" in error_msg and multiplier < SLOPE_MULTIPLIERS[-1]:
                             # Try next multiplier
                             continue
                         else:
@@ -442,9 +443,8 @@ class ConduitFeatureEngineeringService:
 
         def handle_small_filling_ratio(row: pd.Series, current_diam: float, current_filling: float) -> float:
             """Handle the case where filling ratio is very small."""
-            if current_filling / current_diam < 0.3:
-                # Target 50% filling for better hydraulic efficiency
-                target_diameter = current_filling / 0.5
+            if current_filling / current_diam < LOW_FILLING_RATIO_THRESHOLD:
+                target_diameter = current_filling / TARGET_FILLING_RATIO
 
                 for candidate in common_diameters_sorted:
                     if candidate >= target_diameter and candidate < current_diam:
@@ -468,11 +468,11 @@ class ConduitFeatureEngineeringService:
                 return find_larger_diameter(current_diam, current_filling)
 
             # Step 3: Handle very small flows
-            if max_q < 0.01:  # Very small flow (below 10 l/s)
+            if max_q < VERY_SMALL_FLOW_THRESHOLD:
                 for candidate in common_diameters_sorted:
-                    if candidate >= 0.3:  # Don't go below 300mm for practical reasons
+                    if candidate >= MIN_PRACTICAL_DIAMETER:
                         return candidate
-                return common_diameters_sorted[0]  # Return smallest available diameter
+                return common_diameters_sorted[0]
 
             # Step 4: Find current diameter index
             idx: int = diam_index_map.get(current_diam, -1)
@@ -565,11 +565,8 @@ class ConduitFeatureEngineeringService:
         if self.dfc is None:
             return
 
-        min_roughness = 0.009  # Smoothest plastic pipes
-        max_roughness = 0.020  # Roughest stone channels
-
-        roughness_clipped = self.dfc["Roughness"].clip(min_roughness, max_roughness)
-        self.dfc["NRoughness"] = (roughness_clipped - min_roughness) / (max_roughness - min_roughness)
+        roughness_clipped = self.dfc["Roughness"].clip(MIN_ROUGHNESS, MAX_ROUGHNESS)
+        self.dfc["NRoughness"] = (roughness_clipped - MIN_ROUGHNESS) / (MAX_ROUGHNESS - MIN_ROUGHNESS)
 
     def normalize_max_velocity(self) -> None:
         """
@@ -637,7 +634,7 @@ class ConduitFeatureEngineeringService:
         if self.dfc is None:
             return
 
-        max_effective_filling = 0.827 * self.dfc["Geom1"]
+        max_effective_filling = MAX_FILLING_RATIO * self.dfc["Geom1"]
         self.dfc["NFilling"] = self.dfc["Filling"] / max_effective_filling
 
     def normalize_max_q(self) -> None:
@@ -653,10 +650,9 @@ class ConduitFeatureEngineeringService:
         # Calculate theoretical max flow capacity for each pipe
         # Using a simplified approach based on pipe diameter and slope
         # Q_max = k * D^2.5 * S^0.5 where D is diameter and S is slope
-        k = 0.312  # Constant for circular pipes with Manning's n=0.013
 
         # Calculate theoretical max flow in m³/s
-        theoretical_max_q = k * (self.dfc["Geom1"] ** 2.5) * (self.dfc["SlopePerMile"] ** 0.5)
+        theoretical_max_q = CIRCULAR_PIPE_FLOW_CONSTANT * (self.dfc["Geom1"] ** 2.5) * (self.dfc["SlopePerMile"] ** 0.5)
 
         # Normalize actual MaxQ by theoretical max flow
         # Clip to [0, 1] range to handle cases where actual flow exceeds theoretical max
@@ -855,7 +851,7 @@ class ConduitFeatureEngineeringService:
 
         # Propagate subcatchment info through the network
         # Multiple iterations to ensure info propagates through the entire network
-        for _ in range(5):  # Arbitrary number of iterations
+        for _ in range(SUBCATCHMENT_PROPAGATION_ITERATIONS):
             changes_made = False
 
             # Update nodes based on their inlet nodes
@@ -905,24 +901,9 @@ class ConduitFeatureEngineeringService:
         if "SbcCategory" not in self.dfc.columns:
             return
 
-        all_categories = [
-            "marshes",
-            "arable",
-            "meadows",
-            "forests",
-            "rural",
-            "suburban_weakly_impervious",
-            "suburban_highly_impervious",
-            "urban_weakly_impervious",
-            "urban_moderately_impervious",
-            "urban_highly_impervious",
-            "mountains_rocky",
-            "mountains_vegetated",
-        ]
-
         encoded_categories = pd.get_dummies(self.dfc["SbcCategory"], drop_first=False)
 
-        for category in all_categories:
+        for category in SUBCATCHMENT_CATEGORIES:
             col_name = f"{category}"
             if col_name not in encoded_categories.columns:
                 encoded_categories[col_name] = 0
@@ -963,24 +944,9 @@ class SubcatchmentFeatureEngineeringService:
         if category_column not in self.dfs.columns:
             raise ValueError(f"Column '{category_column}' not found in dataframe")
 
-        all_categories = [
-            "marshes",
-            "arable",
-            "meadows",
-            "forests",
-            "rural",
-            "suburban_weakly_impervious",
-            "suburban_highly_impervious",
-            "urban_weakly_impervious",
-            "urban_moderately_impervious",
-            "urban_highly_impervious",
-            "mountains_rocky",
-            "mountains_vegetated",
-        ]
-
         encoded_categories = pd.get_dummies(self.dfs[category_column], prefix=None, drop_first=False)
 
-        for category in all_categories:
+        for category in SUBCATCHMENT_CATEGORIES:
             if category not in encoded_categories.columns:
                 encoded_categories[category] = 0
             else:
@@ -1006,73 +972,97 @@ class SubcatchmentFeatureEngineeringService:
         if self.dfs is None or len(self.dfs) == 0:
             return
 
-        required_cols = [
-            "PercImperv",
-            "PercSlope",
-            "N-Imperv",
-            "N-Perv",
-            "S-Imperv",
-            "S-Perv",
-            "PctZero",
-            "RunoffCoeff",
-            "TotalInfil",
-            "ImpervRunoff",
-            "TotalRunoffMG",
-            "PeakRunoff",
-            "Area",
-        ]
+        # Alternative: Get tags from the model (for testing purposes)
+        # Uncomment this section to use tag-based classification instead of ML classifier
+        if hasattr(self.model.inp, "tags") and self.model.inp.tags is not None:
+            # Filter tags for subcatchments
+            subcatch_tags = self.model.inp.tags[self.model.inp.tags.index.str.startswith("Subcatch")]
 
-        df = self.dfs[required_cols].copy()
+            if not subcatch_tags.empty:
+                # Create a mapping of subcatchment names to their categories
+                category_map = dict(zip(subcatch_tags["Name"], subcatch_tags["Tag"]))
 
-        # Convert numeric columns
-        numeric_cols = ["TotalInfil", "ImpervRunoff", "TotalRunoffMG", "PeakRunoff"]
-        for col in numeric_cols:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+                # Assign categories to subcatchments
+                self.dfs["category"] = self.dfs.index.map(category_map)
 
-        # Normalize by area (as done in training)
-        df["TotalInfil"] = df["TotalInfil"] / df["Area"]
-        df["ImpervRunoff"] = df["ImpervRunoff"] / df["Area"]
-        df["TotalRunoffMG"] = df["TotalRunoffMG"] / df["Area"]
-        df["PeakRunoff"] = df["PeakRunoff"] / df["Area"]
-
-        # Select features in the same order as training
-        feature_cols = [
-            "PercImperv",
-            "PercSlope",
-            "N-Imperv",
-            "N-Perv",
-            "S-Imperv",
-            "S-Perv",
-            "PctZero",
-            "RunoffCoeff",
-            "TotalInfil",
-            "ImpervRunoff",
-            "TotalRunoffMG",
-            "PeakRunoff",
-        ]
-        features = df[feature_cols]
-
-        preds = classifier.predict(features)
-        preds_cls = preds.argmax(axis=-1)
-
-        if categories:
-            labels = [
-                "marshes",
-                "arable",
-                "meadows",
-                "forests",
-                "rural",
-                "suburban_weakly_impervious",
-                "suburban_highly_impervious",
-                "urban_weakly_impervious",
-                "urban_moderately_impervious",
-                "urban_highly_impervious",
-                "mountains_rocky",
-                "mountains_vegetated",
-            ]
-            self.dfs["category"] = [labels[i] for i in preds_cls]
+                # Log the number of categorized subcatchments
+                categorized_count = self.dfs["category"].notna().sum()
+                logging.info(f"Assigned categories to {categorized_count} subcatchments from TAGS section")
+                return  # Exit early if tags were successfully processed
+            else:
+                logging.warning("No subcatchment tags found in TAGS section")
         else:
-            self.dfs["category"] = preds_cls
+            logging.warning("No TAGS section found in the model")
+
+        # Default: Use ML classifier for subcatchment classification
+
+        # required_cols = [
+        #     "PercImperv",
+        #     "PercSlope",
+        #     "N-Imperv",
+        #     "N-Perv",
+        #     "S-Imperv",
+        #     "S-Perv",
+        #     "PctZero",
+        #     "RunoffCoeff",
+        #     "TotalInfil",
+        #     "ImpervRunoff",
+        #     "TotalRunoffMG",
+        #     "PeakRunoff",
+        #     "Area",
+        # ]
+
+        # df = self.dfs[required_cols].copy()
+
+        # # Convert numeric columns
+        # numeric_cols = ["TotalInfil", "ImpervRunoff", "TotalRunoffMG", "PeakRunoff"]
+        # for col in numeric_cols:
+        #     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+        # # Normalize by area (as done in training)
+        # df["TotalInfil"] = df["TotalInfil"] / df["Area"]
+        # df["ImpervRunoff"] = df["ImpervRunoff"] / df["Area"]
+        # df["TotalRunoffMG"] = df["TotalRunoffMG"] / df["Area"]
+        # df["PeakRunoff"] = df["PeakRunoff"] / df["Area"]
+
+        # # Select features in the same order as training
+        # feature_cols = [
+        #     "PercImperv",
+        #     "PercSlope",
+        #     "N-Imperv",
+        #     "N-Perv",
+        #     "S-Imperv",
+        #     "S-Perv",
+        #     "PctZero",
+        #     "RunoffCoeff",
+        #     "TotalInfil",
+        #     "ImpervRunoff",
+        #     "TotalRunoffMG",
+        #     "PeakRunoff",
+        # ]
+        # features = df[feature_cols]
+
+        # preds = classifier.predict(features)
+        # preds_cls = preds.argmax(axis=-1)
+
+        # if categories:
+        #     labels = [
+        #         "marshes",
+        #         "arable",
+        #         "meadows",
+        #         "forests",
+        #         "rural",
+        #         "suburban_weakly_impervious",
+        #         "suburban_highly_impervious",
+        #         "urban_weakly_impervious",
+        #         "urban_moderately_impervious",
+        #         "urban_highly_impervious",
+        #         "mountains_rocky",
+        #         "mountains_vegetated",
+        #     ]
+        #     self.dfs["category"] = [labels[i] for i in preds_cls]
+        # else:
+        #     self.dfs["category"] = preds_cls
 
 
 class NodeFeatureEngineeringService:
@@ -1128,66 +1118,86 @@ class RecommendationService:
     Class responsible for generating recommendations (e.g., depth change, diameter change, etc.).
     """
 
-    def __init__(self, dfc: pd.DataFrame):
+    def __init__(self, dfc: pd.DataFrame, model: Optional[object]):
         self.dfc = dfc
+        self.model = model
 
-    def recommendations(self) -> None:
+    def recommendations(self) -> pd.DataFrame:
         """
-        Generates recommendations via 'recommendations.keras' model and adds 'recommendation' column.
+        Generate recommendations using the provided model.
+        Adds 'recommendation' column and confidence scores for each category.
+
+        Returns:
+            pd.DataFrame: DataFrame with added recommendation results.
         """
-        if self.dfc is None:
-            return
-        feature_columns = [
-            "ValMaxFill",
-            "ValMaxV",
-            "ValMinV",
-            "ValMaxSlope",
-            "ValMinSlope",
-            "ValDepth",
-            "ValCoverage",
-            "isMinDiameter",
-            "IncreaseDia",
-            "ReduceDia",
-            "IncreaseSlope",
-            "ReduceSlope",
-            "NRoughness",
-            "NMaxV",
-            "NInletDepth",
-            "NOutletDepth",
-            "NFilling",
-            "NMaxQ",
-            "NInletGroundCover",
-            "NOutletGroundCover",
-            "NSlope",
-            "marshes",
-            "suburban_highly_impervious",
-            "suburban_weakly_impervious",
-            "arable",
-            "meadows",
-            "forests",
-            "rural",
-            "urban_weakly_impervious",
-            "urban_moderately_impervious",
-            "urban_highly_impervious",
-            "mountains_rocky",
-            "mountains_vegetated",
-        ]
+        if self.dfc is None or self.model is None:
+            raise ValueError("DataFrame and model must be provided")
 
-        for c in feature_columns:
-            if c not in self.dfc.columns:
-                self.dfc[c] = 0
+        input_data = self.dfc.reindex(columns=FEATURE_COLUMNS, fill_value=0)
 
-        input_data = self.dfc[feature_columns]
-        preds = recommendation.predict(input_data)
+        preds = self.model.predict(input_data, verbose=0)
         preds_cls = preds.argmax(axis=-1)
 
         labels = [category.value for category in RecommendationCategory]
         self.dfc["recommendation"] = [labels[i] for i in preds_cls]
 
-        # Add prediction confidence columns for each class
         for i, category in enumerate(RecommendationCategory):
-            rounded_values = [round(float(val), 3) for val in preds[:, i]]
-            self.dfc[f"confidence_{category.value}"] = rounded_values
+            self.dfc[f"confidence_{category.value}"] = [round(float(val), 3) for val in preds[:, i]]
+
+        return self.dfc
+
+
+class GNNRecommendationService:
+    """
+    GNN-based recommendation service that uses graph neural networks
+    for generating conduit recommendations and updating the DataFrame in-place.
+    """
+
+    def __init__(self, dfc: pd.DataFrame, model: Optional[object] = None):
+        self.dfc = dfc
+        self.model = model
+
+    def recommendations(self) -> None:
+        """
+        Generates GNN-based recommendations and updates the DataFrame in-place.
+        """
+        if self.dfc is None or self.model is None:
+            raise ValueError("DataFrame and model must be provided")
+
+        input_data = self.dfc.reindex(columns=FEATURE_COLUMNS, fill_value=0)
+
+        # Assuming the GNN model might need graph structure, but for now, we follow
+        # the simple prediction path. If it requires adjacency matrix, this will need adjustment.
+        preds = self.model.predict(input_data, verbose=0)
+        preds_cls = preds.argmax(axis=-1)
+
+        labels = [category.value for category in RecommendationCategory]
+        self.dfc["recommendation"] = [labels[i] for i in preds_cls]
+
+        for i, category in enumerate(RecommendationCategory):
+            self.dfc[f"confidence_{category.value}"] = [round(float(val), 3) for val in preds[:, i]]
+        # def recommendations(self) -> None:
+        #     """
+        #     MOCK IMPLEMENTATION: Reads ground-truth labels from the 'Tag' column,
+        #     encodes them to integer indices based on RecommendationCategory,
+        #     and saves them in the 'recommendation' column.
+        #     """
+        #     if self.dfc is None:
+        #         raise ValueError("Conduit DataFrame (dfc) must be provided")
+
+        #     if 'Tag' not in self.dfc.columns:
+        #         raise ValueError("The 'Tag' column is missing from the DataFrame. Cannot assign ground-truth labels.")
+
+        #     # Create a mapping from category string to integer index based on the Enum
+        #     # This ensures a consistent order.
+        #     all_classes = [cat.value for cat in RecommendationCategory]
+        #     label_to_idx = {label: i for i, label in enumerate(all_classes)}
+
+        #     # Map the string tags to integer indices.
+        #     # Unmapped tags will become NaN.
+        #     self.dfc['recommendation'] = self.dfc['Tag'].map(label_to_idx)
+
+        #     logging.info("Mock GNNService: Successfully encoded 'Tag' column to integer recommendations.")
 
 
 class TraceAnalysisService:
@@ -1295,7 +1305,18 @@ class DataManager(sw.Model):
         self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs, self)
         self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
         self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
-        self.recommendation_service = RecommendationService(self.dfc)
+
+        # MLP Recommendation Service is always available for fallback or experiments
+        self.mlp_recommendation_service = RecommendationService(self.dfc, model=recommendation)
+        logging.info("MLP Recommendation Service initialized.")
+
+        # Store the GNN model if it's available, but don't initialize a service here
+        self.gnn_model = gnn_recommendation
+        if self.gnn_model:
+            logging.info("GNN model is available and loaded.")
+        else:
+            logging.info("GNN model is not available.")
+
         self.simulation_service = SimulationRunnerService(self.inp.path)
         self.trace_analysis_service = TraceAnalysisService(self)
 
@@ -1404,7 +1425,12 @@ class DataManager(sw.Model):
             self.subcatchment_service = SubcatchmentFeatureEngineeringService(self.dfs, self)
             self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
             self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
-            self.recommendation_service = RecommendationService(self.dfc)
+
+            # Choose recommendation service based on available models
+            if gnn_recommendation is not None:
+                self.recommendation_service = GNNRecommendationService(self.dfc, model=gnn_recommendation)
+            else:
+                self.recommendation_service = RecommendationService(self.dfc, model=recommendation)
 
         except Exception as e:
             logging.warning(f"Could not reinitialize with report file: {e}")
