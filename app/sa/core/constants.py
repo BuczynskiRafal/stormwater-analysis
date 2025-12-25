@@ -57,6 +57,11 @@ SUBCATCHMENT_CATEGORIES = [
     "mountains_vegetated",
 ]
 
+# GNN Model Configuration (optimal hyperparameters from tuning)
+GNN_HIDDEN_UNITS = 64
+GNN_DROPOUT_RATE = 0.2
+GNN_AGGREGATOR = "mean"
+
 # Feature columns for ML models
 FEATURE_COLUMNS = [
     "ValMaxFill",
