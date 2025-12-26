@@ -2,7 +2,6 @@
 
 import pytest
 import pandas as pd
-import numpy as np
 import math
 
 from sa.core.data import ConduitFeatureEngineeringService
@@ -110,22 +109,26 @@ class TestNormalizeMaxQ:
     """Additional tests for normalize_max_q edge cases."""
 
     def test_normalize_max_q_zero_diameter_handling(self):
-        df = pd.DataFrame({
-            "Geom1": [0.0],
-            "SlopePerMile": [10.0],
-            "MaxQ": [0.5],
-        })
+        df = pd.DataFrame(
+            {
+                "Geom1": [0.0],
+                "SlopePerMile": [10.0],
+                "MaxQ": [0.5],
+            }
+        )
         service = ConduitFeatureEngineeringService(df, None, 1.0)
         service.normalize_max_q()
         result = service.dfc.loc[0, "NMaxQ"]
         assert pd.isna(result) or result in (0.0, 1.0)
 
     def test_normalize_max_q_negative_max_q_clipped_to_zero(self):
-        df = pd.DataFrame({
-            "Geom1": [0.5],
-            "SlopePerMile": [10.0],
-            "MaxQ": [-0.5],
-        })
+        df = pd.DataFrame(
+            {
+                "Geom1": [0.5],
+                "SlopePerMile": [10.0],
+                "MaxQ": [-0.5],
+            }
+        )
         service = ConduitFeatureEngineeringService(df, None, 1.0)
         service.normalize_max_q()
         assert service.dfc.loc[0, "NMaxQ"] == 0.0

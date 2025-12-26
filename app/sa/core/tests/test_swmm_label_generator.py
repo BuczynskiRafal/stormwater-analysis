@@ -72,12 +72,14 @@ class TestSWMMLabelGeneratorGenerateLabelsFromDataframe:
     """Tests for SWMMLabelGenerator.generate_labels_from_dataframe()."""
 
     def test_generates_labels_for_all_rows(self):
-        df = pd.DataFrame({
-            "ValCoverage": [1, 0, 1],
-            "ValMaxFill": [1, 1, 0],
-            "ValMinV": [1, 1, 1],
-            "IncreaseDia": [0, 0, 1],
-        })
+        df = pd.DataFrame(
+            {
+                "ValCoverage": [1, 0, 1],
+                "ValMaxFill": [1, 1, 0],
+                "ValMinV": [1, 1, 1],
+                "IncreaseDia": [0, 0, 1],
+            }
+        )
         labels = SWMMLabelGenerator.generate_labels_from_dataframe(df)
         assert labels == ["valid", "depth_increase", "diameter_increase"]
 
@@ -120,10 +122,12 @@ class TestPrepareSwmmLabels:
         assert result.dtype == np.float32
 
     def test_with_dataframe_input(self):
-        df = pd.DataFrame({
-            "valid": [1, 0],
-            "tank": [0, 1],
-        })
+        df = pd.DataFrame(
+            {
+                "valid": [1, 0],
+                "tank": [0, 1],
+            }
+        )
         result = prepare_swmm_labels(df, one_hot=True)
 
         assert result.dtype == np.float32
