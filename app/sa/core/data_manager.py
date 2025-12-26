@@ -379,7 +379,7 @@ def prepare_swmm_labels(labels, one_hot=True):
     """Prepare SWMM recommendation labels."""
     all_classes = [cat.value for cat in RecommendationCategory]
 
-    if isinstance(labels, pd.Series) and isinstance(labels.iloc[0], RecommendationCategory):
+    if isinstance(labels, pd.Series) and len(labels) > 0 and isinstance(labels.iloc[0], RecommendationCategory):
         labels = labels.apply(lambda x: x.value)
 
     if isinstance(labels, pd.Series):
