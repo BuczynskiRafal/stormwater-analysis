@@ -18,7 +18,7 @@ def model():
     yield sw.Model(TEST_FILE, include_rpt=True)
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture(scope="function")
 def data_manager(model):
     """Fixture to initialize the DataManager."""
     yield DataManager(model.inp.path)
@@ -104,41 +104,30 @@ class TestConduitsData:
         assert list(data_manager.dfc["SlopePerMile"])[:2] == pytest.approx(expected_values, abs=1e-9)
 
     def test_slopes_is_valid_columns_added(self, data_manager: DataManager):
-        """
-        Test if the 'ValMaxSlope' and 'ValMinSlope' columns are added to the conduits
-        dataframe after calling slopes_is_valid() method.
-        """
+        """Test if slope validation columns are added after slopes_is_valid()."""
         data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.slope_per_mile()
         data_manager.conduit_service.normalize_slope()
         data_manager.conduit_service.slopes_is_valid()
         assert "ValMaxSlope" in data_manager.dfc.columns
         assert "ValMinSlope" in data_manager.dfc.columns
 
     def test_slopes_is_valid_max_slope(self, data_manager: DataManager):
-        """
-        Test if the maximum slope validation is correct after
-        calling the slopes_is_valid() method.
-        """
+        """Test if maximum slope validation is correct."""
         data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.slope_per_mile()
         data_manager.conduit_service.normalize_slope()
         data_manager.conduit_service.slopes_is_valid()
-        expected_values = [
-            1,
-            1,
-        ]  # Assuming both conduits have valid maximum slopes
+        expected_values = [1, 1]
         assert list(data_manager.dfc["ValMaxSlope"])[:2] == expected_values
 
     def test_slopes_is_valid_min_slope(self, data_manager: DataManager):
-        """
-        Test if the minimum slope validation is correct after calling the slopes_is_valid() method.
-        """
+        """Test if minimum slope validation is correct."""
         data_manager.conduit_service.calculate_filling()
+        data_manager.conduit_service.slope_per_mile()
         data_manager.conduit_service.normalize_slope()
         data_manager.conduit_service.slopes_is_valid()
-        expected_values = [
-            1,
-            1,
-        ]  # Assuming both conduits have valid minimum slopes
+        expected_values = [1, 1]
         assert list(data_manager.dfc["ValMinSlope"])[:2] == expected_values
 
     def test_max_depth_columns_added(self, data_manager: DataManager):
@@ -258,7 +247,6 @@ class TestConduitsData:
         data_manager.conduit_service.calculate_max_depth()
         assert data_manager.dfc["OutletMaxDepth"].loc[0] == 5
         assert data_manager.dfc["OutletMaxDepth"].loc[1] == 10
-        data_manager.dfc = data_manager.dfc.drop(index=[0, 1])
 
     def test_calculate_maximum_depth(self, data_manager: DataManager):
         """
