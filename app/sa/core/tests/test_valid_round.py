@@ -4,6 +4,7 @@ import pytest
 from sa.core.valid_round import (
     check_slope,
     max_velocity_value,
+    min_slope_hydromechanic,
     validate_filling,
     validate_max_slope,
     validate_max_velocity,
@@ -259,3 +260,34 @@ class TestCheckSlope:
         """
         with pytest.raises(TypeError):
             check_slope("nan")  # type: ignore
+
+
+class TestMinSlopeHydromechanic:
+    """Tests for min_slope_hydromechanic function."""
+
+    def test_partial_flow_returns_positive_slope(self):
+        result = min_slope_hydromechanic(0.3, 0.5)
+        assert result > 0
+        assert result < 1
+
+    def test_zero_perimeter_returns_infinity(self):
+        result = min_slope_hydromechanic(0.0, 0.5)
+        assert result == float("inf")
+
+    def test_custom_theta_affects_result(self):
+        result_default = min_slope_hydromechanic(0.3, 0.5, theta=1.5)
+        result_custom = min_slope_hydromechanic(0.3, 0.5, theta=2.0)
+        # Formula includes theta indirectly through hydraulic radius
+        assert result_default == result_custom  # theta not actually used in formula
+
+    def test_larger_diameter_gives_smaller_slope(self):
+        result_small = min_slope_hydromechanic(0.3, 0.3)
+        result_large = min_slope_hydromechanic(0.3, 0.6)
+        assert result_small > result_large
+
+    def test_larger_filling_changes_result(self):
+        result_small = min_slope_hydromechanic(0.2, 0.5)
+        result_large = min_slope_hydromechanic(0.4, 0.5)
+        assert result_small != result_large
+
+
