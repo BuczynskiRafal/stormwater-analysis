@@ -8,10 +8,47 @@ import pandas as pd
 from django.db import transaction
 from django.utils import timezone
 
+from accounts.models import User
 from .models import CalculationSession, ConduitData, NodeData, SubcatchmentData, SWMMModel
 from .core.data import DataManager
 
 logger = logging.getLogger(__name__)
+
+
+class AnalysisService:
+    """Service responsible for running SWMM analysis."""
+
+    @staticmethod
+    def analyze_file(
+        user: User,
+        file_path: str,
+        frost_zone: float,
+        swmm_model: SWMMModel,
+    ) -> tuple[CalculationSession, bool]:
+        """
+        Run SWMM analysis on a file and save results.
+
+        Args:
+            user: User who owns the analysis
+            file_path: Path to the SWMM .inp file
+            frost_zone: Frost zone value (0.8-1.6)
+            swmm_model: SWMMModel instance
+
+        Returns:
+            Tuple of (session, success) where success indicates if analysis completed
+        """
+        session = CalculationPersistenceService.create_session(user=user, swmm_model=swmm_model, frost_zone=frost_zone)
+
+        try:
+            with DataManager(file_path, zone=frost_zone) as model:
+                success = CalculationPersistenceService.save_calculation_results(session, model)
+                return session, success
+        except Exception as e:
+            logger.error(f"Analysis error for session {session.id}: {e}")
+            session.status = "failed"
+            session.error_message = str(e)
+            session.save()
+            return session, False
 
 
 class CalculationPersistenceService:
