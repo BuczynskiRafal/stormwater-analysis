@@ -151,7 +151,7 @@ def test_slope_reduction_calls_max_slope():
     df = create_test_df(1.0, 50.0)
     service = ConduitFeatureEngineeringService(df, None, 1.0)
 
-    with patch("sa.core.data.max_slope") as mock_max_slope:
+    with patch("sa.core.conduits.max_slope") as mock_max_slope:
         mock_max_slope.return_value = 30.0
 
         service.slope_reduction()
