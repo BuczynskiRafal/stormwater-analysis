@@ -1,342 +1,371 @@
+"""Views for stormwater analysis application."""
+
 import logging
 import os
 import tempfile
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Q
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
-from pyswmm import Simulation
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views import View
+from django.views.generic import TemplateView
 
-from sa.core.data import DataManager
 from .forms import SWMMModelForm
 from .models import CalculationSession, SWMMModel
-from .services import CalculationPersistenceService, CalculationRetrievalService, NavigationService
+from .services import AnalysisService, CalculationRetrievalService, NavigationService
 
 TEST_FILE = "/Users/rafalbuczynski/Git/stormwater-analysis/models/recomendations/wroclaw_pipes.inp"
-
-with Simulation(TEST_FILE) as sim:
-    for step in sim:
-        pass
-
 
 logger = logging.getLogger(__name__)
 
 
-def index(request):
-    return render(request, "sa/index.html")
+# =============================================================================
+# Mixins
+# =============================================================================
 
 
-def about(request):
-    return render(request, "sa/about.html")
+class SessionOwnerMixin:
+    """Mixin ensuring access only to user's own completed sessions."""
+
+    def get_session(self):
+        """Get session owned by current user."""
+        return get_object_or_404(
+            CalculationSession,
+            id=self.kwargs["session_id"],
+            user=self.request.user,
+        )
+
+    def validate_completed_or_redirect(self, session):
+        """Check if session is completed. Returns redirect response or None."""
+        if session.status != "completed":
+            messages.warning(self.request, f"Analysis session is {session.status}.")
+            return redirect("sa:analysis")
+        return None
 
 
-def create_temp_file(uploaded_file):
-    """
-    Creates a temporary file from uploaded file.
-
-    Args:
-        uploaded_file (UploadedFile): The uploaded file object obtained from a Django form.
-
-    Returns:
-        str: Path to the temporary file
-    """
-    # Create a temporary file with .inp extension
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".inp")
-
-    # Write the uploaded file content to the temporary file
-    for chunk in uploaded_file.chunks():
-        temp_file.write(chunk)
-
-    temp_file.close()
-    return temp_file.name
+# =============================================================================
+# Simple Views
+# =============================================================================
 
 
-@login_required(login_url="/accounts/login/")
-def analysis(request):
-    if request.method == "POST":
-        # Check if it's a TEST_FILE mock request
+class IndexView(TemplateView):
+    """Home page view."""
+
+    template_name = "sa/index.html"
+
+
+class AboutView(TemplateView):
+    """About page view."""
+
+    template_name = "sa/about.html"
+
+
+# =============================================================================
+# Analysis Views
+# =============================================================================
+
+
+class AnalysisView(LoginRequiredMixin, View):
+    """View for SWMM file analysis."""
+
+    login_url = "/accounts/login/"
+    template_name = "sa/analysis.html"
+
+    def get(self, request):
+        """Display analysis form."""
+        return render(request, self.template_name, {"swmm_form": SWMMModelForm()})
+
+    def post(self, request):
+        """Handle file upload and analysis."""
         if request.POST.get("use_test_file") == "true":
-            # Use TEST_FILE for quick testing
-            try:
-                # Create mock SWMM model
-                mock_swmm_model = SWMMModel.objects.create(user=request.user, file="test_wroclaw_pipes.inp", zone=0.8)
+            return self._handle_test_file(request)
+        return self._handle_uploaded_file(request)
 
-                # Create session
-                session = CalculationPersistenceService.create_session(
-                    user=request.user, swmm_model=mock_swmm_model, frost_zone=0.8
-                )
+    def _handle_test_file(self, request):
+        """Process test file analysis."""
+        try:
+            swmm_model = SWMMModel.objects.create(user=request.user, file=TEST_FILE, zone=0.8)
+            session, success = AnalysisService.analyze_file(
+                user=request.user,
+                file_path=TEST_FILE,
+                frost_zone=0.8,
+                swmm_model=swmm_model,
+            )
 
-                # Run analysis with TEST_FILE
-                with DataManager(TEST_FILE, zone=0.8) as model:
-                    success = CalculationPersistenceService.save_calculation_results(session, model)
+            if success:
+                messages.success(request, "Test file analysis completed successfully!")
+                return self._render_success(request, session)
 
-                    if success:
-                        # Format data for display with clickable links
-                        data = CalculationRetrievalService.format_session_data_for_template(session)
-                        messages.success(request, "Test file analysis completed successfully!")
-                        return render(
-                            request,
-                            "sa/analysis.html",
-                            {"swmm_form": SWMMModelForm(), "data": data, "session": session, "show_results": True},
-                        )
-                    else:
-                        messages.error(request, "Error occurred while processing test file.")
+            messages.error(request, "Error occurred while processing test file.")
 
-            except Exception as e:
-                logger.error(f"Test file analysis error: {e}")
-                messages.error(request, f"Error occurred while analyzing test file: {str(e)}")
+        except Exception as e:
+            logger.error(f"Test file analysis error: {e}")
+            messages.error(request, f"Error occurred while analyzing test file: {e}")
 
-        else:
-            # Regular file upload
-            swmm_form = SWMMModelForm(request.POST, request.FILES)
-            if swmm_form.is_valid():
-                instance = swmm_form.save(commit=False)
-                instance.user = request.user
-                uploaded_file = request.FILES["file"]
+        return self._render_form(request)
 
-                # Create temporary file instead of permanent storage
-                temp_file_path = create_temp_file(uploaded_file)
+    def _handle_uploaded_file(self, request):
+        """Process uploaded file analysis."""
+        form = SWMMModelForm(request.POST, request.FILES)
 
-                # Set a simple filename for the database record
-                instance.file = uploaded_file.name
-                instance.save()
+        if not form.is_valid():
+            return self._render_form(request, form)
 
-                # Create calculation session using frost zone from the model
-                frost_zone = instance.get_frost_zone_value()
-                session = CalculationPersistenceService.create_session(
-                    user=request.user, swmm_model=instance, frost_zone=frost_zone
-                )
+        instance = form.save(commit=False)
+        instance.user = request.user
+        uploaded_file = request.FILES["file"]
 
-                try:
-                    # Run calculations with DataManager using temporary file
-                    with DataManager(temp_file_path, zone=frost_zone) as model:
-                        # Save results to database
-                        success = CalculationPersistenceService.save_calculation_results(session, model)
+        temp_path = self._create_temp_file(uploaded_file)
+        instance.file = uploaded_file.name
+        instance.save()
 
-                        if success:
-                            # Format data for display with clickable links
-                            data = CalculationRetrievalService.format_session_data_for_template(session)
-                            messages.success(request, "Analysis completed successfully!")
-                            return render(
-                                request,
-                                "sa/analysis.html",
-                                {"swmm_form": SWMMModelForm(), "data": data, "session": session, "show_results": True},
-                            )
-                        else:
-                            messages.error(request, "Error occurred while saving calculation results.")
+        frost_zone = instance.get_frost_zone_value()
 
-                except Exception as e:
-                    logger.error(f"Analysis error: {e}")
-                    session.status = "failed"
-                    session.error_message = str(e)
-                    session.save()
-                    messages.error(request, f"Error occurred while performing calculations: {str(e)}")
+        try:
+            session, success = AnalysisService.analyze_file(
+                user=request.user,
+                file_path=temp_path,
+                frost_zone=frost_zone,
+                swmm_model=instance,
+            )
 
-                finally:
-                    # Clean up temporary file
-                    try:
-                        os.unlink(temp_file_path)
-                    except OSError:
-                        pass
+            if success:
+                messages.success(request, "Analysis completed successfully!")
+                return self._render_success(request, session)
 
-        return render(request, "sa/analysis.html", {"swmm_form": SWMMModelForm()})
+            messages.error(request, "Error occurred while saving calculation results.")
 
-    else:
-        # GET request - show only form without any data processing
-        swmm_form = SWMMModelForm()
-        return render(request, "sa/analysis.html", {"swmm_form": swmm_form})
+        finally:
+            self._cleanup_temp_file(temp_path)
 
+        return self._render_form(request)
 
-@login_required(login_url="/accounts/login/")
-def analysis_results(request, session_id):
-    """Display results for a specific calculation session."""
-    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+    def _render_form(self, request, form=None):
+        """Render analysis form."""
+        return render(request, self.template_name, {"swmm_form": form or SWMMModelForm()})
 
-    if session.status != "completed":
-        messages.warning(request, f"Analysis session is {session.status}.")
-        return redirect("sa:analysis")
+    def _render_success(self, request, session):
+        """Render successful analysis results."""
+        data = CalculationRetrievalService.format_session_data_for_template(session)
+        return render(
+            request,
+            self.template_name,
+            {
+                "swmm_form": SWMMModelForm(),
+                "data": data,
+                "session": session,
+                "show_results": True,
+            },
+        )
 
-    # Format data for template
-    data = CalculationRetrievalService.format_session_data_for_template(session)
+    @staticmethod
+    def _create_temp_file(uploaded_file) -> str:
+        """Create temporary file from uploaded file."""
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".inp")
+        for chunk in uploaded_file.chunks():
+            temp_file.write(chunk)
+        temp_file.close()
+        return temp_file.name
 
-    return render(request, "sa/analysis_results.html", {"session": session, "data": data})
+    @staticmethod
+    def _cleanup_temp_file(path: str):
+        """Remove temporary file."""
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
 
 
-@login_required(login_url="/accounts/login/")
-def history(request):
-    """Display user's calculation history with detailed statistics."""
-    sessions = CalculationRetrievalService.get_user_sessions(request.user)
+class AnalysisResultsView(LoginRequiredMixin, SessionOwnerMixin, TemplateView):
+    """View for displaying analysis results."""
 
-    # Calculate statistics
-    total_sessions = len(sessions)
-    completed_sessions = sum(1 for s in sessions if s.status == "completed")
-    failed_sessions = sum(1 for s in sessions if s.status == "failed")
-    processing_sessions = sum(1 for s in sessions if s.status == "processing")
+    login_url = "/accounts/login/"
+    template_name = "sa/analysis_results.html"
 
-    # Calculate percentages
-    completed_percentage = round((completed_sessions * 100 / total_sessions) if total_sessions > 0 else 0)
-    failed_percentage = round((failed_sessions * 100 / total_sessions) if total_sessions > 0 else 0)
-    processing_percentage = round((processing_sessions * 100 / total_sessions) if total_sessions > 0 else 0)
+    def get(self, request, *args, **kwargs):
+        session = self.get_session()
 
-    # Calculate totals for completed sessions
-    total_conduits = sum(s.conduits.count() for s in sessions if s.status == "completed")
-    total_nodes = sum(s.nodes.count() for s in sessions if s.status == "completed")
-    total_subcatchments = sum(s.subcatchments.count() for s in sessions if s.status == "completed")
+        redirect_response = self.validate_completed_or_redirect(session)
+        if redirect_response:
+            return redirect_response
 
-    # Get most recent session details
-    latest_session = sessions[0] if sessions else None
-
-    context = {
-        "sessions": sessions,
-        "stats": {
-            "total_sessions": total_sessions,
-            "completed_sessions": completed_sessions,
-            "failed_sessions": failed_sessions,
-            "processing_sessions": processing_sessions,
-            "completed_percentage": completed_percentage,
-            "failed_percentage": failed_percentage,
-            "processing_percentage": processing_percentage,
-            "total_conduits": total_conduits,
-            "total_nodes": total_nodes,
-            "total_subcatchments": total_subcatchments,
-        },
-        "latest_session": latest_session,
-    }
-
-    return render(request, "sa/history.html", context)
+        data = CalculationRetrievalService.format_session_data_for_template(session)
+        return render(request, self.template_name, {"session": session, "data": data})
 
 
-@login_required(login_url="/accounts/login/")
-def conduit_detail(request, session_id, conduit_name):
-    """Display detailed view for a specific conduit."""
-    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
-
-    if session.status != "completed":
-        messages.warning(request, f"Analysis session is {session.status}.")
-        return redirect("sa:analysis")
-
-    # Get conduit data
-    conduit_data = session.conduits.filter(conduit_name=conduit_name).first()
-    if not conduit_data:
-        messages.error(request, f"Conduit '{conduit_name}' not found in this session.")
-        return redirect("sa:analysis_results", session_id=session_id)
-
-    # Get related nodes
-    inlet_node = session.nodes.filter(node_name=conduit_data.inlet_node).first()
-    outlet_node = session.nodes.filter(node_name=conduit_data.outlet_node).first()
-
-    # Get related subcatchment
-    subcatchment = session.subcatchments.filter(subcatchment_name=conduit_data.subcatchment).first()
-
-    # Get navigation context
-    navigation = NavigationService.get_navigation_context(session, "conduit", conduit_name)
-
-    context = {
-        "session": session,
-        "conduit": conduit_data,
-        "inlet_node": inlet_node,
-        "outlet_node": outlet_node,
-        "subcatchment": subcatchment,
-        "data_type": "conduit",
-        "navigation": navigation,
-    }
-
-    return render(request, "sa/detail.html", context)
+# =============================================================================
+# Detail Views
+# =============================================================================
 
 
-@login_required(login_url="/accounts/login/")
-def node_detail(request, session_id, node_name):
-    """Display detailed view for a specific node."""
-    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+class BaseElementDetailView(LoginRequiredMixin, SessionOwnerMixin, TemplateView):
+    """Base view for element details (conduit/node/subcatchment)."""
 
-    if session.status != "completed":
-        messages.warning(request, f"Analysis session is {session.status}.")
-        return redirect("sa:analysis")
+    login_url = "/accounts/login/"
+    template_name = "sa/detail.html"
+    element_type: str = None
+    element_name_kwarg: str = None
 
-    # Get node data
-    node_data = session.nodes.filter(node_name=node_name).first()
-    if not node_data:
-        messages.error(request, f"Node '{node_name}' not found in this session.")
-        return redirect("sa:analysis_results", session_id=session_id)
+    def get_element(self, session):
+        """Get the element from session. Override in subclasses."""
+        raise NotImplementedError
 
-    # Get related conduits (where this node is inlet or outlet)
-    from django.db.models import Q
+    def get_related_objects(self, session, element):
+        """Get related objects for the element. Override in subclasses."""
+        return {}
 
-    related_conduits = session.conduits.filter(Q(inlet_node=node_name) | Q(outlet_node=node_name))
+    def get(self, request, *args, **kwargs):
+        session = self.get_session()
 
-    # Get related subcatchments (through connected conduits)
-    subcatchment_names = related_conduits.values_list("subcatchment", flat=True).distinct()
-    related_subcatchments = session.subcatchments.filter(subcatchment_name__in=subcatchment_names)
+        redirect_response = self.validate_completed_or_redirect(session)
+        if redirect_response:
+            return redirect_response
 
-    # Get navigation context
-    navigation = NavigationService.get_navigation_context(session, "node", node_name)
+        element = self.get_element(session)
+        if not element:
+            element_name = kwargs[self.element_name_kwarg]
+            messages.error(request, f"{self.element_type.title()} '{element_name}' not found in this session.")
+            return redirect("sa:analysis_results", session_id=session.id)
 
-    context = {
-        "session": session,
-        "node": node_data,
-        "related_conduits": related_conduits,
-        "related_subcatchments": related_subcatchments,
-        "data_type": "node",
-        "navigation": navigation,
-    }
+        navigation = NavigationService.get_navigation_context(
+            session,
+            self.element_type,
+            kwargs[self.element_name_kwarg],
+        )
 
-    return render(request, "sa/detail.html", context)
+        context = {
+            "session": session,
+            self.element_type: element,
+            "data_type": self.element_type,
+            "navigation": navigation,
+            **self.get_related_objects(session, element),
+        }
 
-
-@login_required(login_url="/accounts/login/")
-def subcatchment_detail(request, session_id, subcatchment_name):
-    """Display detailed view for a specific subcatchment."""
-    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
-
-    if session.status != "completed":
-        messages.warning(request, f"Analysis session is {session.status}.")
-        return redirect("sa:analysis")
-
-    # Get subcatchment data
-    subcatchment_data = session.subcatchments.filter(subcatchment_name=subcatchment_name).first()
-    if not subcatchment_data:
-        messages.error(request, f"Subcatchment '{subcatchment_name}' not found in this session.")
-        return redirect("sa:analysis_results", session_id=session_id)
-
-    # Get related conduits
-    related_conduits = session.conduits.filter(subcatchment=subcatchment_name)
-
-    # Get related nodes (through connected conduits - inlet and outlet nodes)
-    inlet_node_names = related_conduits.values_list("inlet_node", flat=True)
-    outlet_node_names = related_conduits.values_list("outlet_node", flat=True)
-    all_node_names = set(inlet_node_names) | set(outlet_node_names)
-    related_nodes = session.nodes.filter(node_name__in=all_node_names)
-
-    # Get navigation context
-    navigation = NavigationService.get_navigation_context(session, "subcatchment", subcatchment_name)
-
-    context = {
-        "session": session,
-        "subcatchment": subcatchment_data,
-        "related_conduits": related_conduits,
-        "related_nodes": related_nodes,
-        "data_type": "subcatchment",
-        "navigation": navigation,
-    }
-
-    return render(request, "sa/detail.html", context)
+        return self.render_to_response(context)
 
 
-@login_required(login_url="/accounts/login/")
-@require_POST
-def delete_session(request, session_id):
-    """Delete a calculation session and all its related data."""
-    logger.info(f"Delete session view reached! session_id: {session_id}, user: {request.user}")
+class ConduitDetailView(BaseElementDetailView):
+    """Detailed view for a specific conduit."""
 
-    session = get_object_or_404(CalculationSession, id=session_id, user=request.user)
+    element_type = "conduit"
+    element_name_kwarg = "conduit_name"
 
-    try:
-        session_name = f"Session {session.id}"
-        session.delete()
-        logger.info(f"Successfully deleted session {session_id}")
-        return JsonResponse({"success": True, "message": f"{session_name} deleted successfully."})
-    except Exception as e:
-        logger.error(f"Error deleting session {session_id}: {str(e)}")
-        return JsonResponse({"success": False, "message": "An error occurred while deleting the session."}, status=500)
+    def get_element(self, session):
+        return session.conduits.filter(conduit_name=self.kwargs["conduit_name"]).first()
+
+    def get_related_objects(self, session, conduit):
+        return {
+            "inlet_node": session.nodes.filter(node_name=conduit.inlet_node).first(),
+            "outlet_node": session.nodes.filter(node_name=conduit.outlet_node).first(),
+            "subcatchment": session.subcatchments.filter(subcatchment_name=conduit.subcatchment).first(),
+        }
+
+
+class NodeDetailView(BaseElementDetailView):
+    """Detailed view for a specific node."""
+
+    element_type = "node"
+    element_name_kwarg = "node_name"
+
+    def get_element(self, session):
+        return session.nodes.filter(node_name=self.kwargs["node_name"]).first()
+
+    def get_related_objects(self, session, node):
+        related_conduits = session.conduits.filter(Q(inlet_node=node.node_name) | Q(outlet_node=node.node_name))
+        subcatchment_names = related_conduits.values_list("subcatchment", flat=True).distinct()
+
+        return {
+            "related_conduits": related_conduits,
+            "related_subcatchments": session.subcatchments.filter(subcatchment_name__in=subcatchment_names),
+        }
+
+
+class SubcatchmentDetailView(BaseElementDetailView):
+    """Detailed view for a specific subcatchment."""
+
+    element_type = "subcatchment"
+    element_name_kwarg = "subcatchment_name"
+
+    def get_element(self, session):
+        return session.subcatchments.filter(subcatchment_name=self.kwargs["subcatchment_name"]).first()
+
+    def get_related_objects(self, session, subcatchment):
+        related_conduits = session.conduits.filter(subcatchment=subcatchment.subcatchment_name)
+        inlet_nodes = related_conduits.values_list("inlet_node", flat=True)
+        outlet_nodes = related_conduits.values_list("outlet_node", flat=True)
+        all_nodes = set(inlet_nodes) | set(outlet_nodes)
+
+        return {
+            "related_conduits": related_conduits,
+            "related_nodes": session.nodes.filter(node_name__in=all_nodes),
+        }
+
+
+# =============================================================================
+# History View
+# =============================================================================
+
+
+class HistoryView(LoginRequiredMixin, TemplateView):
+    """View for user's calculation history."""
+
+    login_url = "/accounts/login/"
+    template_name = "sa/history.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        sessions = CalculationRetrievalService.get_user_sessions(self.request.user)
+
+        total = len(sessions)
+        completed = sum(1 for s in sessions if s.status == "completed")
+        failed = sum(1 for s in sessions if s.status == "failed")
+        processing = sum(1 for s in sessions if s.status == "processing")
+
+        context.update(
+            {
+                "sessions": sessions,
+                "stats": {
+                    "total_sessions": total,
+                    "completed_sessions": completed,
+                    "failed_sessions": failed,
+                    "processing_sessions": processing,
+                    "completed_percentage": round((completed * 100 / total) if total > 0 else 0),
+                    "failed_percentage": round((failed * 100 / total) if total > 0 else 0),
+                    "processing_percentage": round((processing * 100 / total) if total > 0 else 0),
+                    "total_conduits": sum(s.conduits.count() for s in sessions if s.status == "completed"),
+                    "total_nodes": sum(s.nodes.count() for s in sessions if s.status == "completed"),
+                    "total_subcatchments": sum(s.subcatchments.count() for s in sessions if s.status == "completed"),
+                },
+                "latest_session": sessions[0] if sessions else None,
+            }
+        )
+
+        return context
+
+
+# =============================================================================
+# AJAX Views
+# =============================================================================
+
+
+class DeleteSessionView(LoginRequiredMixin, SessionOwnerMixin, View):
+    """AJAX endpoint for deleting a calculation session. Returns JSON response."""
+
+    login_url = "/accounts/login/"
+
+    def post(self, request, *args, **kwargs):
+        session = self.get_session()
+        session_id = session.id
+
+        try:
+            session.delete()
+            logger.info(f"Successfully deleted session {session_id}")
+            return JsonResponse({"success": True, "message": f"Session {session_id} deleted successfully."})
+        except Exception as e:
+            logger.error(f"Error deleting session {session_id}: {e}")
+            return JsonResponse(
+                {"success": False, "message": "An error occurred while deleting the session."},
+                status=500,
+            )
