@@ -164,468 +164,270 @@
         <!-- Sidebar with Related Data -->
         <div class="col-lg-4">
             {% if data_type == "conduit" %}
-                <!-- Binary Validation Results -->
-                <div class="card mb-4">
+                <!-- Binary Validation Results - Modern Design -->
+                <div class="card mb-4 validation-card">
                     <div class="card-header">
                         <h6 class="mb-0">
                             <i class="fas fa-clipboard-check me-2"></i>
-                            Binary Validation Results
+                            Validation Results
                         </h6>
                     </div>
-                    <div class="card-body">
-                        <!-- Validation Summary -->
-                        <div class="mb-3">
-                            {% with total_checks=7 passed_checks=conduit.val_max_fill|add:conduit.val_max_v|add:conduit.val_min_v|add:conduit.val_max_slope|add:conduit.val_min_slope|add:conduit.val_depth|add:conduit.val_coverage %}
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <strong>Overall Status:</strong>
-                                <span class="badge bg-{% if passed_checks == total_checks %}success{% elif passed_checks >= 5 %}warning{% else %}danger{% endif %} fs-6">
-                                    {{ passed_checks }}/{{ total_checks }} Passed
+                    <div class="card-body p-0">
+                        {% with total_checks=7 passed_checks=conduit.val_max_fill|add:conduit.val_max_v|add:conduit.val_min_v|add:conduit.val_max_slope|add:conduit.val_min_slope|add:conduit.val_depth|add:conduit.val_coverage %}
+                        <!-- Summary Header -->
+                        <div class="validation-summary {% if passed_checks == total_checks %}status-success{% elif passed_checks >= 5 %}status-warning{% else %}status-danger{% endif %}">
+                            <div class="summary-score">
+                                <span class="score-value">{{ passed_checks }}</span>
+                                <span class="score-divider">/</span>
+                                <span class="score-total">{{ total_checks }}</span>
+                            </div>
+                            <div class="summary-label">
+                                {% if passed_checks == total_checks %}All checks passed{% elif passed_checks >= 5 %}Minor issues{% else %}Attention required{% endif %}
+                            </div>
+                        </div>
+                        {% endwith %}
+
+                        <!-- Validation Items -->
+                        <ul class="validation-list">
+                            <li class="validation-item {% if conduit.val_max_fill %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Max Filling</span>
+                                <span class="validation-status">{% if conduit.val_max_fill %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                            <li class="validation-item {% if conduit.val_max_v %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Max Velocity</span>
+                                <span class="validation-status">{% if conduit.val_max_v %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                            <li class="validation-item {% if conduit.val_min_v %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Min Velocity</span>
+                                <span class="validation-status">{% if conduit.val_min_v %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                            <li class="validation-item {% if conduit.val_max_slope %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Max Slope</span>
+                                <span class="validation-status">{% if conduit.val_max_slope %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                            <li class="validation-item {% if conduit.val_min_slope %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Min Slope</span>
+                                <span class="validation-status">{% if conduit.val_min_slope %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                            <li class="validation-item {% if conduit.val_depth %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Depth</span>
+                                <span class="validation-status">{% if conduit.val_depth %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                            <li class="validation-item {% if conduit.val_coverage %}is-valid{% else %}is-invalid{% endif %}">
+                                <span class="validation-indicator"></span>
+                                <span class="validation-label">Coverage</span>
+                                <span class="validation-status">{% if conduit.val_coverage %}Pass{% else %}Fail{% endif %}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Technical Recommendations - Modern Design -->
+                <div class="card mb-4 metrics-card">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-ruler-combined me-2"></i>
+                            Technical Analysis
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Diameter Section -->
+                        <div class="metrics-section">
+                            <div class="metrics-section-header">
+                                <span class="section-title">Diameter</span>
+                                <span class="section-status {% if conduit.geom1 >= conduit.min_diameter %}status-ok{% else %}status-warning{% endif %}">
+                                    {% if conduit.geom1 >= conduit.min_diameter %}OK{% else %}Action needed{% endif %}
                                 </span>
                             </div>
-                            <div class="progress mb-3" style="height: 8px;">
-                                <div class="progress-bar bg-{% if passed_checks == total_checks %}success{% elif passed_checks >= 5 %}warning{% else %}danger{% endif %}"
-                                     style="width: {% widthratio passed_checks total_checks 100 %}%"></div>
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <span class="metric-label">Current</span>
+                                    <span class="metric-value">{{ conduit.geom1|floatformat:3 }}<span class="metric-unit">m</span></span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Required min.</span>
+                                    <span class="metric-value">{{ conduit.min_diameter|floatformat:3 }}<span class="metric-unit">m</span></span>
+                                </div>
                             </div>
-                            {% endwith %}
+                            <div class="metrics-actions">
+                                <div class="action-item {% if conduit.increase_dia %}is-active{% endif %}">
+                                    <span class="action-indicator"></span>
+                                    <span class="action-label">Increase</span>
+                                    {% if conduit.increase_dia %}<span class="action-target">→ {{ conduit.min_diameter|floatformat:3 }}m</span>{% endif %}
+                                </div>
+                                <div class="action-item {% if conduit.reduce_dia %}is-possible{% endif %}">
+                                    <span class="action-indicator"></span>
+                                    <span class="action-label">Reduce</span>
+                                    {% if conduit.reduce_dia %}<span class="action-target">possible</span>{% endif %}
+                                </div>
+                            </div>
                         </div>
 
-                        <!-- Individual Validation Results -->
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_max_fill %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_max_fill %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Max Filling</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_max_fill %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_max_fill %}PASS{% else %}FAIL{% endif %}
-                                    </span>
+                        <!-- Slope Section -->
+                        <div class="metrics-section">
+                            <div class="metrics-section-header">
+                                <span class="section-title">Slope</span>
+                                <span class="section-status {% if conduit.slope_per_mile >= conduit.min_required_slope and conduit.slope_per_mile <= conduit.max_allowable_slope %}status-ok{% else %}status-warning{% endif %}">
+                                    {% if conduit.slope_per_mile >= conduit.min_required_slope and conduit.slope_per_mile <= conduit.max_allowable_slope %}OK{% else %}Action needed{% endif %}
+                                </span>
+                            </div>
+                            <div class="metrics-grid">
+                                <div class="metric-item">
+                                    <span class="metric-label">Current</span>
+                                    <span class="metric-value">{{ conduit.slope_per_mile|floatformat:2 }}<span class="metric-unit">‰</span></span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Range</span>
+                                    <span class="metric-value metric-range">{{ conduit.min_required_slope|floatformat:2 }} – {{ conduit.max_allowable_slope|floatformat:2 }}<span class="metric-unit">‰</span></span>
                                 </div>
                             </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_max_v %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_max_v %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Max Velocity</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_max_v %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_max_v %}PASS{% else %}FAIL{% endif %}
-                                    </span>
+                            <div class="metrics-actions">
+                                <div class="action-item {% if conduit.increase_slope %}is-active{% endif %}">
+                                    <span class="action-indicator"></span>
+                                    <span class="action-label">Increase</span>
+                                    {% if conduit.increase_slope %}<span class="action-target">→ {{ conduit.min_required_slope|floatformat:2 }}‰</span>{% endif %}
                                 </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_min_v %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_min_v %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Min Velocity</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_min_v %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_min_v %}PASS{% else %}FAIL{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_max_slope %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_max_slope %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Max Slope</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_max_slope %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_max_slope %}PASS{% else %}FAIL{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_min_slope %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_min_slope %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Min Slope</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_min_slope %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_min_slope %}PASS{% else %}FAIL{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_depth %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_depth %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Depth</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_depth %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_depth %}PASS{% else %}FAIL{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="d-flex align-items-center justify-content-between p-2 rounded border {% if conduit.val_coverage %}bg-light-success{% else %}bg-light-danger{% endif %}">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-{% if conduit.val_coverage %}check-circle text-success{% else %}times-circle text-danger{% endif %} me-2"></i>
-                                        <span class="fw-bold">Coverage</span>
-                                    </div>
-                                    <span class="badge bg-{% if conduit.val_coverage %}success{% else %}danger{% endif %}">
-                                        {% if conduit.val_coverage %}PASS{% else %}FAIL{% endif %}
-                                    </span>
+                                <div class="action-item {% if conduit.reduce_slope %}is-active{% endif %}">
+                                    <span class="action-indicator"></span>
+                                    <span class="action-label">Reduce</span>
+                                    {% if conduit.reduce_slope %}<span class="action-target">→ {{ conduit.max_allowable_slope|floatformat:2 }}‰</span>{% endif %}
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Technical Recommendations -->
-                <div class="card mb-4">
+                <!-- Neural Network Prediction - Modern Design -->
+                <div class="card mb-4 predictions-card">
                     <div class="card-header">
                         <h6 class="mb-0">
-                            <i class="fas fa-tools me-2"></i>
-                            Technical Recommendations
+                            <i class="fas fa-brain me-2"></i>
+                            ML Prediction
                         </h6>
                     </div>
-                    <div class="card-body">
-                        <!-- Diameter Recommendations -->
-                        <div class="mb-4 ">
-                            <h6 class="mb-3 ">
-                                <i class="fas fa-circle me-1"></i>
-                                Diameter Analysis
-                            </h6>
-
-                            <div class="row g-3">
-                                <!-- Current vs Minimum Required -->
-                                <div class="col-12">
-                                    <div class="card border-left-secondary">
-                                        <div class="card-body p-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="fw-bold">Current Diameter</span>
-                                                <span class="badge bg-secondary fs-6">{{ conduit.geom1|floatformat:3 }} m</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="fw-bold">Minimum Required</span>
-                                                <span class="badge bg-info fs-6">{{ conduit.min_diameter|floatformat:3 }} m</span>
-                                            </div>
-                                            <div class="progress mb-2" style="height: 8px;">
-                                                {% if conduit.geom1 >= conduit.min_diameter %}
-                                                    <div class="progress-bar bg-success" style="width: 100%"></div>
-                                                {% else %}
-                                                    <div class="progress-bar bg-danger" style="width: {% widthratio conduit.geom1 conduit.min_diameter 100 %}%"></div>
-                                                {% endif %}
-                                            </div>
-                                            <small class="text-muted">
-                                                {% if conduit.geom1 >= conduit.min_diameter %}
-                                                    ✓ Current diameter meets minimum requirements
-                                                {% else %}
-                                                    ⚠️ Current diameter below minimum required
-                                                {% endif %}
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Diameter Recommendations -->
-                                <div class="col-md-6">
-                                    <div class="p-3 rounded border {% if conduit.increase_dia %}bg-warning-subtle border-warning{% else %}bg-light{% endif %}">
-                                        <div class="mb-2">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <i class="fas fa-{% if conduit.increase_dia %}arrow-up text-warning{% else %}equals text-muted{% endif %} me-2"></i>
-                                                <span class="fw-bold">Increase Diameter</span>
-                                            </div>
-                                            <span class="badge bg-{% if conduit.increase_dia %}warning{% else %}success{% endif %}">
-                                                {% if conduit.increase_dia %}REQUIRED{% else %}NOT NEEDED{% endif %}
-                                            </span>
-                                        </div>
-                                        {% if conduit.increase_dia %}
-                                        <small class="text-muted">
-                                            Suggested: {{ conduit.min_diameter|floatformat:3 }} m
-                                        </small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
-                                    <div class="p-3 rounded border {% if conduit.reduce_dia %}bg-info-subtle border-info{% else %}bg-light{% endif %}">
-                                        <div class="mb-2">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <i class="fas fa-{% if conduit.reduce_dia %}arrow-down text-info{% else %}equals text-muted{% endif %} me-2"></i>
-                                                <span class="fw-bold">Reduce Diameter</span>
-                                            </div>
-                                            <span class="badge bg-{% if conduit.reduce_dia %}info{% else %}success{% endif %}">
-                                                {% if conduit.reduce_dia %}POSSIBLE{% else %}NOT POSSIBLE{% endif %}
-                                            </span>
-                                        </div>
-                                        {% if conduit.reduce_dia %}
-                                        <small class="text-muted">
-                                            Minimum: {{ conduit.min_diameter|floatformat:3 }} m
-                                        </small>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="card-body p-0">
+                        <!-- Selected Prediction -->
+                        <div class="prediction-selected">
+                            <div class="selected-label">Recommended Action</div>
+                            <div class="selected-value">{{ conduit.recommendation|title }}</div>
                         </div>
 
-                        <!-- Slope Recommendations -->
-                        <div class="mb-3">
-                            <h6 class="mb-3">
-                                <i class="fas fa-chart-line me-1"></i>
-                                Slope Analysis
-                            </h6>
-
-                            <div class="row g-3">
-                                <!-- Current vs Required Range -->
-                                <div class="col-12">
-                                    <div class="card border-left-secondary">
-                                        <div class="card-body p-3">
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="fw-bold">Current Slope</span>
-                                                <span class="badge bg-secondary fs-6">{{ conduit.slope_per_mile|floatformat:4 }}‰</span>
-                                            </div>
-                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                <span class="fw-bold">Required Range</span>
-                                                <span class="badge bg-success fs-6">{{ conduit.min_required_slope|floatformat:4 }}‰ - {{ conduit.max_allowable_slope|floatformat:4 }}‰</span>
-                                            </div>
-                                            <div class="position-relative">
-                                                <div class="progress mb-2" style="height: 8px;">
-                                                    {% if conduit.slope_per_mile >= conduit.min_required_slope and conduit.slope_per_mile <= conduit.max_allowable_slope %}
-                                                        <div class="progress-bar bg-success" style="width: 100%"></div>
-                                                    {% elif conduit.slope_per_mile < conduit.min_required_slope %}
-                                                        <div class="progress-bar bg-danger" style="width: {% widthratio conduit.slope_per_mile conduit.min_required_slope 100 %}%"></div>
-                                                    {% else %}
-                                                        <div class="progress-bar bg-warning" style="width: 100%"></div>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                            <small class="text-muted">
-                                                {% if conduit.slope_per_mile >= conduit.min_required_slope and conduit.slope_per_mile <= conduit.max_allowable_slope %}
-                                                    ✓ Current slope within acceptable range
-                                                {% elif conduit.slope_per_mile < conduit.min_required_slope %}
-                                                    ⚠️ Current slope below minimum required
-                                                {% else %}
-                                                    ⚠️ Current slope exceeds maximum allowable
-                                                {% endif %}
-                                            </small>
-                                        </div>
-                                    </div>
+                        <!-- Confidence Distribution -->
+                        <ul class="prediction-list">
+                            <li class="prediction-item {% if conduit.recommendation == 'valid' %}is-selected{% endif %}">
+                                <span class="prediction-name">Valid (No Changes)</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_valid|to_percent }}%;"></div>
                                 </div>
-
-                                <!-- Slope Recommendations -->
-                                <div class="col-md-6">
-                                    <div class="p-3 rounded border {% if conduit.increase_slope %}bg-warning-subtle border-warning{% else %}bg-light{% endif %}">
-                                        <div class="mb-2">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <i class="fas fa-{% if conduit.increase_slope %}trending-up text-warning{% else %}equals text-muted{% endif %} me-2"></i>
-                                                <span class="fw-bold">Increase Slope</span>
-                                            </div>
-                                            <span class="badge bg-{% if conduit.increase_slope %}warning{% else %}success{% endif %}">
-                                                {% if conduit.increase_slope %}REQUIRED{% else %}NOT NEEDED{% endif %}
-                                            </span>
-                                        </div>
-                                        {% if conduit.increase_slope %}
-                                        <small class="text-muted">
-                                            Target: {{ conduit.min_required_slope|floatformat:4 }}‰
-                                        </small>
-                                        {% endif %}
-                                    </div>
+                                <span class="prediction-percent">{{ conduit.confidence_valid|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'diameter_increase' %}is-selected{% endif %}">
+                                <span class="prediction-name">Diameter ↑</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_diameter_increase|to_percent }}%;"></div>
                                 </div>
-
-                                <div class="col-md-6">
-                                    <div class="p-3 rounded border {% if conduit.reduce_slope %}bg-info-subtle border-info{% else %}bg-light{% endif %}">
-                                        <div class="mb-2">
-                                            <div class="d-flex align-items-center mb-2">
-                                                <i class="fas fa-{% if conduit.reduce_slope %}trending-down text-info{% else %}equals text-muted{% endif %} me-2"></i>
-                                                <span class="fw-bold">Reduce Slope</span>
-                                            </div>
-                                            <span class="badge bg-{% if conduit.reduce_slope %}info{% else %}success{% endif %}">
-                                                {% if conduit.reduce_slope %}REQUIRED{% else %}NOT POSSIBLE{% endif %}
-                                            </span>
-                                        </div>
-                                        {% if conduit.reduce_slope %}
-                                        <small class="text-muted">
-                                            Target: {{ conduit.max_allowable_slope|floatformat:4 }}‰
-                                        </small>
-                                        {% endif %}
-                                    </div>
+                                <span class="prediction-percent">{{ conduit.confidence_diameter_increase|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'diameter_reduction' %}is-selected{% endif %}">
+                                <span class="prediction-name">Diameter ↓</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_diameter_reduction|to_percent }}%;"></div>
                                 </div>
-                            </div>
-                        </div>
+                                <span class="prediction-percent">{{ conduit.confidence_diameter_reduction|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'slope_increase' %}is-selected{% endif %}">
+                                <span class="prediction-name">Slope ↑</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_slope_increase|to_percent }}%;"></div>
+                                </div>
+                                <span class="prediction-percent">{{ conduit.confidence_slope_increase|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'slope_reduction' %}is-selected{% endif %}">
+                                <span class="prediction-name">Slope ↓</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_slope_reduction|to_percent }}%;"></div>
+                                </div>
+                                <span class="prediction-percent">{{ conduit.confidence_slope_reduction|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'depth_increase' %}is-selected{% endif %}">
+                                <span class="prediction-name">Depth ↑</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_depth_increase|to_percent }}%;"></div>
+                                </div>
+                                <span class="prediction-percent">{{ conduit.confidence_depth_increase|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'pump' %}is-selected{% endif %}">
+                                <span class="prediction-name">Pump</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_pump|to_percent }}%;"></div>
+                                </div>
+                                <span class="prediction-percent">{{ conduit.confidence_pump|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'tank' %}is-selected{% endif %}">
+                                <span class="prediction-name">Tank</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_tank|to_percent }}%;"></div>
+                                </div>
+                                <span class="prediction-percent">{{ conduit.confidence_tank|to_percent }}%</span>
+                            </li>
+                            <li class="prediction-item {% if conduit.recommendation == 'seepage_boxes' %}is-selected{% endif %}">
+                                <span class="prediction-name">Seepage Boxes</span>
+                                <div class="prediction-bar-wrapper">
+                                    <div class="prediction-bar" style="width: {{ conduit.confidence_seepage_boxes|to_percent }}%;"></div>
+                                </div>
+                                <span class="prediction-percent">{{ conduit.confidence_seepage_boxes|to_percent }}%</span>
+                            </li>
+                        </ul>
                     </div>
                 </div>
 
-                <!-- Neural Network Prediction Distribution -->
-                <div class="card mb-4">
+                <!-- Connected Elements - Modern Design -->
+                <div class="card connections-card">
                     <div class="card-header">
                         <h6 class="mb-0">
-                            <i class="fas fa-chart-bar me-2"></i>
-                            Neural Network Prediction Distribution
+                            <i class="fas fa-sitemap me-2"></i>
+                            Connections
                         </h6>
                     </div>
-                    <div class="card-body">
-                        <!-- Neural Network Confidence Scores -->
-                        <div class="confidence-bars-container">
-                            <!-- Pump -->
-                            <div class="mb-3 {% if conduit.recommendation == 'pump' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Pump {% if conduit.recommendation == 'pump' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_pump|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_pump|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_pump|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Tank -->
-                            <div class="mb-3 {% if conduit.recommendation == 'tank' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Tank {% if conduit.recommendation == 'tank' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_tank|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_tank|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_tank|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Seepage Boxes -->
-                            <div class="mb-3 {% if conduit.recommendation == 'seepage_boxes' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Seepage Boxes {% if conduit.recommendation == 'seepage_boxes' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_seepage_boxes|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_seepage_boxes|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_seepage_boxes|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Diameter Increase -->
-                            <div class="mb-3 {% if conduit.recommendation == 'diameter_increase' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Diameter Increase {% if conduit.recommendation == 'diameter_increase' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_diameter_increase|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_diameter_increase|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_diameter_increase|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Diameter Reduction -->
-                            <div class="mb-3 {% if conduit.recommendation == 'diameter_reduction' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Diameter Reduction {% if conduit.recommendation == 'diameter_reduction' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_diameter_reduction|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_diameter_reduction|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_diameter_reduction|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Slope Increase -->
-                            <div class="mb-3 {% if conduit.recommendation == 'slope_increase' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Slope Increase {% if conduit.recommendation == 'slope_increase' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_slope_increase|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_slope_increase|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_slope_increase|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Slope Reduction -->
-                            <div class="mb-3 {% if conduit.recommendation == 'slope_reduction' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Slope Reduction {% if conduit.recommendation == 'slope_reduction' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_slope_reduction|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_slope_reduction|to_percent }}%; background-color: #6f42c1;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_slope_reduction|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Depth Increase -->
-                            <div class="mb-3 {% if conduit.recommendation == 'depth_increase' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Depth Increase {% if conduit.recommendation == 'depth_increase' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_depth_increase|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar confidence-bar"
-                                         style="width: {{ conduit.confidence_depth_increase|to_percent }}%; background-color: #fd7e14;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_depth_increase|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Valid (No Changes) -->
-                            <div class="mb-3 {% if conduit.recommendation == 'valid' %}border border-warning rounded p-2{% endif %}">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <small class="fw-bold">Valid (No Changes) {% if conduit.recommendation == 'valid' %}⭐{% endif %}</small>
-                                    <small class="badge bg-success">{{ conduit.confidence_valid|to_percent }}%</small>
-                                </div>
-                                <div class="progress mb-2" style="height: 20px;">
-                                    <div class="progress-bar bg-success confidence-bar"
-                                         style="width: {{ conduit.confidence_valid|to_percent }}%;">
-                                        <span class="text-white fw-bold">{{ conduit.confidence_valid|to_percent }}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                </div>
-                </div>
-
-                <!-- Connected Nodes -->
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-project-diagram me-2"></i>
-                            Connected Elements
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        {% if inlet_node %}
-                        <div class="mb-3">
-                            <strong>Inlet Node:</strong><br>
-                            <a href="{% url 'sa:node_detail' session.id inlet_node.node_name %}" class="btn btn-sm btn-outline-info">
-                                <i class="fas fa-circle me-1"></i>{{ inlet_node.node_name }}
-                            </a>
-                        </div>
-                        {% endif %}
-                        {% if outlet_node %}
-                        <div class="mb-3">
-                            <strong>Outlet Node:</strong><br>
-                            <a href="{% url 'sa:node_detail' session.id outlet_node.node_name %}" class="btn btn-sm btn-outline-info">
-                                <i class="fas fa-circle me-1"></i>{{ outlet_node.node_name }}
-                            </a>
-                        </div>
-                        {% endif %}
-                        {% if subcatchment %}
-                        <div class="mb-3">
-                            <strong>Subcatchment:</strong><br>
-                            <a href="{% url 'sa:subcatchment_detail' session.id subcatchment.subcatchment_name %}" class="btn btn-sm btn-outline-success">
-                                <i class="fas fa-map me-1"></i>{{ subcatchment.subcatchment_name }}
-                            </a>
-                        </div>
-                        {% endif %}
+                    <div class="card-body p-0">
+                        <ul class="connections-list">
+                            {% if inlet_node %}
+                            <li class="connection-item">
+                                <span class="connection-type">Inlet</span>
+                                <a href="{% url 'sa:node_detail' session.id inlet_node.node_name %}" class="connection-link">
+                                    <span class="connection-icon node-icon"></span>
+                                    <span class="connection-name">{{ inlet_node.node_name }}</span>
+                                    <span class="connection-arrow">→</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if outlet_node %}
+                            <li class="connection-item">
+                                <span class="connection-type">Outlet</span>
+                                <a href="{% url 'sa:node_detail' session.id outlet_node.node_name %}" class="connection-link">
+                                    <span class="connection-icon node-icon"></span>
+                                    <span class="connection-name">{{ outlet_node.node_name }}</span>
+                                    <span class="connection-arrow">→</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                            {% if subcatchment %}
+                            <li class="connection-item">
+                                <span class="connection-type">Catchment</span>
+                                <a href="{% url 'sa:subcatchment_detail' session.id subcatchment.subcatchment_name %}" class="connection-link">
+                                    <span class="connection-icon catchment-icon"></span>
+                                    <span class="connection-name">{{ subcatchment.subcatchment_name }}</span>
+                                    <span class="connection-arrow">→</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
                     </div>
                 </div>
             {% endif %}
