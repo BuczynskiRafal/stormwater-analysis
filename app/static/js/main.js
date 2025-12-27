@@ -498,5 +498,52 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // =========================================================================
+    // Keyboard Navigation for Detail Pages
+    // =========================================================================
+
+    /**
+     * Initialize keyboard navigation for detail pages
+     * Allows navigating between items using arrow keys
+     */
+    function initKeyboardNavigation() {
+        const leftArrow = document.getElementById('navArrowLeft');
+        const rightArrow = document.getElementById('navArrowRight');
+
+        // Only initialize if navigation arrows exist
+        if (!leftArrow && !rightArrow) return;
+
+        document.addEventListener('keydown', (event) => {
+            // Ignore if user is typing in an input field
+            const tagName = event.target.tagName.toLowerCase();
+            if (tagName === 'input' || tagName === 'textarea' || event.target.contentEditable === 'true') {
+                return;
+            }
+
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                const link = document.querySelector('#navArrowLeft .nav-link');
+                if (link) window.location.href = link.href;
+            } else if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                const link = document.querySelector('#navArrowRight .nav-link');
+                if (link) window.location.href = link.href;
+            }
+        });
+
+        // Enhanced hover effects for navigation areas
+        [leftArrow, rightArrow].forEach(arrow => {
+            if (arrow) {
+                arrow.addEventListener('mouseenter', function() {
+                    this.style.opacity = '1';
+                });
+                arrow.addEventListener('mouseleave', function() {
+                    this.style.opacity = '0';
+                });
+            }
+        });
+    }
+
+    initKeyboardNavigation();
 
 });
