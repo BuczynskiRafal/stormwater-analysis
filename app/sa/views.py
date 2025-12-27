@@ -1,5 +1,6 @@
 """Views for stormwater analysis application."""
 
+import json
 import logging
 import os
 import tempfile
@@ -256,10 +257,27 @@ class ConduitDetailView(BaseElementDetailView):
         return session.conduits.filter(conduit_name=self.kwargs["conduit_name"]).first()
 
     def get_related_objects(self, session, conduit):
+        conduit_json = json.dumps(
+            {
+                "name": conduit.conduit_name,
+                "length": float(conduit.length),
+                "diameter": float(conduit.geom1),
+                "filling": float(conduit.filling),
+                "inletNode": conduit.inlet_node,
+                "outletNode": conduit.outlet_node,
+                "inletElevation": float(conduit.inlet_ground_elevation),
+                "outletElevation": float(conduit.outlet_ground_elevation),
+                "inletCover": float(conduit.inlet_ground_cover),
+                "outletCover": float(conduit.outlet_ground_cover),
+                "slope": float(conduit.slope_per_mile),
+            }
+        )
+
         return {
             "inlet_node": session.nodes.filter(node_name=conduit.inlet_node).first(),
             "outlet_node": session.nodes.filter(node_name=conduit.outlet_node).first(),
             "subcatchment": session.subcatchments.filter(subcatchment_name=conduit.subcatchment).first(),
+            "conduit_json": conduit_json,
         }
 
 
