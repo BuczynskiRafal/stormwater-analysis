@@ -200,10 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const tableRect = table.getBoundingClientRect();
                                 const scrollLeft = container.scrollLeft;
 
-                                // Calculate clipping to stay within accordion bounds
-                                const accordionPadding = 15;
-                                const accordionRightEdge = accordionItemRect.right - accordionPadding;
-                                const maxWidth = accordionRightEdge - containerRect.left;
+                                // Use container width directly (no clipping)
+                                const maxWidth = containerRect.width;
 
 
                                 // Position at original container location but clip to accordion bounds
@@ -265,16 +263,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         // Copy DataTables sorting classes
                                         clonedTh.className = originalTh.className;
 
-                                        // Handle scrolling: first column stays frozen, others scroll
-                                        if (index === 0) {
-                                            // First column - position exactly like original
-                                            clonedTh.style.position = 'sticky';
-                                            clonedTh.style.left = '0px';
-                                            clonedTh.style.zIndex = '1019';
-                                        } else {
-                                            // Other columns - apply scroll offset but maintain exact positioning
-                                            clonedTh.style.transform = `translateX(-${Math.round(scrollLeft)}px)`;
-                                        }
+                                        // Handle scrolling: all columns scroll together
+                                        clonedTh.style.transform = `translateX(-${Math.round(scrollLeft)}px)`;
 
                                         // Enable sorting by forwarding clicks to original header
                                         clonedTh.style.cursor = 'pointer';
@@ -328,10 +318,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const scrollHandler = () => {
                                     const scrollLeft = container.scrollLeft;
                                     const clonedHeaders = fixedTable.querySelectorAll('thead th');
-                                    clonedHeaders.forEach((clonedTh, index) => {
-                                        if (index > 0) { // Skip first column
-                                            clonedTh.style.transform = `translateX(-${scrollLeft}px)`;
-                                        }
+                                    clonedHeaders.forEach((clonedTh) => {
+                                        clonedTh.style.transform = `translateX(-${scrollLeft}px)`;
                                     });
                                 };
 
@@ -349,10 +337,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                                         // Update headers immediately, same as drag does
                                         const clonedHeaders = fixedTable.querySelectorAll('thead th');
-                                        clonedHeaders.forEach((clonedTh, index) => {
-                                            if (index > 0) {
-                                                clonedTh.style.transform = `translateX(-${newScrollLeft}px)`;
-                                            }
+                                        clonedHeaders.forEach((clonedTh) => {
+                                            clonedTh.style.transform = `translateX(-${newScrollLeft}px)`;
                                         });
                                     }
                                 };
@@ -373,13 +359,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     const accordionItem = th.closest('.accordion-item');
                                     const accordionItemRect = accordionItem.getBoundingClientRect();
 
-                                    const accordionPadding = 15;
-                                    const accordionRightEdge = accordionItemRect.right - accordionPadding;
-                                    const maxWidth = accordionRightEdge - containerRect.left;
-
                                     wrapperDiv.style.top = (navBottomPosition + accordionHeaderHeight) + 'px';
                                     wrapperDiv.style.left = containerRect.left + 'px';
-                                    wrapperDiv.style.width = Math.min(containerRect.width, maxWidth) + 'px';
+                                    wrapperDiv.style.width = containerRect.width + 'px';
                                 }
                             }
 
