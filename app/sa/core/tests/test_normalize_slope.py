@@ -143,7 +143,7 @@ def test_normalize_slope_negative_slopes(create_test_df, diameter):
 def test_normalize_slope_min_equals_max(create_test_df, diameter):
     df = create_test_df(diameter, 15.0)
 
-    with patch("sa.core.data.min_slope") as mock_min_slope, patch("sa.core.data.max_slope") as mock_max_slope:
+    with patch("sa.core.conduits.min_slope") as mock_min_slope, patch("sa.core.conduits.max_slope") as mock_max_slope:
         mock_min_slope.return_value = 10.0
         mock_max_slope.return_value = 10.0
 
@@ -212,7 +212,7 @@ def test_normalize_slope_invalid_parameters(create_test_df, diameter, filling, s
     df = create_test_df(diameter, slope, filling)
     service = ConduitFeatureEngineeringService(df, None, 1.0)
 
-    with patch("sa.core.data.min_slope", return_value=5.0), patch("sa.core.data.max_slope", return_value=20.0):
+    with patch("sa.core.conduits.min_slope", return_value=5.0), patch("sa.core.conduits.max_slope", return_value=20.0):
         service.normalize_slope()
 
         assert "NSlope" in service.dfc.columns
