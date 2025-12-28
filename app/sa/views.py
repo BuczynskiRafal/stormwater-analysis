@@ -11,7 +11,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
-from django.views.generic import TemplateView
+from django.views.generic import ListView, TemplateView
 
 from .forms import SWMMModelForm
 from .models import CalculationSession, SWMMModel
@@ -326,24 +326,50 @@ class SubcatchmentDetailView(BaseElementDetailView):
 # =============================================================================
 
 
-class HistoryView(LoginRequiredMixin, TemplateView):
-    """View for user's calculation history."""
+class HistoryView(LoginRequiredMixin, ListView):
+    """View for user's calculation history with pagination."""
 
     login_url = "/accounts/login/"
     template_name = "sa/history.html"
+    context_object_name = "sessions"
+    paginate_by = 10
+    page_size_options = [10, 20, 50, 100]
+
+    def get_paginate_by(self, queryset):
+        per_page = self.request.GET.get("per_page")
+        if per_page is None:
+            return self.paginate_by
+        try:
+            per_page = int(per_page)
+            if per_page in self.page_size_options:
+                return per_page
+            logger.warning(f"Invalid per_page value: {per_page}. Allowed: {self.page_size_options}")
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid per_page parameter: {per_page!r}")
+        return self.paginate_by
+
+    def get_queryset(self):
+        return (
+            CalculationSession.objects.filter(user=self.request.user)
+            .select_related("swmm_model")
+            .prefetch_related("conduits", "nodes", "subcatchments")
+            .order_by("-created_at")
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        sessions = CalculationRetrievalService.get_user_sessions(self.request.user)
+        all_sessions = CalculationRetrievalService.get_user_sessions(self.request.user)
 
-        total = len(sessions)
-        completed = sum(1 for s in sessions if s.status == "completed")
-        failed = sum(1 for s in sessions if s.status == "failed")
-        processing = sum(1 for s in sessions if s.status == "processing")
+        total = len(all_sessions)
+        completed = sum(1 for s in all_sessions if s.status == "completed")
+        failed = sum(1 for s in all_sessions if s.status == "failed")
+        processing = sum(1 for s in all_sessions if s.status == "processing")
 
+        current_per_page = self.get_paginate_by(self.get_queryset())
         context.update(
             {
-                "sessions": sessions,
+                "page_size_options": self.page_size_options,
+                "current_per_page": current_per_page,
                 "stats": {
                     "total_sessions": total,
                     "completed_sessions": completed,
@@ -352,11 +378,11 @@ class HistoryView(LoginRequiredMixin, TemplateView):
                     "completed_percentage": round((completed * 100 / total) if total > 0 else 0),
                     "failed_percentage": round((failed * 100 / total) if total > 0 else 0),
                     "processing_percentage": round((processing * 100 / total) if total > 0 else 0),
-                    "total_conduits": sum(s.conduits.count() for s in sessions if s.status == "completed"),
-                    "total_nodes": sum(s.nodes.count() for s in sessions if s.status == "completed"),
-                    "total_subcatchments": sum(s.subcatchments.count() for s in sessions if s.status == "completed"),
+                    "total_conduits": sum(s.conduits.count() for s in all_sessions if s.status == "completed"),
+                    "total_nodes": sum(s.nodes.count() for s in all_sessions if s.status == "completed"),
+                    "total_subcatchments": sum(s.subcatchments.count() for s in all_sessions if s.status == "completed"),
                 },
-                "latest_session": sessions[0] if sessions else None,
+                "latest_session": all_sessions[0] if all_sessions else None,
             }
         )
 
