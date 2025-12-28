@@ -27,11 +27,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install pre-commit
-        run: pip install pre-commit
-
-      - name: Initialize pre-commit
-        run: pre-commit install-hooks
-
       - name: Run pre-commit checks
-        run: pre-commit run --all-files --show-diff-on-failure
+        uses: pre-commit/action@v3.0.1
