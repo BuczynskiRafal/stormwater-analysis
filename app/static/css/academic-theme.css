@@ -817,23 +817,17 @@ thead th {
    NAVIGATION ARROWS
    ============================================================ */
 
-.nav-arrow {
+.nav-arrow .nav-link {
     background: var(--paper-warm);
     border: 1px solid var(--paper-tan);
     box-shadow: var(--shadow-soft);
-}
-
-.nav-arrow:hover {
-    background: #ffffff;
-    border-color: var(--slate-light);
-    box-shadow: var(--shadow-medium);
-}
-
-.nav-arrow .nav-link {
     color: var(--slate-accent);
 }
 
 .nav-arrow:hover .nav-link {
+    background: #ffffff;
+    border-color: var(--slate-light);
+    box-shadow: var(--shadow-medium);
     color: var(--slate-deep);
 }
 
