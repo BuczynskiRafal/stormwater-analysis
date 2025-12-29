@@ -31,7 +31,7 @@ from .valid_round import (
     validate_min_velocity,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)-8s [%(filename)s:%(lineno)d] - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class ConduitFeatureEngineeringService:
@@ -151,12 +151,6 @@ class ConduitFeatureEngineeringService:
                 • If it fails due to slope constraints, try with increased slope.
                 • If it fails due to other reasons, break the loop.
         """
-        import logging
-
-        # Configure logging to show detailed information
-        logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger(__name__)
-
         if self.dfc is None:
             return
 
@@ -722,12 +716,12 @@ class RecommendationService:
         Returns:
             pd.DataFrame: DataFrame with added recommendation results.
         """
-        logging.info(f"Generating recommendations using {self.model_name} model")
+        logger.info(f"Generating recommendations using {self.model_name} model")
         if self.dfc is None or self.model is None:
             raise ValueError("DataFrame and model must be provided")
 
         input_data = self.dfc.reindex(columns=FEATURE_COLUMNS, fill_value=0)
-        logging.info(f"{self.model_name} input shape: {input_data.shape}")
+        logger.info(f"{self.model_name} input shape: {input_data.shape}")
 
         preds = self.model.predict(input_data, verbose=0)
         preds_cls = preds.argmax(axis=-1)
@@ -738,7 +732,7 @@ class RecommendationService:
         for i, category in enumerate(RecommendationCategory):
             self.dfc[f"confidence_{category.value}"] = [round(float(val), 3) for val in preds[:, i]]
 
-        logging.info(f"{self.model_name} recommendations generated for {len(self.dfc)} conduits")
+        logger.info(f"{self.model_name} recommendations generated for {len(self.dfc)} conduits")
         return self.dfc
 
         # def recommendations(self) -> None:
