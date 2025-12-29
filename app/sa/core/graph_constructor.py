@@ -2,149 +2,180 @@
 Graph construction utilities for SWMM conduit networks.
 Builds graphs where conduits are nodes, not junctions.
 """
+# pyright: reportOptionalMemberAccess=false, reportOptionalCall=false
 
 import os
 import logging
 from typing import Optional, Any
 
-import tensorflow as tf
-
-from tensorflow.keras.layers import Dense, BatchNormalization, Dropout
-
-from .constants import GNN_HIDDEN_UNITS, GNN_DROPOUT_RATE, GNN_AGGREGATOR
-from .data_manager import get_default_feature_columns
-from .enums import RecommendationCategory
-
 logger = logging.getLogger(__name__)
 
+# Check if TensorFlow is available
+_TF_AVAILABLE = False
+tf = None
+Dense = None
+BatchNormalization = None
+Dropout = None
 
-class GraphSAGELayer(tf.keras.layers.Layer):
-    """Proper GraphSAGE layer with message passing and aggregation."""
+try:
+    import tensorflow as _tf
 
-    def __init__(self, units, aggregator="mean", use_bias=True, **kwargs):
-        super().__init__(**kwargs)
-        self.units = units
-        self.aggregator = aggregator
-        self.use_bias = use_bias
-        self.is_gnn = True
+    tf = _tf
+    from tensorflow.keras.layers import Dense as _Dense, BatchNormalization as _BatchNormalization, Dropout as _Dropout
 
-    def build(self, input_shape):
-        if isinstance(input_shape, list):
-            input_dim = input_shape[0][-1]
-        else:
-            input_dim = input_shape[-1]
+    Dense = _Dense
+    BatchNormalization = _BatchNormalization
+    Dropout = _Dropout
+    _TF_AVAILABLE = True
+except ImportError:
+    logger.warning("TensorFlow not available - GNN models will not be available")
 
-        self.W_self = self.add_weight(shape=(input_dim, self.units), initializer="glorot_uniform", name="W_self", trainable=True)
-        self.W_neigh = self.add_weight(
-            shape=(input_dim, self.units), initializer="glorot_uniform", name="W_neigh", trainable=True
-        )
 
-        if self.use_bias:
-            self.bias = self.add_weight(shape=(self.units,), initializer="zeros", name="bias", trainable=True)
+def _require_tensorflow():
+    """Raise ImportError if TensorFlow is not available."""
+    if not _TF_AVAILABLE:
+        raise ImportError("TensorFlow is required for GNN models but is not installed")
 
-        super().build(input_shape)
 
-    def call(self, inputs, adjacency_matrix=None, training=False):
-        """Forward pass with proper message passing."""
+if _TF_AVAILABLE:
+    from .constants import GNN_HIDDEN_UNITS, GNN_DROPOUT_RATE, GNN_AGGREGATOR
 
-        if adjacency_matrix is None:
-            result = tf.matmul(inputs, self.W_self)
+    class GraphSAGELayer(tf.keras.layers.Layer):
+        """Proper GraphSAGE layer with message passing and aggregation."""
+
+        def __init__(self, units, aggregator="mean", use_bias=True, **kwargs):
+            super().__init__(**kwargs)
+            self.units = units
+            self.aggregator = aggregator
+            self.use_bias = use_bias
+            self.is_gnn = True
+
+        def build(self, input_shape):
+            if isinstance(input_shape, list):
+                input_dim = input_shape[0][-1]
+            else:
+                input_dim = input_shape[-1]
+
+            self.W_self = self.add_weight(
+                shape=(input_dim, self.units), initializer="glorot_uniform", name="W_self", trainable=True
+            )
+            self.W_neigh = self.add_weight(
+                shape=(input_dim, self.units), initializer="glorot_uniform", name="W_neigh", trainable=True
+            )
+
             if self.use_bias:
-                result += self.bias
-            return tf.nn.relu(result)
+                self.bias = self.add_weight(shape=(self.units,), initializer="zeros", name="bias", trainable=True)
 
-        # Adjacency matrix must be preprocessed (normalized) before passing here
-        if hasattr(adjacency_matrix, "toarray"):
-            adj_dense = tf.constant(adjacency_matrix.toarray(), dtype=tf.float32)
-        elif hasattr(adjacency_matrix, "indices"):
-            adj_dense = tf.sparse.to_dense(adjacency_matrix, default_value=0.0)
-            adj_dense = tf.cast(adj_dense, tf.float32)
-        else:
-            adj_dense = tf.cast(adjacency_matrix, tf.float32)
+            super().build(input_shape)
 
-        neigh_feats = tf.matmul(adj_dense, inputs)
-        self_transformed = tf.matmul(inputs, self.W_self)
-        neigh_transformed = tf.matmul(neigh_feats, self.W_neigh)
-        output = self_transformed + neigh_transformed
-        if self.use_bias:
-            output += self.bias
+        def call(self, inputs, adjacency_matrix=None, training=False):
+            """Forward pass with proper message passing."""
 
-        return tf.nn.relu(output)
+            if adjacency_matrix is None:
+                result = tf.matmul(inputs, self.W_self)
+                if self.use_bias:
+                    result += self.bias
+                return tf.nn.relu(result)
 
-    def get_config(self):
-        config = super().get_config()
-        config.update({"units": self.units, "aggregator": self.aggregator, "use_bias": self.use_bias})
-        return config
+            # Adjacency matrix must be preprocessed (normalized) before passing here
+            if hasattr(adjacency_matrix, "toarray"):
+                adj_dense = tf.constant(adjacency_matrix.toarray(), dtype=tf.float32)
+            elif hasattr(adjacency_matrix, "indices"):
+                adj_dense = tf.sparse.to_dense(adjacency_matrix, default_value=0.0)
+                adj_dense = tf.cast(adj_dense, tf.float32)
+            else:
+                adj_dense = tf.cast(adjacency_matrix, tf.float32)
 
+            neigh_feats = tf.matmul(adj_dense, inputs)
+            self_transformed = tf.matmul(inputs, self.W_self)
+            neigh_transformed = tf.matmul(neigh_feats, self.W_neigh)
+            output = self_transformed + neigh_transformed
+            if self.use_bias:
+                output += self.bias
 
-class GraphSAGEModel(tf.keras.Model):
-    """Pure GraphSAGE model with optimal hyperparameters from tuning."""
+            return tf.nn.relu(output)
 
-    def __init__(
-        self,
-        n_features,
-        n_classes=9,
-        aggregator=GNN_AGGREGATOR,
-        hidden_units=GNN_HIDDEN_UNITS,
-        dropout_rate=GNN_DROPOUT_RATE,
-    ):
-        super().__init__()
-        self.n_features = n_features
-        self.hidden_units = hidden_units
-        self.dropout_rate = dropout_rate
+        def get_config(self):
+            config = super().get_config()
+            config.update({"units": self.units, "aggregator": self.aggregator, "use_bias": self.use_bias})
+            return config
 
-        self.graphsage1 = GraphSAGELayer(hidden_units, aggregator=aggregator)
-        self.bn1 = BatchNormalization()
-        self.dropout1 = Dropout(dropout_rate)
+    class GraphSAGEModel(tf.keras.Model):
+        """Pure GraphSAGE model with optimal hyperparameters from tuning."""
 
-        self.graphsage2 = GraphSAGELayer(hidden_units, aggregator=aggregator)
-        self.bn2 = BatchNormalization()
-        self.dropout2 = Dropout(dropout_rate)
+        def __init__(
+            self,
+            n_features,
+            n_classes=9,
+            aggregator=GNN_AGGREGATOR,
+            hidden_units=GNN_HIDDEN_UNITS,
+            dropout_rate=GNN_DROPOUT_RATE,
+        ):
+            super().__init__()
+            self.n_features = n_features
+            self.hidden_units = hidden_units
+            self.dropout_rate = dropout_rate
 
-        self.output_layer = Dense(n_classes, activation="softmax")
+            self.graphsage1 = GraphSAGELayer(hidden_units, aggregator=aggregator)
+            self.bn1 = BatchNormalization()
+            self.dropout1 = Dropout(dropout_rate)
 
-    def build(self, input_shape):
-        if isinstance(input_shape, list) and len(input_shape) == 2:
-            node_features_shape = input_shape[0]
-        else:
-            node_features_shape = input_shape
+            self.graphsage2 = GraphSAGELayer(hidden_units, aggregator=aggregator)
+            self.bn2 = BatchNormalization()
+            self.dropout2 = Dropout(dropout_rate)
 
-        self.graphsage1.build(node_features_shape)
-        self.graphsage2.build((node_features_shape[0], self.hidden_units))
-        self.output_layer.build((node_features_shape[0], self.hidden_units))
-        super().build(input_shape)
+            self.output_layer = Dense(n_classes, activation="softmax")
 
-    def _supports_adjacency(self, layer):
-        try:
-            import inspect
+        def build(self, input_shape):
+            if isinstance(input_shape, list) and len(input_shape) == 2:
+                node_features_shape = input_shape[0]
+            else:
+                node_features_shape = input_shape
 
-            sig = inspect.signature(layer.call)
-            return "adjacency_matrix" in sig.parameters
-        except Exception:
-            return False
+            self.graphsage1.build(node_features_shape)
+            self.graphsage2.build((node_features_shape[0], self.hidden_units))
+            self.output_layer.build((node_features_shape[0], self.hidden_units))
+            super().build(input_shape)
 
-    def _call_layer_safely(self, layer, inputs, adjacency, training):
-        if self._supports_adjacency(layer):
-            return layer(inputs, adjacency_matrix=adjacency, training=training)
-        else:
-            return layer(inputs, training=training)
+        def _supports_adjacency(self, layer):
+            try:
+                import inspect
 
-    def call(self, inputs, training=False):
-        if isinstance(inputs, list) and len(inputs) == 2:
-            node_features, adjacency = inputs
-        else:
-            node_features = inputs
-            adjacency = None
+                sig = inspect.signature(layer.call)
+                return "adjacency_matrix" in sig.parameters
+            except Exception:
+                return False
 
-        x = self._call_layer_safely(self.graphsage1, node_features, adjacency, training)
-        x = self.bn1(x, training=training)
-        x = self.dropout1(x, training=training)
+        def _call_layer_safely(self, layer, inputs, adjacency, training):
+            if self._supports_adjacency(layer):
+                return layer(inputs, adjacency_matrix=adjacency, training=training)
+            else:
+                return layer(inputs, training=training)
 
-        x = self._call_layer_safely(self.graphsage2, x, adjacency, training)
-        x = self.bn2(x, training=training)
-        x = self.dropout2(x, training=training)
+        def call(self, inputs, training=False):
+            if isinstance(inputs, list) and len(inputs) == 2:
+                node_features, adjacency = inputs
+            else:
+                node_features = inputs
+                adjacency = None
 
-        return self.output_layer(x)
+            x = self._call_layer_safely(self.graphsage1, node_features, adjacency, training)
+            x = self.bn1(x, training=training)
+            x = self.dropout1(x, training=training)
+
+            x = self._call_layer_safely(self.graphsage2, x, adjacency, training)
+            x = self.bn2(x, training=training)
+            x = self.dropout2(x, training=training)
+
+            return self.output_layer(x)
+
+    CUSTOM_OBJECTS = {"GraphSAGELayer": GraphSAGELayer, "GraphSAGEModel": GraphSAGEModel}
+
+else:
+    # Placeholders when TensorFlow is not available
+    GraphSAGELayer = None
+    GraphSAGEModel = None
+    CUSTOM_OBJECTS = {}
 
 
 class GNNModelLoadError(Exception):
@@ -153,11 +184,13 @@ class GNNModelLoadError(Exception):
     pass
 
 
-CUSTOM_OBJECTS = {"GraphSAGELayer": GraphSAGELayer, "GraphSAGEModel": GraphSAGEModel}
-
-
 def load_gnn_model_weights(weights_path: str = None) -> Optional[Any]:
     """Load GNN model from .keras or reconstruct from .weights.h5."""
+    _require_tensorflow()
+
+    from .data_manager import get_default_feature_columns
+    from .enums import RecommendationCategory
+
     project_root = os.path.abspath(os.path.dirname(__file__))
 
     keras_model_path = os.path.join(project_root, "recommendations", "graphsage_model.keras")
