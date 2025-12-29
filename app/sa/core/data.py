@@ -30,7 +30,7 @@ __all__ = [
     "max_slope",
 ]
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)-8s [%(filename)s:%(lineno)d] - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class DataManager(sw.Model):
@@ -66,14 +66,14 @@ class DataManager(sw.Model):
 
         # MLP Recommendation Service is always available for fallback or experiments
         self.mlp_recommendation_service = RecommendationService(self.dfc, model=recommendation, model_name="MLP")
-        logging.info("MLP Recommendation Service initialized.")
+        logger.info("MLP Recommendation Service initialized.")
 
         # Store the GNN model if it's available, but don't initialize a service here
         self.gnn_model = gnn_recommendation
         if self.gnn_model:
-            logging.info("GNN model is available and loaded.")
+            logger.info("GNN model is available and loaded.")
         else:
-            logging.info("GNN model is not available.")
+            logger.info("GNN model is not available.")
 
         self.simulation_service = SimulationRunnerService(self.inp.path)
         self.trace_analysis_service = TraceAnalysisService(self)
@@ -186,14 +186,14 @@ class DataManager(sw.Model):
 
             # Choose recommendation service based on available models
             if gnn_recommendation is not None:
-                logging.info("Using GNN model for recommendations (GraphSAGE)")
+                logger.info("Using GNN model for recommendations (GraphSAGE)")
                 self.recommendation_service = RecommendationService(self.dfc, model=gnn_recommendation, model_name="GNN")
             else:
-                logging.info("Using MLP model for recommendations (fallback - GNN not available)")
+                logger.info("Using MLP model for recommendations (fallback - GNN not available)")
                 self.recommendation_service = RecommendationService(self.dfc, model=recommendation, model_name="MLP")
 
         except Exception as e:
-            logging.warning(f"Could not reinitialize with report file: {e}")
+            logger.warning(f"Could not reinitialize with report file: {e}")
 
     def feature_engineering(self) -> None:
         """

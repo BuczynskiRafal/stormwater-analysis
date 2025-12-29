@@ -9,7 +9,7 @@ import swmmio as sw
 
 from .constants import SUBCATCHMENT_CATEGORIES
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)-8s [%(filename)s:%(lineno)d] - %(message)s")
+logger = logging.getLogger(__name__)
 
 
 class SubcatchmentFeatureEngineeringService:
@@ -85,12 +85,12 @@ class SubcatchmentFeatureEngineeringService:
 
                 # Log the number of categorized subcatchments
                 categorized_count = self.dfs["category"].notna().sum()
-                logging.info(f"Assigned categories to {categorized_count} subcatchments from TAGS section")
+                logger.info(f"Assigned categories to {categorized_count} subcatchments from TAGS section")
                 return  # Exit early if tags were successfully processed
             else:
-                logging.warning("No subcatchment tags found in TAGS section")
+                logger.warning("No subcatchment tags found in TAGS section")
         else:
-            logging.warning("No TAGS section found in the model")
+            logger.warning("No TAGS section found in the model")
 
         # Default: Use ML classifier for subcatchment classification
 
