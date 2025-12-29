@@ -3,7 +3,7 @@ line-length = 130
 target-version = ['py310']
 
 [tool.pytest.ini_options]
-addopts = ["-vvv", "--tb=short"]
+addopts = ["-vvv", "--tb=short", "--cov=app/sa/core", "--cov-report=term-missing"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::FutureWarning",
@@ -36,3 +36,15 @@ reportAssignmentType = false
 reportReturnType = true
 reportUndefinedVariable = true
 reportArgumentType = false
+
+[tool.coverage.run]
+source = ["app/sa/core"]
+omit = ["*/tests/*", "*/migrations/*"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
