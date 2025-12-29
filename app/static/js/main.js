@@ -528,4 +528,411 @@ document.addEventListener('DOMContentLoaded', function() {
 
     initKeyboardNavigation();
 
+    // =========================================================================
+    // Bulk Selection for History Page
+    // =========================================================================
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+
+    // Per page selector
+    document.addEventListener('DOMContentLoaded', function() {
+        const perPageSelect = document.getElementById('perPageSelect');
+        if (perPageSelect) {
+            perPageSelect.addEventListener('change', function() {
+                const perPage = this.value;
+                const url = new URL(window.location.href);
+                url.searchParams.set('per_page', perPage);
+                url.searchParams.set('page', '1');
+                window.location.href = url.toString();
+            });
+        }
+    })
+
+    // Filtering and sorting functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('searchInput');
+        const statusFilter = document.getElementById('statusFilter');
+        const sortOrder = document.getElementById('sortOrder');
+        const table = document.getElementById('sessionsTable');
+        const tbody = table.querySelector('tbody');
+
+        // Store original rows
+        const originalRows = Array.from(tbody.querySelectorAll('tr'));
+
+        function filterAndSort() {
+            const searchTerm = searchInput.value.toLowerCase();
+            const statusValue = statusFilter.value.toLowerCase();
+            const sortValue = sortOrder.value;
+
+            // Filter rows
+            let filteredRows = originalRows.filter(row => {
+                const filename = row.cells[2].textContent.toLowerCase();
+                const status = row.querySelector('.badge').textContent.toLowerCase();
+                const date = row.cells[1].textContent.toLowerCase();
+
+                const matchesSearch = !searchTerm ||
+                    filename.includes(searchTerm) ||
+                    date.includes(searchTerm);
+
+                const matchesStatus = !statusValue || status.includes(statusValue);
+
+                return matchesSearch && matchesStatus;
+            });
+
+            // Sort rows
+            filteredRows.sort((a, b) => {
+                switch(sortValue) {
+                    case 'oldest':
+                        // Extract date from the strong tag
+                        const dateA = a.cells[1].querySelector('strong').textContent;
+                        const dateB = b.cells[1].querySelector('strong').textContent;
+                        return new Date(dateA) - new Date(dateB);
+                    case 'filename':
+                        return a.cells[2].textContent.localeCompare(b.cells[2].textContent);
+                    case 'newest':
+                    default:
+                        // Extract date from the strong tag
+                        const dateA_newest = a.cells[1].querySelector('strong').textContent;
+                        const dateB_newest = b.cells[1].querySelector('strong').textContent;
+                        return new Date(dateB_newest) - new Date(dateA_newest);
+                }
+            });
+
+            // Clear and repopulate tbody
+            tbody.innerHTML = '';
+            filteredRows.forEach(row => tbody.appendChild(row));
+
+            // Show "no results" message if needed
+            if (filteredRows.length === 0) {
+                const noResultsRow = document.createElement('tr');
+                noResultsRow.innerHTML = `
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <em>No sessions match your current filters</em>
+                    </td>
+                `;
+                tbody.appendChild(noResultsRow);
+            }
+        }
+
+        // Add event listeners
+        searchInput.addEventListener('input', filterAndSort);
+        statusFilter.addEventListener('change', filterAndSort);
+        sortOrder.addEventListener('change', filterAndSort);
+    });
+
+    // Handle delete session functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteModal = document.getElementById('deleteModal');
+        const sessionToDeleteElement = document.getElementById('sessionToDelete');
+        const confirmDeleteButton = document.getElementById('confirmDelete');
+        let sessionIdToDelete = null;
+
+        // Handle delete button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('[data-bs-target="#deleteModal"]')) {
+                const button = e.target.closest('[data-bs-target="#deleteModal"]');
+                sessionIdToDelete = button.getAttribute('data-session-id');
+                const sessionName = button.getAttribute('data-session-name');
+                sessionToDeleteElement.textContent = sessionName;
+
+                // Check if this is a processing session
+                const row = button.closest('tr');
+                const statusBadge = row.querySelector('.badge');
+                const isProcessing = statusBadge && statusBadge.textContent.trim() === 'Processing';
+
+                // Update modal content based on session status
+                const deleteDescription = document.getElementById('deleteDescription');
+                const modalTitle = document.getElementById('deleteModalLabel');
+
+                if (isProcessing) {
+                    modalTitle.textContent = 'Cancel Processing';
+                    deleteDescription.textContent = 'This will cancel the current processing and remove the session. This action cannot be undone.';
+                } else {
+                    modalTitle.textContent = 'Confirm Deletion';
+                    deleteDescription.textContent = 'This action cannot be undone. All related data (conduits, nodes, subcatchments) will be permanently deleted.';
+                }
+
+                // Reset modal state
+                const deleteText = confirmDeleteButton.querySelector('.delete-text');
+                const deleteLoading = confirmDeleteButton.querySelector('.delete-loading');
+                const cancelButton = deleteModal.querySelector('[data-bs-dismiss="modal"]');
+
+                const buttonText = isProcessing ? 'Cancel Processing' : 'Delete Session';
+                deleteText.innerHTML = `<i class="fas fa-trash me-1" aria-hidden="true"></i>${buttonText}`;
+                deleteText.classList.remove('d-none');
+                deleteLoading.classList.add('d-none');
+                confirmDeleteButton.disabled = false;
+                cancelButton.disabled = false;
+                confirmDeleteButton.classList.remove('btn-success');
+                confirmDeleteButton.classList.add('btn-outline-danger');
+            }
+        });
+
+        // Handle confirm delete
+        confirmDeleteButton.addEventListener('click', function() {
+            if (sessionIdToDelete) {
+                // Show loading state
+                const deleteText = confirmDeleteButton.querySelector('.delete-text');
+                const deleteLoading = confirmDeleteButton.querySelector('.delete-loading');
+                const cancelButton = deleteModal.querySelector('[data-bs-dismiss="modal"]');
+
+                deleteText.classList.add('d-none');
+                deleteLoading.classList.remove('d-none');
+                confirmDeleteButton.disabled = true;
+                cancelButton.disabled = true;
+
+                const deleteUrl = `/session/${sessionIdToDelete}/delete/`;
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+                console.log('Delete URL:', deleteUrl);
+                console.log('CSRF Token:', csrfToken);
+
+                fetch(deleteUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success state briefly before redirect
+                        deleteLoading.classList.add('d-none');
+
+                        // Check if this was a processing session for different success message
+                        const modalTitle = document.getElementById('deleteModalLabel');
+                        const isProcessing = modalTitle.textContent === 'Cancel Processing';
+                        const successText = isProcessing ? 'Cancelled' : 'Deleted';
+
+                        deleteText.innerHTML = `<i class="fas fa-check me-1"></i>${successText}`;
+                        deleteText.classList.remove('d-none');
+                        confirmDeleteButton.classList.remove('btn-outline-danger');
+                        confirmDeleteButton.classList.add('btn-success');
+
+                        // Redirect after short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 800);
+                    } else {
+                        // Reset loading state on error
+                        deleteLoading.classList.add('d-none');
+                        deleteText.classList.remove('d-none');
+                        confirmDeleteButton.disabled = false;
+                        cancelButton.disabled = false;
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    // Reset loading state on error
+                    deleteLoading.classList.add('d-none');
+                    deleteText.classList.remove('d-none');
+                    confirmDeleteButton.disabled = false;
+                    cancelButton.disabled = false;
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the session.');
+                });
+            }
+        });
+    });
+
+
+    function initBulkSelection() {
+        const bulkActionBar = document.getElementById('bulkActionBar');
+        const selectedCountElement = document.getElementById('selectedCount');
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        const selectAllVisibleBtn = document.getElementById('selectAllVisible');
+        const clearSelectionBtn = document.getElementById('clearSelection');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        const bulkDeleteModalElement = document.getElementById('bulkDeleteModal');
+        const confirmBulkDeleteBtn = document.getElementById('confirmBulkDelete');
+        const bulkDeleteCountElement = document.getElementById('bulkDeleteCount');
+
+        // Only initialize if bulk selection elements exist
+        if (!bulkActionBar || !selectAllCheckbox) return;
+
+        const bulkDeleteModal = new bootstrap.Modal(bulkDeleteModalElement);
+        let selectedSessions = new Set();
+
+        function updateUI() {
+            const count = selectedSessions.size;
+            selectedCountElement.textContent = count;
+            bulkDeleteCountElement.textContent = count;
+
+            // Show/hide bulk action bar
+            if (count > 0) {
+                bulkActionBar.style.display = 'block';
+            } else {
+                bulkActionBar.style.display = 'none';
+            }
+
+            // Update select all checkbox state
+            const visibleRows = document.querySelectorAll('#sessionsTable tbody tr[data-session-id]');
+            const visibleChecked = Array.from(visibleRows).filter(row => {
+                const checkbox = row.querySelector('.row-checkbox');
+                return checkbox && checkbox.checked;
+            });
+
+            if (visibleRows.length > 0 && visibleChecked.length === visibleRows.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else if (visibleChecked.length > 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+
+            // Update row styling
+            document.querySelectorAll('#sessionsTable tbody tr[data-session-id]').forEach(row => {
+                const sessionId = row.dataset.sessionId;
+                if (selectedSessions.has(sessionId)) {
+                    row.classList.add('selected');
+                } else {
+                    row.classList.remove('selected');
+                }
+            });
+        }
+
+        // Handle individual checkbox changes
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-checkbox')) {
+                const sessionId = e.target.dataset.sessionId;
+                if (e.target.checked) {
+                    selectedSessions.add(sessionId);
+                } else {
+                    selectedSessions.delete(sessionId);
+                }
+                updateUI();
+            }
+        });
+
+        // Handle select all checkbox
+        selectAllCheckbox.addEventListener('change', function() {
+            const visibleRows = document.querySelectorAll('#sessionsTable tbody tr[data-session-id]');
+            visibleRows.forEach(row => {
+                const checkbox = row.querySelector('.row-checkbox');
+                const sessionId = row.dataset.sessionId;
+                if (checkbox) {
+                    checkbox.checked = this.checked;
+                    if (this.checked) {
+                        selectedSessions.add(sessionId);
+                    } else {
+                        selectedSessions.delete(sessionId);
+                    }
+                }
+            });
+            updateUI();
+        });
+
+        // Handle "Select all visible" button
+        selectAllVisibleBtn.addEventListener('click', function() {
+            const visibleRows = document.querySelectorAll('#sessionsTable tbody tr[data-session-id]');
+            visibleRows.forEach(row => {
+                const checkbox = row.querySelector('.row-checkbox');
+                const sessionId = row.dataset.sessionId;
+                if (checkbox) {
+                    checkbox.checked = true;
+                    selectedSessions.add(sessionId);
+                }
+            });
+            updateUI();
+        });
+
+        // Handle "Clear selection" button
+        clearSelectionBtn.addEventListener('click', function() {
+            document.querySelectorAll('.row-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectAllCheckbox.checked = false;
+            selectedSessions.clear();
+            updateUI();
+        });
+
+        // Handle bulk delete button
+        bulkDeleteBtn.addEventListener('click', function() {
+            if (selectedSessions.size > 0) {
+                bulkDeleteModal.show();
+            }
+        });
+
+        // Handle confirm bulk delete
+        confirmBulkDeleteBtn.addEventListener('click', function() {
+            if (selectedSessions.size === 0) return;
+
+            const bulkDeleteText = confirmBulkDeleteBtn.querySelector('.bulk-delete-text');
+            const bulkDeleteLoading = confirmBulkDeleteBtn.querySelector('.bulk-delete-loading');
+            const cancelButton = document.querySelector('#bulkDeleteModal [data-bs-dismiss="modal"]');
+
+            // Show loading state
+            bulkDeleteText.classList.add('d-none');
+            bulkDeleteLoading.classList.remove('d-none');
+            confirmBulkDeleteBtn.disabled = true;
+            cancelButton.disabled = true;
+
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+            const sessionIds = Array.from(selectedSessions).map(id => parseInt(id));
+
+            fetch('/sessions/bulk-delete/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ session_ids: sessionIds })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success state briefly before reload
+                    bulkDeleteLoading.classList.add('d-none');
+                    bulkDeleteText.innerHTML = `<i class="fas fa-check me-1"></i>Deleted ${data.deleted_count} session(s)`;
+                    bulkDeleteText.classList.remove('d-none');
+                    confirmBulkDeleteBtn.classList.remove('btn-danger');
+                    confirmBulkDeleteBtn.classList.add('btn-success');
+
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                } else {
+                    // Reset loading state on error
+                    bulkDeleteLoading.classList.add('d-none');
+                    bulkDeleteText.classList.remove('d-none');
+                    confirmBulkDeleteBtn.disabled = false;
+                    cancelButton.disabled = false;
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                // Reset loading state on error
+                bulkDeleteLoading.classList.add('d-none');
+                bulkDeleteText.classList.remove('d-none');
+                confirmBulkDeleteBtn.disabled = false;
+                cancelButton.disabled = false;
+                console.error('Error:', error);
+                alert('An error occurred while deleting sessions.');
+            });
+        });
+
+        // Reset bulk delete modal state when hidden
+        bulkDeleteModalElement.addEventListener('hidden.bs.modal', function() {
+            const bulkDeleteText = confirmBulkDeleteBtn.querySelector('.bulk-delete-text');
+            const bulkDeleteLoading = confirmBulkDeleteBtn.querySelector('.bulk-delete-loading');
+
+            bulkDeleteText.innerHTML = '<i class="fas fa-trash me-1" aria-hidden="true"></i>Delete All Selected';
+            bulkDeleteText.classList.remove('d-none');
+            bulkDeleteLoading.classList.add('d-none');
+            confirmBulkDeleteBtn.disabled = false;
+            confirmBulkDeleteBtn.classList.remove('btn-success');
+            if (!confirmBulkDeleteBtn.classList.contains('btn-danger')) {
+                confirmBulkDeleteBtn.classList.add('btn-danger');
+            }
+        });
+    }
+
+    initBulkSelection();
+
 });
