@@ -413,3 +413,38 @@ class DeleteSessionView(LoginRequiredMixin, SessionOwnerMixin, View):
                 {"success": False, "message": "An error occurred while deleting the session."},
                 status=500,
             )
+
+
+class BulkDeleteSessionsView(LoginRequiredMixin, View):
+    """AJAX endpoint for bulk deleting calculation sessions. Returns JSON response."""
+
+    login_url = "/accounts/login/"
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = json.loads(request.body)
+            session_ids = data.get("session_ids", [])
+
+            if not session_ids:
+                return JsonResponse({"success": False, "message": "No sessions selected."}, status=400)
+
+            sessions = CalculationSession.objects.filter(id__in=session_ids, user=request.user)
+            deleted_count = sessions.count()
+
+            if deleted_count == 0:
+                return JsonResponse({"success": False, "message": "No valid sessions found."}, status=404)
+
+            sessions.delete()
+            logger.info(f"Successfully bulk deleted {deleted_count} sessions for user {request.user.id}")
+
+            return JsonResponse(
+                {"success": True, "message": f"Successfully deleted {deleted_count} session(s).", "deleted_count": deleted_count}
+            )
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "message": "Invalid request data."}, status=400)
+        except Exception as e:
+            logger.error(f"Error bulk deleting sessions: {e}")
+            return JsonResponse(
+                {"success": False, "message": "An error occurred while deleting sessions."},
+                status=500,
+            )

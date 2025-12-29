@@ -1300,3 +1300,154 @@ footer {
     margin-left: auto;
     transition: transform 0.15s ease;
 }
+
+/* ============================================================
+   BULK SELECTION - History Page
+   ============================================================ */
+
+.bulk-action-bar {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background: linear-gradient(to bottom, var(--slate-wash) 0%, #e2e8f0 100%);
+    border: 1px solid var(--slate-light);
+    border-radius: 6px;
+    margin: 0 0 1rem 0;
+    padding: 0 12px;
+    animation: slideDown 0.2s ease-out;
+    box-shadow: var(--shadow-soft);
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.bulk-action-bar .bulk-count {
+    color: var(--academic-ink);
+    font-size: 0.9rem;
+    font-family: var(--font-body);
+}
+
+.bulk-action-bar .btn-link {
+    color: var(--slate-deep);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.bulk-action-bar .btn-link:hover {
+    color: var(--status-info);
+}
+
+.bulk-action-bar .btn-danger {
+    background: var(--status-error);
+    border-color: var(--status-error);
+}
+
+.bulk-action-bar .btn-danger:hover {
+    background: #b54d4d;
+    border-color: #b54d4d;
+}
+
+.session-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--slate-accent);
+}
+
+.session-checkbox:checked {
+    animation: checkPop 0.15s ease-out;
+}
+
+@keyframes checkPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+tr.selected {
+    background-color: var(--status-info-bg) !important;
+}
+
+tr.selected:hover {
+    background-color: #dce8f5 !important;
+}
+
+tr.selected td:first-child {
+    background: linear-gradient(to right, #d0dcea 0%, #e0eaf5 100%) !important;
+}
+
+.checkbox-cell {
+    width: 40px;
+    text-align: center;
+}
+
+/* Bulk Delete Modal */
+#bulkDeleteModal .modal-content {
+    border: 1px solid var(--slate-light);
+    border-radius: 8px;
+    box-shadow: var(--shadow-lifted);
+    overflow: hidden;
+}
+
+#bulkDeleteModal .modal-header {
+    background: linear-gradient(to bottom, var(--status-error-bg) 0%, #f5dede 100%);
+    border-bottom: 1px solid rgba(154, 59, 59, 0.15);
+    padding: 1rem 1.5rem;
+}
+
+#bulkDeleteModal .modal-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--status-error);
+}
+
+#bulkDeleteModal .modal-body {
+    font-family: var(--font-body);
+    color: var(--academic-text);
+    padding: 1.5rem;
+    background: #ffffff;
+}
+
+#bulkDeleteModal .modal-body p {
+    margin-bottom: 0.75rem;
+}
+
+#bulkDeleteModal .modal-body .text-muted {
+    color: var(--academic-muted) !important;
+}
+
+#bulkDeleteModal .modal-body .alert {
+    background: var(--status-warning-bg);
+    border: 1px solid rgba(154, 107, 58, 0.25);
+    color: var(--status-warning);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+#bulkDeleteModal .modal-footer {
+    background: var(--paper-warm);
+    border-top: 1px solid var(--paper-tan);
+    padding: 1rem 1.5rem;
+}
+
+#bulkDeleteModal .btn-outline-secondary {
+    border-color: var(--slate-light);
+    color: var(--academic-text);
+}
+
+#bulkDeleteModal .btn-outline-secondary:hover {
+    background: var(--paper-cream);
+    border-color: var(--slate-accent);
+}
+
+#bulkDeleteModal .btn-danger {
+    background: var(--status-error);
+    border-color: var(--status-error);
+}
+
+#bulkDeleteModal .btn-danger:hover {
+    background: #b54d4d;
+    border-color: #b54d4d;
+}
