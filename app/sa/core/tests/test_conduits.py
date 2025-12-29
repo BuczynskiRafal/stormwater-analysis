@@ -1,3 +1,5 @@
+import importlib.util
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -6,6 +8,10 @@ import swmmio as sw
 from sa.core.data import DataManager
 from sa.core.tests import TEST_FILE
 from sa.core.valid_round import validate_filling
+
+# Check if TensorFlow is available for tests that require model predictions
+TF_AVAILABLE = importlib.util.find_spec("tensorflow") is not None
+requires_tensorflow = pytest.mark.skipif(not TF_AVAILABLE, reason="TensorFlow not installed")
 
 desired_width = 500
 pd.set_option("display.width", desired_width)
@@ -167,6 +173,7 @@ class TestConduitsData:
             if not pd.isna(conduit_outlet_max_depth) and not pd.isna(node_max_depth):
                 assert conduit_outlet_max_depth == node_max_depth
 
+    @requires_tensorflow
     def test_frost_zone_valid_values(self):
         """
         Test setting frost_zone attribute with valid values.
@@ -178,6 +185,7 @@ class TestConduitsData:
                 data_manager.frost_zone = value
                 assert data_manager.frost_zone == value
 
+    @requires_tensorflow
     def test_frost_zone_invalid_values(self):
         """
         Test setting frost_zone attribute with invalid values.
@@ -189,6 +197,7 @@ class TestConduitsData:
                 with DataManager(TEST_FILE) as data_manager:
                     data_manager.frost_zone = value
 
+    @requires_tensorflow
     def test_frost_zone_setter_valid_values(self):
         """
         Test setting frost_zone attribute using the setter with valid values.
@@ -199,6 +208,7 @@ class TestConduitsData:
                 data_manager.frost_zone = value
                 assert data_manager.frost_zone == value
 
+    @requires_tensorflow
     def test_frost_zone_setter_invalid_values(self):
         """
         Test setting frost_zone attribute using the setter with invalid values.
