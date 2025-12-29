@@ -104,7 +104,7 @@ def calc_area(filling: float, diameter: float) -> float:
     The cross-sectional area through which the wastewater flows,
     active cross-section f,
     characterized by the filling h and the diameter of the pipe D.
-    source: Biedugnis S., “Metody informatyczne w wodociągach i kanalizacji”,
+    source: Biedugnis S., "Metody informatyczne w wodociągach i kanalizacji",
     Oficyna Wydawnicza Politechniki Warszawskiej, Warszawa 1998. - in polish.
 
     Args:
@@ -115,24 +115,24 @@ def calc_area(filling: float, diameter: float) -> float:
         area (int, float): cross-sectional
         area of the wetted part of the pipe [m2]
     """
-    if check_dimensions(filling, diameter):
-        radius = diameter / 2
-        chord = math.sqrt((radius**2 - ((filling - radius) ** 2))) * 2
-        alpha = math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2))
-        if filling > radius:
-            return pi * radius**2 - (1 / 2 * (alpha - math.sin(alpha)) * radius**2)
-        elif filling == radius:
-            return pi * radius**2 / 2
-        elif filling == diameter:
-            return pi * radius**2
-        else:
-            return 1 / 2 * (alpha - math.sin(alpha)) * radius**2
+    check_dimensions(filling, diameter)
+    radius = diameter / 2
+    chord = math.sqrt((radius**2 - ((filling - radius) ** 2))) * 2
+    alpha = math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2))
+    if filling > radius:
+        return pi * radius**2 - (1 / 2 * (alpha - math.sin(alpha)) * radius**2)
+    elif filling == radius:
+        return pi * radius**2 / 2
+    elif filling == diameter:
+        return pi * radius**2
+    else:
+        return 1 / 2 * (alpha - math.sin(alpha)) * radius**2
 
 
 def calc_u(filling: float, diameter: float) -> float:
     """
     Calculate the circumference of a wetted part of pipe.
-    source: Biedugnis S., “Metody informatyczne w wodociągach i kanalizacji”,
+    source: Biedugnis S., "Metody informatyczne w wodociągach i kanalizacji",
     Oficyna Wydawnicza Politechniki Warszawskiej, Warszawa 1998. - in polish.
 
     Args:
@@ -142,13 +142,13 @@ def calc_u(filling: float, diameter: float) -> float:
     Return:
         circumference (int, float): circumference of a wetted part of pipe
     """
-    if check_dimensions(filling, diameter):
-        radius = diameter / 2
-        chord = math.sqrt((radius**2 - (filling - radius) ** 2)) * 2
-        alpha = math.degrees(math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2)))
-        if filling > radius:
-            return 2 * math.pi * radius - (alpha / 360 * 2 * math.pi * radius)
-        return alpha / 360 * 2 * math.pi * radius
+    check_dimensions(filling, diameter)
+    radius = diameter / 2
+    chord = math.sqrt((radius**2 - (filling - radius) ** 2)) * 2
+    alpha = math.degrees(math.acos((radius**2 + radius**2 - chord**2) / (2 * radius**2)))
+    if filling > radius:
+        return 2 * math.pi * radius - (alpha / 360 * 2 * math.pi * radius)
+    return alpha / 360 * 2 * math.pi * radius
 
 
 def calc_rh(filling: float, diameter: float) -> float:
@@ -156,7 +156,7 @@ def calc_rh(filling: float, diameter: float) -> float:
     Calculate the hydraulic radius Rh, i.e. the ratio of the cross-section f
     to the contact length of the sewage with the sewer wall,
     called the wetted circuit U.
-    source: Biedugnis S., “Metody informatyczne w wodociągach i kanalizacji”,
+    source: Biedugnis S., "Metody informatyczne w wodociągach i kanalizacji",
     Oficyna Wydawnicza Politechniki Warszawskiej, Warszawa 1998. - in polish.
 
     Args:
@@ -166,11 +166,11 @@ def calc_rh(filling: float, diameter: float) -> float:
     Return:
         Rh (int, float): hydraulic radius [m]
     """
-    if check_dimensions(filling, diameter):
-        try:
-            return calc_area(filling, diameter) / calc_u(filling, diameter)
-        except ZeroDivisionError:
-            return 0
+    check_dimensions(filling, diameter)
+    try:
+        return calc_area(filling, diameter) / calc_u(filling, diameter)
+    except ZeroDivisionError:
+        return 0.0
 
 
 def calc_velocity(
@@ -189,9 +189,9 @@ def calc_velocity(
     Return:
         v (int, float): sewage flow velocity in the sewer [m/s]
     """
-    if check_dimensions(filling, diameter):
-        slope = slope / 1000
-        return 1 / 0.013 * calc_rh(filling, diameter) ** (2 / 3) * (slope**0.5)
+    check_dimensions(filling, diameter)
+    slope = slope / 1000
+    return 1 / 0.013 * calc_rh(filling, diameter) ** (2 / 3) * (slope**0.5)
 
 
 def min_slope(filling: float, diameter: float, theta: float = 1.5, g: float = 9.81) -> float:
@@ -216,9 +216,9 @@ def min_slope(filling: float, diameter: float, theta: float = 1.5, g: float = 9.
     Return:
         slope (int, float): The minimum slope of the channel [‰]
     """
-    if check_dimensions(filling, diameter):
-        filling = max(0.001, filling)
-        return 4 * (theta / g) * ((diameter / 4) / calc_rh(filling, diameter)) * (1 / diameter)
+    check_dimensions(filling, diameter)
+    filling = max(0.001, filling)
+    return 4 * (theta / g) * ((diameter / 4) / calc_rh(filling, diameter)) * (1 / diameter)
 
 
 def max_slope(diameter: Union[float, int]) -> Union[float, int]:
@@ -237,19 +237,19 @@ def max_slope(diameter: Union[float, int]) -> Union[float, int]:
     Returns:
         Union[float, int]: The maximum slope that can be achieved for the pipe.
     """
-    if check_dimensions(diameter, diameter):
-        start_slope = min_slope(diameter, diameter)
-        slope = start_slope
-        v_max = max_velocity()
-        v_clc = 0.0
-        while round(v_clc, 2) != float(v_max):
-            v_clc = calc_velocity(diameter, diameter, slope)
-            if v_clc < v_max:
-                slope += start_slope
-            else:
-                start_slope = start_slope / 2
-                slope -= start_slope
-        return slope
+    check_dimensions(diameter, diameter)
+    start_slope = min_slope(diameter, diameter)
+    slope = start_slope
+    v_max = max_velocity()
+    v_clc = 0.0
+    while round(v_clc, 2) != float(v_max):
+        v_clc = calc_velocity(diameter, diameter, slope)
+        if v_clc < v_max:
+            slope += start_slope
+        else:
+            start_slope = start_slope / 2
+            slope -= start_slope
+    return slope
 
 
 max_slopes = {str(dim): max_slope(dim) for dim in common_diameters}

@@ -45,7 +45,7 @@ class SWMMLabelGenerator:
         if row.isnull().all():
             raise ValueError(f"Conduit '{row.name}' is present in base topology but missing from simulation file")
 
-        if pd.isna(row.get("ValCoverage")):
+        if bool(pd.isna(row.get("ValCoverage"))):
             raise ValueError(f"Conduit '{row.name}' missing critical validation data ('ValCoverage')")
 
     @classmethod
@@ -507,7 +507,7 @@ def _load_inp_files(files: List[Path], quiet: bool) -> List[pd.DataFrame]:
 
             with DataManager(str(inp_path), zone=1.6) as model:
                 df = model.dfc.copy()
-                if "Tag" not in df.columns or df["Tag"].isnull().any():
+                if "Tag" not in df.columns or bool(df["Tag"].isnull().any()):
                     continue
                 df["source_file"] = inp_path.name
                 frames.append(df)

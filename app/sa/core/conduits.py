@@ -240,9 +240,9 @@ class ConduitFeatureEngineeringService:
                 return handle_excessive_filling(row)
 
             # Get common parameters
-            current_diam: float = row["Geom1"]
-            current_filling: float = row.get("Filling", 0.0)
-            max_q: float = row.get("MaxQ", 0.0)
+            current_diam = float(row["Geom1"])
+            current_filling = float(row.get("Filling", 0.0) or 0.0)
+            max_q = float(row.get("MaxQ", 0.0) or 0.0)
 
             # Step 2: Check if current filling exceeds maximum allowed
             max_allowed_filling_height = get_max_filling_height(current_diam)
@@ -262,7 +262,7 @@ class ConduitFeatureEngineeringService:
                 return current_diam
 
             # Step 5: Check if current diameter is sufficient based on calculated filling
-            original_slope: float = row.get("SlopeFtPerFt", 0.0)
+            original_slope = float(row.get("SlopeFtPerFt", 0.0) or 0.0)
             best_diam: float = current_diam
 
             try:
