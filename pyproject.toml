@@ -3,6 +3,7 @@ line-length = 130
 target-version = ['py310']
 
 [tool.pytest.ini_options]
+testpaths = ["app/sa/core/tests"]
 addopts = ["-vvv", "--tb=short", "--cov=app/sa/core", "--cov-report=term-missing"]
 filterwarnings = [
     "ignore::DeprecationWarning",

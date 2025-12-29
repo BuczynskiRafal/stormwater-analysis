@@ -11,4 +11,4 @@ pytest-mock>=3.10.0
 python-dotenv~=1.0.1
 scipy~=1.11.0
 setuptools>=65.0.0
-swmmio~=0.6.2
+swmmio~=0.8.2
