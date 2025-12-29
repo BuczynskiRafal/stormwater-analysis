@@ -37,13 +37,13 @@ class TestDatasetCacheIsValid:
         assert cache.is_valid(source_files) is False
 
     def test_returns_true_when_cache_newer_than_sources(self, cache, source_files):
+        time.sleep(0.2)
         cache.save({"data": "test"})
-        time.sleep(0.1)  # Ensure cache is newer
         assert cache.is_valid(source_files) is True
 
     def test_returns_false_when_source_newer_than_cache(self, cache, source_files):
         cache.save({"data": "test"})
-        time.sleep(0.1)
+        time.sleep(0.2)
         source_files[0].write_text("updated content")
         assert cache.is_valid(source_files) is False
 
