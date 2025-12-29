@@ -206,8 +206,8 @@ class BaseElementDetailView(LoginRequiredMixin, SessionOwnerMixin, TemplateView)
 
     login_url = "/accounts/login/"
     template_name = "sa/detail.html"
-    element_type: str = None
-    element_name_kwarg: str = None
+    element_type: str = ""
+    element_name_kwarg: str = ""
 
     def get_element(self, session):
         """Get the element from session. Override in subclasses."""

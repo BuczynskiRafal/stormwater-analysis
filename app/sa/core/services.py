@@ -2,10 +2,15 @@
 Utility services for hydraulic calculations, simulation running, and trace analysis.
 """
 
+from __future__ import annotations
+
 import math
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from .data_manager import DataManager
 from pyswmm import Simulation
 from swmmio.utils.functions import trace_from_node
 

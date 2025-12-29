@@ -191,11 +191,12 @@ class CalculationPersistenceService:
 
         for idx, row in dfn.iterrows():
             try:
+                invert_elev_val = row.get("InvertElev")
                 node_obj = NodeData(
                     session=session,
                     node_name=str(idx),
-                    max_depth=float(row.get("MaxDepth", 0)),
-                    invert_elevation=float(row.get("InvertElev", 0)) if "InvertElev" in row else None,
+                    max_depth=float(row.get("MaxDepth", 0) or 0),
+                    invert_elevation=float(invert_elev_val) if invert_elev_val is not None else None,
                     subcatchment=str(row.get("Subcatchment", "-")),
                     sbc_category=str(row.get("SbcCategory", "-")),
                 )
@@ -215,16 +216,21 @@ class CalculationPersistenceService:
 
         for idx, row in dfs.iterrows():
             try:
+                # Extract optional float fields safely
+                total_runoff_val = row.get("TotalRunoffMG")
+                peak_runoff_val = row.get("PeakRunoff")
+                runoff_coeff_val = row.get("RunoffCoeff")
+
                 subcatchment_obj = SubcatchmentData(
                     session=session,
                     subcatchment_name=str(idx),
-                    area=float(row.get("Area", 0)),
-                    perc_imperv=float(row.get("PercImperv", 0)),
-                    perc_slope=float(row.get("PercSlope", 0)),
+                    area=float(row.get("Area", 0) or 0),
+                    perc_imperv=float(row.get("PercImperv", 0) or 0),
+                    perc_slope=float(row.get("PercSlope", 0) or 0),
                     outlet=str(row.get("Outlet", "")),
-                    total_runoff_mg=float(row.get("TotalRunoffMG", 0)) if "TotalRunoffMG" in row else None,
-                    peak_runoff=float(row.get("PeakRunoff", 0)) if "PeakRunoff" in row else None,
-                    runoff_coeff=float(row.get("RunoffCoeff", 0)) if "RunoffCoeff" in row else None,
+                    total_runoff_mg=float(total_runoff_val) if total_runoff_val is not None else None,
+                    peak_runoff=float(peak_runoff_val) if peak_runoff_val is not None else None,
+                    runoff_coeff=float(runoff_coeff_val) if runoff_coeff_val is not None else None,
                     category=str(row.get("category", "-")),
                 )
                 subcatchment_objects.append(subcatchment_obj)
