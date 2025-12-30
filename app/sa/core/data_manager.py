@@ -221,7 +221,9 @@ class GNNDataset(BaseSWMMDataset):
 
         try:
             cached_data = self.cache.load()
-            if [str(p) for p in cached_data.get("inp_files", [])] == [str(p) for p in self.inp_files]:
+            cached_files = sorted(str(p) for p in cached_data.get("inp_files", []))
+            current_files = sorted(str(p) for p in self.inp_files)
+            if cached_files == current_files:
                 logger.info("Loading dataset from cache...")
                 self.adjacency_matrix = cached_data["adjacency_matrix"]
                 self.conduit_order = cached_data["conduit_order"]
