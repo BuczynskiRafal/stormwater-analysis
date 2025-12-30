@@ -174,50 +174,20 @@ class TestConduitsData:
                 assert conduit_outlet_max_depth == node_max_depth
 
     @requires_tensorflow
-    def test_frost_zone_valid_values(self):
-        """
-        Test setting frost_zone attribute with valid values.
-        """
-        valid_values = [1.0, 1.2, 1.4, 1.6]
+    @pytest.mark.parametrize("value", [1.0, 1.2, 1.4, 1.6])
+    def test_frost_zone_valid_values(self, value):
+        """Test setting frost_zone attribute with valid values."""
+        with DataManager(TEST_FILE) as data_manager:
+            data_manager.frost_zone = value
+            assert data_manager.frost_zone == value
 
-        for value in valid_values:
+    @requires_tensorflow
+    @pytest.mark.parametrize("value", [0.5, 1.7, -1.0, 2.0])
+    def test_frost_zone_invalid_values(self, value):
+        """Test setting frost_zone attribute with invalid values."""
+        with pytest.raises(ValueError):
             with DataManager(TEST_FILE) as data_manager:
                 data_manager.frost_zone = value
-                assert data_manager.frost_zone == value
-
-    @requires_tensorflow
-    def test_frost_zone_invalid_values(self):
-        """
-        Test setting frost_zone attribute with invalid values.
-        """
-        invalid_values = [0.5, 1.7, -1.0, 2.0]
-
-        for value in invalid_values:
-            with pytest.raises(ValueError):
-                with DataManager(TEST_FILE) as data_manager:
-                    data_manager.frost_zone = value
-
-    @requires_tensorflow
-    def test_frost_zone_setter_valid_values(self):
-        """
-        Test setting frost_zone attribute using the setter with valid values.
-        """
-        valid_values = [1.0, 1.2, 1.4, 1.6]
-        with DataManager(TEST_FILE) as data_manager:
-            for value in valid_values:
-                data_manager.frost_zone = value
-                assert data_manager.frost_zone == value
-
-    @requires_tensorflow
-    def test_frost_zone_setter_invalid_values(self):
-        """
-        Test setting frost_zone attribute using the setter with invalid values.
-        """
-        invalid_values = [0.5, 1.7, -1.0, 2.0]
-        with DataManager(TEST_FILE) as data_manager:
-            for value in invalid_values:
-                with pytest.raises(ValueError):
-                    data_manager.frost_zone = value
 
     def test_max_ground_cover_valid_depths(self, data_manager: DataManager):
         """Test max_ground_cover_is_valid with valid depths for both inlet and outlet."""
@@ -416,3 +386,464 @@ class TestConduitsData:
         assert data_manager.dfc.loc[2, "OutletGroundElevation"] == pytest.approx(72, abs=1e-9), (
             "Incorrect result for row 2 (Outlet)"
         )
+
+
+class TestGroundCover:
+    """Tests for the ground_cover method."""
+
+    def test_ground_cover_calculation(self, data_manager: DataManager):
+        """Test ground cover calculation for inlet and outlet."""
+        # Prepare test data
+        data_manager.dfc = pd.DataFrame(
+            [
+                {
+                    "InletGroundElevation": 15,
+                    "InletNodeInvert": 10,
+                    "Geom1": 0.5,
+                    "OutletGroundElevation": 13,
+                    "OutletNodeInvert": 8,
+                },
+                {
+                    "InletGroundElevation": 20,
+                    "InletNodeInvert": 12,
+                    "Geom1": 1.0,
+                    "OutletGroundElevation": 18,
+                    "OutletNodeInvert": 10,
+                },
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.ground_cover()
+
+        # InletGroundCover = InletGroundElevation - InletNodeInvert - Geom1
+        assert data_manager.dfc.loc[0, "InletGroundCover"] == pytest.approx(4.5, abs=1e-9)
+        assert data_manager.dfc.loc[1, "InletGroundCover"] == pytest.approx(7.0, abs=1e-9)
+        # OutletGroundCover = OutletGroundElevation - OutletNodeInvert - Geom1
+        assert data_manager.dfc.loc[0, "OutletGroundCover"] == pytest.approx(4.5, abs=1e-9)
+        assert data_manager.dfc.loc[1, "OutletGroundCover"] == pytest.approx(7.0, abs=1e-9)
+
+    def test_ground_cover_with_none_dfc(self, data_manager: DataManager):
+        """Test ground_cover returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        # Should not raise, just return
+        data_manager.conduit_service.ground_cover()
+
+    def test_ground_cover_missing_columns_raises(self, data_manager: DataManager):
+        """Test ground_cover raises ValueError when required columns are missing."""
+        data_manager.dfc = pd.DataFrame([{"SomeColumn": 1}])
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        with pytest.raises(ValueError, match="Missing required columns"):
+            data_manager.conduit_service.ground_cover()
+
+
+class TestMinGroundCoverAutoCall:
+    """Tests for min_ground_cover_is_valid auto-calling ground_cover."""
+
+    def test_min_ground_cover_calls_ground_cover_when_column_missing(self, data_manager: DataManager):
+        """Test that min_ground_cover_is_valid calls ground_cover if InletGroundCover is missing."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {
+                    "InletGroundElevation": 15,
+                    "InletNodeInvert": 10,
+                    "Geom1": 0.5,
+                    "OutletGroundElevation": 13,
+                    "OutletNodeInvert": 8,
+                }
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.frost_zone = 1.0
+
+        # InletGroundCover column doesn't exist - method should call ground_cover()
+        assert "InletGroundCover" not in data_manager.dfc.columns
+
+        data_manager.conduit_service.min_ground_cover_is_valid()
+
+        # Now the columns should exist and ValCoverage should be calculated
+        assert "InletGroundCover" in data_manager.dfc.columns
+        assert "ValCoverage" in data_manager.dfc.columns
+
+
+class TestDiameterFeatures:
+    """Tests for the diameter_features method."""
+
+    def test_diameter_features_all_equal(self, data_manager: DataManager):
+        """Test when current diameter equals minimum diameter."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Geom1": 0.5, "MinDiameter": 0.5},
+                {"Geom1": 1.0, "MinDiameter": 1.0},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.diameter_features()
+
+        assert list(data_manager.dfc["isMinDiameter"]) == [1, 1]
+        assert list(data_manager.dfc["IncreaseDia"]) == [0, 0]
+        assert list(data_manager.dfc["ReduceDia"]) == [0, 0]
+
+    def test_diameter_features_increase_needed(self, data_manager: DataManager):
+        """Test when current diameter is smaller than minimum (needs increase)."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Geom1": 0.3, "MinDiameter": 0.5},
+                {"Geom1": 0.8, "MinDiameter": 1.2},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.diameter_features()
+
+        assert list(data_manager.dfc["isMinDiameter"]) == [0, 0]
+        assert list(data_manager.dfc["IncreaseDia"]) == [1, 1]
+        assert list(data_manager.dfc["ReduceDia"]) == [0, 0]
+
+    def test_diameter_features_reduce_possible(self, data_manager: DataManager):
+        """Test when current diameter is larger than minimum (can be reduced)."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Geom1": 1.0, "MinDiameter": 0.5},
+                {"Geom1": 1.5, "MinDiameter": 0.8},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.diameter_features()
+
+        assert list(data_manager.dfc["isMinDiameter"]) == [0, 0]
+        assert list(data_manager.dfc["IncreaseDia"]) == [0, 0]
+        assert list(data_manager.dfc["ReduceDia"]) == [1, 1]
+
+    def test_diameter_features_mixed(self, data_manager: DataManager):
+        """Test with mixed diameter relationships."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Geom1": 0.5, "MinDiameter": 0.5},  # Equal
+                {"Geom1": 0.3, "MinDiameter": 0.5},  # Needs increase
+                {"Geom1": 1.0, "MinDiameter": 0.5},  # Can reduce
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.diameter_features()
+
+        assert list(data_manager.dfc["isMinDiameter"]) == [1, 0, 0]
+        assert list(data_manager.dfc["IncreaseDia"]) == [0, 1, 0]
+        assert list(data_manager.dfc["ReduceDia"]) == [0, 0, 1]
+
+
+class TestNormalizeRoughness:
+    """Tests for the normalize_roughness method."""
+
+    def test_normalize_roughness_typical_values(self, data_manager: DataManager):
+        """Test normalization with typical roughness values."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Roughness": 0.009},  # Minimum (smoothest) -> 0.0
+                {"Roughness": 0.020},  # Maximum (roughest) -> 1.0
+                {"Roughness": 0.0145},  # Midpoint -> 0.5
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.normalize_roughness()
+
+        assert "NRoughness" in data_manager.dfc.columns
+        assert data_manager.dfc.loc[0, "NRoughness"] == pytest.approx(0.0, abs=1e-9)
+        assert data_manager.dfc.loc[1, "NRoughness"] == pytest.approx(1.0, abs=1e-9)
+        assert data_manager.dfc.loc[2, "NRoughness"] == pytest.approx(0.5, abs=1e-9)
+
+    def test_normalize_roughness_clipping(self, data_manager: DataManager):
+        """Test that values outside range are clipped."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Roughness": 0.005},  # Below min, should clip to 0.0
+                {"Roughness": 0.030},  # Above max, should clip to 1.0
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.normalize_roughness()
+
+        assert data_manager.dfc.loc[0, "NRoughness"] == pytest.approx(0.0, abs=1e-9)
+        assert data_manager.dfc.loc[1, "NRoughness"] == pytest.approx(1.0, abs=1e-9)
+
+    def test_normalize_roughness_with_none_dfc(self, data_manager: DataManager):
+        """Test normalize_roughness returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.normalize_roughness()  # Should not raise
+
+
+class TestNormalizeMaxVelocity:
+    """Tests for the normalize_max_velocity method."""
+
+    def test_normalize_max_velocity_typical_values(self, data_manager: DataManager):
+        """Test normalization with typical velocity values."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"MaxV": 0.0},  # Zero velocity
+                {"MaxV": 2.5},  # Half of max (assuming max=5.0)
+                {"MaxV": 5.0},  # Max velocity
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.normalize_max_velocity()
+
+        assert "NMaxV" in data_manager.dfc.columns
+        assert data_manager.dfc.loc[0, "NMaxV"] == pytest.approx(0.0, abs=1e-9)
+        assert data_manager.dfc.loc[1, "NMaxV"] == pytest.approx(0.5, abs=1e-9)
+        assert data_manager.dfc.loc[2, "NMaxV"] == pytest.approx(1.0, abs=1e-9)
+
+    def test_normalize_max_velocity_clipping(self, data_manager: DataManager):
+        """Test that values above max are clipped."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"MaxV": 10.0},  # Above max, should clip to 1.0
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.normalize_max_velocity()
+
+        assert data_manager.dfc.loc[0, "NMaxV"] == pytest.approx(1.0, abs=1e-9)
+
+    def test_normalize_max_velocity_with_none_dfc(self, data_manager: DataManager):
+        """Test normalize_max_velocity returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.normalize_max_velocity()  # Should not raise
+
+
+class TestNormalizeDepth:
+    """Tests for the normalize_depth method."""
+
+    def test_normalize_depth_typical_values(self, data_manager: DataManager):
+        """Test depth normalization with typical values."""
+        data_manager.frost_zone = 1.0
+        data_manager.dfc = pd.DataFrame(
+            [
+                {
+                    "Geom1": 0.5,
+                    "InletMaxDepth": 1.5,  # min_depth = 1.0 + 0.5 = 1.5
+                    "OutletMaxDepth": 1.5,
+                },
+                {
+                    "Geom1": 0.5,
+                    "InletMaxDepth": 4.5,  # Some middle value
+                    "OutletMaxDepth": 4.5,
+                },
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.normalize_depth()
+
+        assert "NInletDepth" in data_manager.dfc.columns
+        assert "NOutletDepth" in data_manager.dfc.columns
+        # First row: depth at minimum -> normalized to 0.0
+        assert data_manager.dfc.loc[0, "NInletDepth"] == pytest.approx(0.0, abs=1e-9)
+        assert data_manager.dfc.loc[0, "NOutletDepth"] == pytest.approx(0.0, abs=1e-9)
+
+    def test_normalize_depth_with_none_dfc(self, data_manager: DataManager):
+        """Test normalize_depth returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.normalize_depth()  # Should not raise
+
+
+class TestNormalizeFilling:
+    """Tests for the normalize_filling method."""
+
+    def test_normalize_filling_typical_values(self, data_manager: DataManager):
+        """Test filling normalization with typical values."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"Filling": 0.0, "Geom1": 1.0},  # Zero filling -> 0.0
+                {"Filling": 0.4135, "Geom1": 1.0},  # Half of max (0.827*1.0) -> 0.5
+                {"Filling": 0.827, "Geom1": 1.0},  # Max filling -> 1.0
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.normalize_filling()
+
+        assert "NFilling" in data_manager.dfc.columns
+        assert data_manager.dfc.loc[0, "NFilling"] == pytest.approx(0.0, abs=1e-9)
+        assert data_manager.dfc.loc[1, "NFilling"] == pytest.approx(0.5, abs=1e-9)
+        assert data_manager.dfc.loc[2, "NFilling"] == pytest.approx(1.0, abs=1e-9)
+
+    def test_normalize_filling_with_none_dfc(self, data_manager: DataManager):
+        """Test normalize_filling returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.normalize_filling()  # Should not raise
+
+
+class TestConduitsSubcatchmentInfo:
+    """Tests for the conduits_subcatchment_info method."""
+
+    def test_conduits_subcatchment_from_outlet_node(self, data_manager: DataManager):
+        """Test subcatchment info is mapped from outlet node when available."""
+        data_manager.dfn = pd.DataFrame(
+            {
+                "Subcatchment": ["SC1", "SC2"],
+                "SbcCategory": ["urban_highly_impervious", "rural"],
+            },
+            index=["N1", "N2"],
+        )
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"InletNode": "N1", "OutletNode": "N2"},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.dfn = data_manager.dfn
+
+        data_manager.conduit_service.conduits_subcatchment_info()
+
+        assert data_manager.dfc.loc[0, "Subcatchment"] == "SC2"
+        assert data_manager.dfc.loc[0, "SbcCategory"] == "rural"
+
+    def test_conduits_subcatchment_from_inlet_node(self, data_manager: DataManager):
+        """Test subcatchment info is mapped from inlet node when outlet has no info."""
+        data_manager.dfn = pd.DataFrame(
+            {
+                "Subcatchment": ["SC1", "-"],
+                "SbcCategory": ["urban_highly_impervious", "-"],
+            },
+            index=["N1", "N2"],
+        )
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"InletNode": "N1", "OutletNode": "N2"},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.dfn = data_manager.dfn
+
+        data_manager.conduit_service.conduits_subcatchment_info()
+
+        assert data_manager.dfc.loc[0, "Subcatchment"] == "SC1"
+        assert data_manager.dfc.loc[0, "SbcCategory"] == "urban_highly_impervious"
+
+    def test_conduits_subcatchment_no_info(self, data_manager: DataManager):
+        """Test subcatchment stays as '-' when neither node has info."""
+        data_manager.dfn = pd.DataFrame(
+            {
+                "Subcatchment": ["-", "-"],
+                "SbcCategory": ["-", "-"],
+            },
+            index=["N1", "N2"],
+        )
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"InletNode": "N1", "OutletNode": "N2"},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.dfn = data_manager.dfn
+
+        data_manager.conduit_service.conduits_subcatchment_info()
+
+        assert data_manager.dfc.loc[0, "Subcatchment"] == "-"
+        assert data_manager.dfc.loc[0, "SbcCategory"] == "-"
+
+    def test_conduits_subcatchment_with_none_dfc(self, data_manager: DataManager):
+        """Test conduits_subcatchment_info returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.conduits_subcatchment_info()  # Should not raise
+
+    def test_conduits_subcatchment_missing_columns(self, data_manager: DataManager):
+        """Test conduits_subcatchment_info returns early when required columns missing in dfn."""
+        data_manager.dfn = pd.DataFrame({"SomeColumn": [1]}, index=["N1"])
+        data_manager.dfc = pd.DataFrame([{"InletNode": "N1", "OutletNode": "N2"}])
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.dfn = data_manager.dfn
+
+        # Should return early without error
+        data_manager.conduit_service.conduits_subcatchment_info()
+
+
+class TestPropagateSubcatchmentInfo:
+    """Tests for the propagate_subcatchment_info method."""
+
+    def test_propagate_subcatchment_info_basic(self, data_manager: DataManager):
+        """Test that subcatchment info propagates through the network."""
+        # Node N1 has subcatchment info, N2 doesn't (gets it from N1)
+        data_manager.dfn = pd.DataFrame(
+            {
+                "Subcatchment": ["SC1", "-"],
+                "SbcCategory": ["rural", "-"],
+            },
+            index=["N1", "N2"],
+        )
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"InletNode": "N1", "OutletNode": "N2", "Subcatchment": "-", "SbcCategory": "-"},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.dfn = data_manager.dfn
+
+        data_manager.conduit_service.propagate_subcatchment_info()
+
+        # Node N2 should now have subcatchment info from N1
+        assert data_manager.dfn.loc["N2", "Subcatchment"] == "SC1"
+        assert data_manager.dfn.loc["N2", "SbcCategory"] == "rural"
+        # Conduit should also have subcatchment info
+        assert data_manager.dfc.loc[0, "Subcatchment"] == "SC1"
+        assert data_manager.dfc.loc[0, "SbcCategory"] == "rural"
+
+    def test_propagate_subcatchment_with_none_dfc(self, data_manager: DataManager):
+        """Test propagate_subcatchment_info returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.propagate_subcatchment_info()  # Should not raise
+
+
+class TestEncodeSbcCategory:
+    """Tests for the encode_sbc_category method."""
+
+    def test_encode_sbc_category_basic(self, data_manager: DataManager):
+        """Test one-hot encoding of subcatchment categories."""
+        data_manager.dfc = pd.DataFrame(
+            [
+                {"SbcCategory": "rural"},
+                {"SbcCategory": "urban_highly_impervious"},
+                {"SbcCategory": "forests"},
+            ]
+        )
+        data_manager.conduit_service.dfc = data_manager.dfc
+
+        data_manager.conduit_service.encode_sbc_category()
+
+        # Check that all category columns exist
+        from sa.core.constants import SUBCATCHMENT_CATEGORIES
+
+        for category in SUBCATCHMENT_CATEGORIES:
+            assert category in data_manager.dfc.columns
+
+        # Check values
+        assert data_manager.dfc.loc[0, "rural"] == 1
+        assert data_manager.dfc.loc[0, "urban_highly_impervious"] == 0
+        assert data_manager.dfc.loc[1, "urban_highly_impervious"] == 1
+        assert data_manager.dfc.loc[1, "rural"] == 0
+        assert data_manager.dfc.loc[2, "forests"] == 1
+
+    def test_encode_sbc_category_with_none_dfc(self, data_manager: DataManager):
+        """Test encode_sbc_category returns early when dfc is None."""
+        data_manager.conduit_service.dfc = None
+        data_manager.conduit_service.encode_sbc_category()  # Should not raise
+
+    def test_encode_sbc_category_empty_df(self, data_manager: DataManager):
+        """Test encode_sbc_category returns early when dfc is empty."""
+        data_manager.dfc = pd.DataFrame()
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.encode_sbc_category()  # Should not raise
+
+    def test_encode_sbc_category_missing_column(self, data_manager: DataManager):
+        """Test encode_sbc_category returns early when SbcCategory column is missing."""
+        data_manager.dfc = pd.DataFrame([{"SomeColumn": 1}])
+        data_manager.conduit_service.dfc = data_manager.dfc
+        data_manager.conduit_service.encode_sbc_category()  # Should not raise
