@@ -1,7 +1,9 @@
 """Unit tests for data_manager.py module to improve coverage."""
 
+import os
 import pickle
 import sys
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -120,6 +122,10 @@ class TestDatasetCache:
         # Create source file
         source_file = tmp_path / "source.txt"
         source_file.write_text("data")
+
+        # Ensure source file is older
+        past_time = time.time() - 100
+        os.utime(source_file, (past_time, past_time))
 
         # Create cache file (will be newer)
         cache = DatasetCache(tmp_path, "test")
@@ -662,6 +668,10 @@ class TestGNNDataset:
 
         inp_file = tmp_path / "test.inp"
         inp_file.write_text("")
+
+        # Ensure source file is older than cache
+        past_time = time.time() - 100
+        os.utime(inp_file, (past_time, past_time))
 
         # Create valid cache with matching file list
         cache_dir = tmp_path / ".cache"

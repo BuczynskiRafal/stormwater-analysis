@@ -236,7 +236,7 @@ class GNNDataset(BaseSWMMDataset):
 
     def _process_dataset(self):
         """Process dataset from scratch."""
-        from graph_constructor import SWMMGraphConstructor
+        from sa.core.graph_constructor import SWMMGraphConstructor
         from sa.core.data import DataManager
 
         self.adjacency_matrix, self.conduit_order = self._build_base_graph(self.inp_files[0], SWMMGraphConstructor, DataManager)
