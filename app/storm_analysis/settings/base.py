@@ -1,19 +1,19 @@
+"""
+Base Django settings shared across all environments.
+"""
+
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# BASE_DIR points to the 'app' directory
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 load_dotenv()
 
-
-SECRET_KEY = os.getenv("SECRET_KEY", "default_value")
-
-DEBUG = os.getenv("DEBUG", False) == "True"
-
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
-
-
+# Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -57,6 +57,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "storm_analysis.wsgi.application"
 
+# Database - SQLite for all environments
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -64,7 +65,7 @@ DATABASES = {
     }
 }
 
-
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -79,26 +80,30 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+
+# Custom user model
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
+# Crispy Forms
 CRISPY_TEMPLATE_PACK = "bootstrap4"
 
+# Internationalization
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_TZ = True
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Media files
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
+# Static files (CSS, JavaScript, Images)
 STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 STATIC_URL = "/static/"
