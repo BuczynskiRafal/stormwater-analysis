@@ -1,8 +1,11 @@
-"""Tests for predictor module loading behavior.
+"""Tests for predictor module loading behavior."""
 
-Note: The predictor module loads models at import time, making it difficult
-to test failure paths directly. These tests verify the module exports.
-"""
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from sa.core import predictor
+from sa.core.predictor import _LazyModelProxy
 
 
 class TestPredictorModuleExports:
@@ -19,7 +22,6 @@ class TestPredictorModuleExports:
         assert recommendation is not None
 
     def test_gnn_recommendation_is_exported(self):
-        # gnn_recommendation can be None if GNN loading failed
         from sa.core import predictor
 
         assert hasattr(predictor, "gnn_recommendation")
@@ -30,3 +32,269 @@ class TestPredictorModuleExports:
         assert "classifier" in __all__
         assert "recommendation" in __all__
         assert "gnn_recommendation" in __all__
+        assert "get_classifier" in __all__
+        assert "get_recommendation" in __all__
+        assert "get_gnn_recommendation" in __all__
+
+
+@pytest.fixture
+def reset_predictor_state():
+    """Reset predictor module global state before and after each test."""
+    original_classifier = predictor._classifier
+    original_recommendation = predictor._recommendation
+    original_gnn_recommendation = predictor._gnn_recommendation
+    original_models_loaded = predictor._models_loaded
+
+    predictor._classifier = None
+    predictor._recommendation = None
+    predictor._gnn_recommendation = None
+    predictor._models_loaded = False
+
+    yield
+
+    predictor._classifier = original_classifier
+    predictor._recommendation = original_recommendation
+    predictor._gnn_recommendation = original_gnn_recommendation
+    predictor._models_loaded = original_models_loaded
+
+
+class TestLoadModels:
+    """Tests for _load_models function."""
+
+    def test_early_return_when_models_already_loaded(self, reset_predictor_state):
+        """Test that _load_models returns early when models are already loaded."""
+        predictor._models_loaded = True
+        predictor._classifier = "already_loaded"
+
+        predictor._load_models()
+
+        # If early return works, classifier should still be the value we set
+        assert predictor._classifier == "already_loaded"
+
+    def test_loads_classifier_successfully(self, reset_predictor_state):
+        """Test successful loading of catchment classifier."""
+        mock_model = MagicMock()
+
+        with patch.dict(
+            "sys.modules", {"tensorflow": MagicMock(), "tensorflow.keras": MagicMock(), "tensorflow.keras.models": MagicMock()}
+        ):
+            with patch("tensorflow.keras.models.load_model", return_value=mock_model) as mock_load:
+                predictor._load_models()
+
+                assert mock_load.call_count >= 1
+
+    def test_handles_classifier_file_not_found(self, reset_predictor_state):
+        """Test handling of FileNotFoundError when loading classifier."""
+        with patch.dict(
+            "sys.modules", {"tensorflow": MagicMock(), "tensorflow.keras": MagicMock(), "tensorflow.keras.models": MagicMock()}
+        ):
+            with patch("tensorflow.keras.models.load_model", side_effect=FileNotFoundError("Model not found")):
+                predictor._load_models()
+
+                assert predictor._classifier is None
+                assert predictor._models_loaded is True
+
+    def test_handles_recommendation_file_not_found(self, reset_predictor_state):
+        """Test handling of FileNotFoundError when loading recommendation model."""
+        call_count = [0]
+
+        def side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return MagicMock()
+            raise FileNotFoundError("Recommendation model not found")
+
+        with patch.dict(
+            "sys.modules", {"tensorflow": MagicMock(), "tensorflow.keras": MagicMock(), "tensorflow.keras.models": MagicMock()}
+        ):
+            with patch("tensorflow.keras.models.load_model", side_effect=side_effect):
+                with patch("sa.core.graph_constructor.load_gnn_model_weights", return_value=None):
+                    predictor._load_models()
+
+                    assert predictor._models_loaded is True
+
+    def test_handles_gnn_model_loading_failure(self, reset_predictor_state):
+        """Test handling of GNN model loading failure."""
+        with patch.dict(
+            "sys.modules", {"tensorflow": MagicMock(), "tensorflow.keras": MagicMock(), "tensorflow.keras.models": MagicMock()}
+        ):
+            with patch("tensorflow.keras.models.load_model", return_value=MagicMock()):
+                with patch("sa.core.graph_constructor.load_gnn_model_weights", side_effect=Exception("GNN loading error")):
+                    predictor._load_models()
+
+                    assert predictor._gnn_recommendation is None
+                    assert predictor._models_loaded is True
+
+    def test_handles_gnn_model_returns_none(self, reset_predictor_state):
+        """Test handling when GNN model loading returns None."""
+        with patch.dict(
+            "sys.modules", {"tensorflow": MagicMock(), "tensorflow.keras": MagicMock(), "tensorflow.keras.models": MagicMock()}
+        ):
+            with patch("tensorflow.keras.models.load_model", return_value=MagicMock()):
+                with patch("sa.core.graph_constructor.load_gnn_model_weights", return_value=None):
+                    predictor._load_models()
+
+                    assert predictor._gnn_recommendation is None
+                    assert predictor._models_loaded is True
+
+    def test_handles_gnn_model_success(self, reset_predictor_state):
+        """Test successful GNN model loading."""
+        mock_gnn = MagicMock()
+        with patch.dict(
+            "sys.modules", {"tensorflow": MagicMock(), "tensorflow.keras": MagicMock(), "tensorflow.keras.models": MagicMock()}
+        ):
+            with patch("tensorflow.keras.models.load_model", return_value=MagicMock()):
+                with patch("sa.core.graph_constructor.load_gnn_model_weights", return_value=mock_gnn):
+                    predictor._load_models()
+
+                    assert predictor._gnn_recommendation is mock_gnn
+                    assert predictor._models_loaded is True
+
+    def test_handles_tensorflow_import_error(self, reset_predictor_state):
+        """Test handling of ImportError when TensorFlow is not available."""
+        import builtins
+
+        original_import = builtins.__import__
+
+        def mock_import(name, *args, **kwargs):
+            if name == "tensorflow.keras.models" or name.startswith("tensorflow"):
+                raise ImportError("TensorFlow not available")
+            return original_import(name, *args, **kwargs)
+
+        with patch.object(builtins, "__import__", side_effect=mock_import):
+            predictor._load_models()
+
+            assert predictor._models_loaded is True
+
+
+class TestGetterFunctions:
+    """Tests for model getter functions."""
+
+    def test_get_classifier_returns_classifier(self, reset_predictor_state):
+        """Test get_classifier returns the classifier model."""
+        mock_classifier = MagicMock()
+        predictor._models_loaded = True
+        predictor._classifier = mock_classifier
+
+        result = predictor.get_classifier()
+
+        assert result is mock_classifier
+
+    def test_get_classifier_triggers_load(self, reset_predictor_state):
+        """Test get_classifier triggers _load_models if not loaded."""
+        with patch.object(predictor, "_load_models") as mock_load:
+            predictor.get_classifier()
+            mock_load.assert_called_once()
+
+    def test_get_recommendation_returns_recommendation(self, reset_predictor_state):
+        """Test get_recommendation returns the recommendation model."""
+        mock_recommendation = MagicMock()
+        predictor._models_loaded = True
+        predictor._recommendation = mock_recommendation
+
+        result = predictor.get_recommendation()
+
+        assert result is mock_recommendation
+
+    def test_get_recommendation_triggers_load(self, reset_predictor_state):
+        """Test get_recommendation triggers _load_models if not loaded."""
+        with patch.object(predictor, "_load_models") as mock_load:
+            predictor.get_recommendation()
+            mock_load.assert_called_once()
+
+    def test_get_gnn_recommendation_returns_gnn_model(self, reset_predictor_state):
+        """Test get_gnn_recommendation returns the GNN model."""
+        mock_gnn = MagicMock()
+        predictor._models_loaded = True
+        predictor._gnn_recommendation = mock_gnn
+
+        result = predictor.get_gnn_recommendation()
+
+        assert result is mock_gnn
+
+
+class TestLazyModelProxy:
+    """Tests for _LazyModelProxy class."""
+
+    def test_init_stores_getter(self):
+        """Test that __init__ stores the getter function."""
+        getter = MagicMock()
+        proxy = _LazyModelProxy(getter)
+
+        assert proxy._getter is getter
+
+    def test_getattr_delegates_to_model(self):
+        """Test that __getattr__ delegates attribute access to the model."""
+        mock_model = MagicMock()
+        mock_model.some_attribute = "test_value"
+        getter = MagicMock(return_value=mock_model)
+
+        proxy = _LazyModelProxy(getter)
+        result = proxy.some_attribute
+
+        getter.assert_called_once()
+        assert result == "test_value"
+
+    def test_getattr_raises_when_model_is_none(self):
+        """Test that __getattr__ raises RuntimeError when model is None."""
+        getter = MagicMock(return_value=None)
+
+        proxy = _LazyModelProxy(getter)
+
+        with pytest.raises(RuntimeError, match="Model not loaded"):
+            _ = proxy.some_attribute
+
+    def test_call_delegates_to_model(self):
+        """Test that __call__ delegates calls to the model."""
+        mock_model = MagicMock(return_value="prediction_result")
+        getter = MagicMock(return_value=mock_model)
+
+        proxy = _LazyModelProxy(getter)
+        result = proxy("input_data", kwarg="value")
+
+        getter.assert_called_once()
+        mock_model.assert_called_once_with("input_data", kwarg="value")
+        assert result == "prediction_result"
+
+    def test_call_raises_when_model_is_none(self):
+        """Test that __call__ raises RuntimeError when model is None."""
+        getter = MagicMock(return_value=None)
+
+        proxy = _LazyModelProxy(getter)
+
+        with pytest.raises(RuntimeError, match="Model not loaded"):
+            proxy("input_data")
+
+    def test_call_with_no_arguments(self):
+        """Test that __call__ works with no arguments."""
+        mock_model = MagicMock(return_value="result")
+        getter = MagicMock(return_value=mock_model)
+
+        proxy = _LazyModelProxy(getter)
+        result = proxy()
+
+        mock_model.assert_called_once_with()
+        assert result == "result"
+
+    def test_call_with_multiple_positional_args(self):
+        """Test that __call__ works with multiple positional arguments."""
+        mock_model = MagicMock(return_value="result")
+        getter = MagicMock(return_value=mock_model)
+
+        proxy = _LazyModelProxy(getter)
+        result = proxy("arg1", "arg2", "arg3")
+
+        mock_model.assert_called_once_with("arg1", "arg2", "arg3")
+        assert result == "result"
+
+    def test_getattr_method_call(self):
+        """Test that __getattr__ allows method calls on the model."""
+        mock_model = MagicMock()
+        mock_model.predict.return_value = [0.5, 0.3, 0.2]
+        getter = MagicMock(return_value=mock_model)
+
+        proxy = _LazyModelProxy(getter)
+        result = proxy.predict([1, 2, 3])
+
+        mock_model.predict.assert_called_once_with([1, 2, 3])
+        assert result == [0.5, 0.3, 0.2]
