@@ -68,6 +68,11 @@ class DataManager(sw.Model):
         self.mlp_recommendation_service = RecommendationService(self.dfc, model=recommendation, model_name="MLP")
         logger.info("MLP Recommendation Service initialized.")
 
+        # Default the active service to MLP so recommendations() can never run against an
+        # unset service if post-simulation reinitialization fails; calculate() upgrades this
+        # to the GNN (or a fresh MLP) once the model is reinitialized with the report file.
+        self.recommendation_service = self.mlp_recommendation_service
+
         # Store the GNN model if it's available, but don't initialize a service here
         self.gnn_model = get_gnn_recommendation() if gnn_enabled() else None
         if self.gnn_model is not None:

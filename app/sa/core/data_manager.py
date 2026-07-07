@@ -148,7 +148,10 @@ def _raw_adjacency_for_cache(adjacency_matrix) -> sp.csr_matrix:
     return adjacency
 
 
-def _validate_gnn_cache_data(cached_data: dict) -> bool:
+def _validate_gnn_cache_data(cached_data: dict, expected_feature_columns: Optional[List[str]] = None) -> bool:
+    if expected_feature_columns is None:
+        expected_feature_columns = get_default_feature_columns()
+
     adjacency_matrix = cached_data.get("adjacency_matrix")
     schema_version = cached_data.get("schema_version")
 
@@ -157,6 +160,10 @@ def _validate_gnn_cache_data(cached_data: dict) -> bool:
         return False
 
     if schema_version is None:
+        # Legacy raw cache predating the schema metadata. Accepted (if raw) so the one
+        # pre-existing on-disk pickle keeps loading (plan D9, deliberate). Residual risk:
+        # a legacy cache built under a different feature set is not detected here; that is
+        # only reachable after a future feature-column change and is out of scope for K1.
         logger.info("Loading legacy raw GNN dataset cache without schema metadata.")
         return True
 
@@ -164,8 +171,8 @@ def _validate_gnn_cache_data(cached_data: dict) -> bool:
         logger.info("GNN dataset cache rejected: schema_version %s != %s.", schema_version, GNN_CACHE_SCHEMA_VERSION)
         return False
 
-    if cached_data.get("feature_columns") != get_default_feature_columns():
-        logger.info("GNN dataset cache rejected: feature columns do not match the default feature contract.")
+    if cached_data.get("feature_columns") != expected_feature_columns:
+        logger.info("GNN dataset cache rejected: feature columns do not match the expected feature contract.")
         return False
 
     return True
@@ -267,7 +274,7 @@ class GNNDataset(BaseSWMMDataset):
             cached_files = sorted(str(p) for p in cached_data.get("inp_files", []))
             current_files = sorted(str(p) for p in self.inp_files)
             if cached_files == current_files:
-                if not _validate_gnn_cache_data(cached_data):
+                if not _validate_gnn_cache_data(cached_data, getattr(self, "feature_columns", None)):
                     return False
                 logger.info("Loading dataset from cache...")
                 self.adjacency_matrix = cached_data["adjacency_matrix"]
@@ -297,7 +304,7 @@ class GNNDataset(BaseSWMMDataset):
         try:
             data_to_cache = {
                 "schema_version": GNN_CACHE_SCHEMA_VERSION,
-                "feature_columns": get_default_feature_columns(),
+                "feature_columns": getattr(self, "feature_columns", None) or get_default_feature_columns(),
                 "adjacency_matrix": _raw_adjacency_for_cache(self.adjacency_matrix),
                 "conduit_order": self.conduit_order,
                 "simulations": self.simulations,
