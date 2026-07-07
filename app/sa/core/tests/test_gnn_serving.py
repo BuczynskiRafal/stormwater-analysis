@@ -22,11 +22,24 @@ requires_tf = pytest.mark.skipif(not HAS_TF, reason="requires tensorflow")
 
 RECOMMENDATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "recommendations")
 WEIGHTS_PATH = os.path.join(RECOMMENDATIONS_DIR, GNN_CONFIG["weights"])
+# The serving weights are git-ignored (.gitignore) and are not provisioned in
+# CI, so any test that actually loads them must SKIP (not error) when the file
+# is absent. Weight provisioning is a separate decision, out of scope here.
+WEIGHTS_AVAILABLE = os.path.exists(WEIGHTS_PATH)
+requires_weights = pytest.mark.skipif(not WEIGHTS_AVAILABLE, reason="GNN model weights not available")
 N_FEATURES = len(FEATURE_COLUMNS)
 N_CLASSES = 9
 
 
 def _build_and_load_model():
+    """Build a serving GraphSAGEModel and load the real 4-hop weights.
+
+    Skips (rather than errors) when the weights file is absent so the
+    dependent tests are portable to a fresh CI checkout without the weights.
+    """
+    if not WEIGHTS_AVAILABLE:
+        pytest.skip("GNN model weights not available")
+
     import tensorflow as tf
     from sa.core.graph_constructor import GraphSAGEModel
 
@@ -196,9 +209,15 @@ class TestNaNRobustness:
 
 
 @requires_tf
+@requires_weights
 class TestLoadGnnModelWeightsConfig:
     """T11 (D3): load_gnn_model_weights must respect GNN_CONFIG strictly; a
-    planted graphsage_model.keras must not bypass the configured weights."""
+    planted graphsage_model.keras must not bypass the configured weights.
+
+    Guarded on WEIGHTS_AVAILABLE: the whole recommendations/ directory is
+    git-ignored, so on a fresh CI checkout it does not exist and planting a
+    sentinel .keras there (or resolving WEIGHTS_PATH) would error rather than
+    skip. The guard keeps this a clean skip when weights are unprovisioned."""
 
     def test_planted_keras_file_does_not_bypass_config(self):
         import tensorflow as tf
