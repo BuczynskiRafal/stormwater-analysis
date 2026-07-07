@@ -31,6 +31,16 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 GNN_MODELS_PATH = os.path.join(REPO_ROOT, "models", "recomendations", "gnn", "gnn_models.py")
 GRAPH_CONSTRUCTOR_PATH = os.path.join(REPO_ROOT, "models", "recomendations", "gnn", "graph_constructor.py")
 
+# The training re-export modules live under the git-ignored models/ tree, so they
+# are absent on a fresh CI checkout. T9 verifies the single-source-of-truth
+# contract wherever that training code exists (local dev); it skips (not errors)
+# when the files are absent.
+TRAINING_MODULES_AVAILABLE = os.path.exists(GNN_MODELS_PATH) and os.path.exists(GRAPH_CONSTRUCTOR_PATH)
+requires_training_modules = pytest.mark.skipif(
+    not TRAINING_MODULES_AVAILABLE,
+    reason="training re-export modules (models/recomendations/gnn/*.py) are git-ignored / absent",
+)
+
 
 def _load_module_by_path(name: str, path: str):
     """Load a module directly by file path, bypassing its package __init__."""
@@ -58,6 +68,7 @@ def repo_root_on_path():
                 pass
 
 
+@requires_training_modules
 class TestPreprocessAdjacencySingleSourceOfTruth:
     """T9 (preprocess_adjacency half)."""
 
@@ -96,6 +107,7 @@ class TestPreprocessAdjacencySingleSourceOfTruth:
         assert np.allclose(training_result, app_result, atol=1e-9)
 
 
+@requires_training_modules
 class TestSWMMGraphConstructorSingleSourceOfTruth:
     """T9 (SWMMGraphConstructor half)."""
 
