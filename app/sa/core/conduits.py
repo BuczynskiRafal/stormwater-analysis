@@ -695,7 +695,7 @@ class RecommendationService:
     Unified recommendation service that supports both MLP and GNN models.
     """
 
-    def __init__(self, dfc: pd.DataFrame, model: Optional[object], model_name: str = "MLP"):
+    def __init__(self, dfc: pd.DataFrame, model: Optional[object], model_name: str = "MLP", adjacency=None):
         """
         Initialize the recommendation service.
 
@@ -703,10 +703,12 @@ class RecommendationService:
             dfc: DataFrame containing conduit data
             model: The ML model (MLP or GNN) to use for predictions
             model_name: Name of the model for logging ("MLP" or "GNN")
+            adjacency: Preprocessed adjacency matrix required for GNN predictions
         """
         self.dfc = dfc
         self.model = model
         self.model_name = model_name
+        self.adjacency = adjacency
 
     def recommendations(self) -> pd.DataFrame:
         """
@@ -723,7 +725,18 @@ class RecommendationService:
         input_data = self.dfc.reindex(columns=FEATURE_COLUMNS, fill_value=0)
         logger.info(f"{self.model_name} input shape: {input_data.shape}")
 
-        preds = self.model.predict(input_data, verbose=0)
+        if self.model_name == "GNN":
+            if self.adjacency is None:
+                raise ValueError("GNN model requires adjacency matrix; refusing to serve GNN without graph (K1)")
+
+            features = np.nan_to_num(input_data.to_numpy(dtype=np.float32))
+            adj_dense = np.asarray(
+                self.adjacency.todense() if hasattr(self.adjacency, "todense") else self.adjacency,
+                dtype=np.float32,
+            )
+            preds = self.model([features, adj_dense], training=False).numpy()
+        else:
+            preds = self.model.predict(input_data, verbose=0)
         preds_cls = preds.argmax(axis=-1)
 
         labels = [category.value for category in RecommendationCategory]

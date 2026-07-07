@@ -21,6 +21,8 @@ import hashlib
 
 logger = logging.getLogger(__name__)
 
+GNN_CACHE_SCHEMA_VERSION = 1
+
 
 class SWMMLabelGenerator:
     """Generates SWMM recommendation labels from conduit data."""
@@ -128,6 +130,47 @@ def get_default_feature_columns():
     ]
 
 
+def _adjacency_has_zero_diagonal(adjacency_matrix) -> bool:
+    if adjacency_matrix is None:
+        return False
+    diagonal = adjacency_matrix.diagonal() if hasattr(adjacency_matrix, "diagonal") else np.diag(adjacency_matrix)
+    return bool(np.allclose(diagonal, 0))
+
+
+def _raw_adjacency_for_cache(adjacency_matrix) -> sp.csr_matrix:
+    adjacency = adjacency_matrix.copy()
+    if not sp.issparse(adjacency):
+        adjacency = sp.csr_matrix(adjacency)
+    else:
+        adjacency = adjacency.tocsr()
+    adjacency.setdiag(0)
+    adjacency.eliminate_zeros()
+    return adjacency
+
+
+def _validate_gnn_cache_data(cached_data: dict) -> bool:
+    adjacency_matrix = cached_data.get("adjacency_matrix")
+    schema_version = cached_data.get("schema_version")
+
+    if not _adjacency_has_zero_diagonal(adjacency_matrix):
+        logger.info("GNN dataset cache rejected: adjacency matrix is not raw (diagonal must be zero).")
+        return False
+
+    if schema_version is None:
+        logger.info("Loading legacy raw GNN dataset cache without schema metadata.")
+        return True
+
+    if schema_version != GNN_CACHE_SCHEMA_VERSION:
+        logger.info("GNN dataset cache rejected: schema_version %s != %s.", schema_version, GNN_CACHE_SCHEMA_VERSION)
+        return False
+
+    if cached_data.get("feature_columns") != get_default_feature_columns():
+        logger.info("GNN dataset cache rejected: feature columns do not match the default feature contract.")
+        return False
+
+    return True
+
+
 class BaseSWMMDataset:
     """
     Base class for SWMM datasets with common data handling functionality.
@@ -224,6 +267,8 @@ class GNNDataset(BaseSWMMDataset):
             cached_files = sorted(str(p) for p in cached_data.get("inp_files", []))
             current_files = sorted(str(p) for p in self.inp_files)
             if cached_files == current_files:
+                if not _validate_gnn_cache_data(cached_data):
+                    return False
                 logger.info("Loading dataset from cache...")
                 self.adjacency_matrix = cached_data["adjacency_matrix"]
                 self.conduit_order = cached_data["conduit_order"]
@@ -238,7 +283,7 @@ class GNNDataset(BaseSWMMDataset):
 
     def _process_dataset(self):
         """Process dataset from scratch."""
-        from sa.core.graph_constructor import SWMMGraphConstructor
+        from sa.core.gnn import SWMMGraphConstructor
         from sa.core.data import DataManager
 
         self.adjacency_matrix, self.conduit_order = self._build_base_graph(self.inp_files[0], SWMMGraphConstructor, DataManager)
@@ -251,7 +296,9 @@ class GNNDataset(BaseSWMMDataset):
 
         try:
             data_to_cache = {
-                "adjacency_matrix": self.adjacency_matrix,
+                "schema_version": GNN_CACHE_SCHEMA_VERSION,
+                "feature_columns": get_default_feature_columns(),
+                "adjacency_matrix": _raw_adjacency_for_cache(self.adjacency_matrix),
                 "conduit_order": self.conduit_order,
                 "simulations": self.simulations,
                 "inp_files": self.inp_files,

@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestTensorFlowNotAvailable:
@@ -361,19 +361,19 @@ class TestLoadGNNModelWeights:
         finally:
             graph_constructor._TF_AVAILABLE = original_tf_available
 
-    def test_load_keras_model_success(self):
-        """Test loading model from .keras file (lines 198-202)."""
+    def test_load_weights_does_not_auto_load_keras_model(self):
+        """Test loading configured weights without auto-preferring a .keras model."""
         pytest.importorskip("tensorflow")
         from sa.core import graph_constructor
+        from sa.core.graph_constructor import GraphSAGEModel
 
-        mock_model = MagicMock()
+        with patch("tensorflow.keras.models.load_model") as mock_load_model:
+            with patch.object(GraphSAGEModel, "load_weights", return_value=None) as mock_load_weights:
+                result = graph_constructor.load_gnn_model_weights(weights_path="/configured/path.weights.h5")
 
-        with patch("os.path.exists", return_value=True):
-            with patch("tensorflow.keras.models.load_model", return_value=mock_model) as mock_load:
-                result = graph_constructor.load_gnn_model_weights()
-
-                assert result is mock_model
-                mock_load.assert_called_once()
+                assert result is not None
+                mock_load_model.assert_not_called()
+                mock_load_weights.assert_called_once_with("/configured/path.weights.h5")
 
     def test_load_keras_model_failure_falls_back_to_weights(self, tmp_path):
         """Test fallback to weights.h5 when .keras fails (lines 203-204)."""

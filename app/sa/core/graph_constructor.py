@@ -185,25 +185,15 @@ class GNNModelLoadError(Exception):
 
 
 def load_gnn_model_weights(weights_path: str = None) -> Optional[Any]:
-    """Load GNN model from .keras or reconstruct from .weights.h5."""
+    """Reconstruct the configured GNN model and load its weights."""
     _require_tensorflow()
 
     from .data_manager import get_default_feature_columns
     from .enums import RecommendationCategory
+    from .predictor import GNN_CONFIG
 
     project_root = os.path.abspath(os.path.dirname(__file__))
-
-    keras_model_path = os.path.join(project_root, "recommendations", "graphsage_model.keras")
-    if os.path.exists(keras_model_path):
-        try:
-            logger.info(f"Loading GNN model from: {keras_model_path}")
-            model = tf.keras.models.load_model(keras_model_path, custom_objects=CUSTOM_OBJECTS)
-            logger.info(f"Loaded GNN model from: {keras_model_path}")
-            return model
-        except Exception as e:
-            logger.warning(f"Failed to load model from {keras_model_path}: {e}")
-
-    model_weights_path = weights_path or os.path.join(project_root, "recommendations", "graphsage_model.weights.h5")
+    model_weights_path = weights_path or os.path.join(project_root, "recommendations", GNN_CONFIG["weights"])
     try:
         logger.info(f"Loading GNN weights from: {model_weights_path}")
         n_features = len(get_default_feature_columns())
