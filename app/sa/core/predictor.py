@@ -7,7 +7,13 @@ logger = logging.getLogger(__name__)
 current_directory = os.path.dirname(os.path.abspath(__file__))
 catchment_classifier_path = os.path.join(current_directory, "catchment_classifier", "model.keras")
 recommendations_classifier_path = os.path.join(current_directory, "recommendations", "recomendations.keras")
-gnn_model_path = os.path.join(current_directory, "recommendations", "graphsage_4hop_model.weights.h5")
+GNN_CONFIG = {"weights": "graphsage_4hop_model.weights.h5", "max_hops": 4}
+gnn_model_path = os.path.join(current_directory, "recommendations", GNN_CONFIG["weights"])
+
+
+def gnn_enabled() -> bool:
+    return os.environ.get("GNN_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
+
 
 # Lazy-loaded models
 _classifier: Optional[Any] = None
@@ -17,13 +23,14 @@ _models_loaded = False
 
 
 def _load_models() -> None:
-    """Lazy load TensorFlow models on first access."""
+    """Lazy load TensorFlow models on first access.
+
+    _models_loaded means the load attempt finished; model availability is exposed by getters.
+    """
     global _classifier, _recommendation, _gnn_recommendation, _models_loaded
 
     if _models_loaded:
         return
-
-    _models_loaded = True
 
     try:
         # Disable GPU for consistency
@@ -43,19 +50,24 @@ def _load_models() -> None:
         except FileNotFoundError:
             logger.error(f"Cannot load MLP recommendation model: {recommendations_classifier_path}")
 
-        try:
-            from .graph_constructor import load_gnn_model_weights
+        if gnn_enabled():
+            try:
+                from .graph_constructor import load_gnn_model_weights
 
-            _gnn_recommendation = load_gnn_model_weights(gnn_model_path)
-            if _gnn_recommendation:
-                logger.info(f"GNN model loaded successfully from {gnn_model_path}")
-            else:
-                logger.warning("GNN model loading failed")
-        except Exception as e:
-            logger.warning(f"GNN model loading failed: {e}")
+                _gnn_recommendation = load_gnn_model_weights(gnn_model_path)
+                if _gnn_recommendation:
+                    logger.info(f"GNN model loaded successfully from {gnn_model_path}")
+                else:
+                    logger.warning("GNN model loading failed")
+            except Exception as e:
+                logger.warning(f"GNN model loading failed: {e}")
+        else:
+            logger.info("GNN model loading skipped because GNN_ENABLED is false.")
 
     except ImportError:
         logger.warning("TensorFlow not available - models will not be loaded")
+    finally:
+        _models_loaded = True
 
 
 def get_classifier() -> Optional[Any]:
@@ -98,4 +110,13 @@ classifier = _LazyModelProxy(get_classifier)
 recommendation = _LazyModelProxy(get_recommendation)
 gnn_recommendation = _LazyModelProxy(get_gnn_recommendation)
 
-__all__ = ["classifier", "recommendation", "gnn_recommendation", "get_classifier", "get_recommendation", "get_gnn_recommendation"]
+__all__ = [
+    "classifier",
+    "recommendation",
+    "gnn_recommendation",
+    "get_classifier",
+    "get_recommendation",
+    "get_gnn_recommendation",
+    "GNN_CONFIG",
+    "gnn_enabled",
+]

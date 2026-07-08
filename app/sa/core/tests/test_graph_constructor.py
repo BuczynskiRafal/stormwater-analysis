@@ -2,7 +2,7 @@
 
 import pytest
 import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestTensorFlowNotAvailable:
@@ -361,47 +361,36 @@ class TestLoadGNNModelWeights:
         finally:
             graph_constructor._TF_AVAILABLE = original_tf_available
 
-    def test_load_keras_model_success(self):
-        """Test loading model from .keras file (lines 198-202)."""
+    def test_load_weights_does_not_auto_load_keras_model(self):
+        """Test loading configured weights without auto-preferring a .keras model."""
         pytest.importorskip("tensorflow")
         from sa.core import graph_constructor
+        from sa.core.graph_constructor import GraphSAGEModel
 
-        mock_model = MagicMock()
+        with patch("tensorflow.keras.models.load_model") as mock_load_model:
+            with patch.object(GraphSAGEModel, "load_weights", return_value=None) as mock_load_weights:
+                result = graph_constructor.load_gnn_model_weights(weights_path="/configured/path.weights.h5")
 
-        with patch("os.path.exists", return_value=True):
-            with patch("tensorflow.keras.models.load_model", return_value=mock_model) as mock_load:
-                result = graph_constructor.load_gnn_model_weights()
-
-                assert result is mock_model
-                mock_load.assert_called_once()
-
-    def test_load_keras_model_failure_falls_back_to_weights(self, tmp_path):
-        """Test fallback to weights.h5 when .keras fails (lines 203-204)."""
-        pytest.importorskip("tensorflow")
-        from sa.core import graph_constructor
-
-        with patch("os.path.exists") as mock_exists:
-            mock_exists.side_effect = lambda p: ".keras" in p
-
-            with patch("tensorflow.keras.models.load_model") as mock_load:
-                mock_load.side_effect = Exception("Failed to load .keras")
-
-                with patch("os.path.abspath") as mock_abspath:
-                    mock_abspath.return_value = str(tmp_path)
-
-                    result = graph_constructor.load_gnn_model_weights()
-
-                    assert result is None
+                assert result is not None
+                mock_load_model.assert_not_called()
+                mock_load_weights.assert_called_once_with("/configured/path.weights.h5")
 
     def test_load_weights_file_not_found(self):
-        """Test FileNotFoundError handling (lines 219-220)."""
+        """A nonexistent weights path returns None (error handling).
+
+        load_gnn_model_weights loads ONLY the configured .weights.h5 via
+        model.load_weights - it no longer probes for or auto-loads a
+        graphsage_model.keras, so there is no os.path.exists / load_model
+        code path left to mock here. The real model.load_weights on a
+        missing file raises (FileNotFoundError / OSError / ValueError), which
+        the loader catches and turns into a None return.
+        """
         pytest.importorskip("tensorflow")
         from sa.core import graph_constructor
 
-        with patch("os.path.exists", return_value=False):
-            result = graph_constructor.load_gnn_model_weights(weights_path="/nonexistent/path.weights.h5")
+        result = graph_constructor.load_gnn_model_weights(weights_path="/nonexistent/path.weights.h5")
 
-            assert result is None
+        assert result is None
 
     def test_load_weights_value_error(self, tmp_path):
         """Test ValueError handling during weight loading (lines 221-226)."""

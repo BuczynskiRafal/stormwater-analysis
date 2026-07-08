@@ -11,7 +11,7 @@ import swmmio as sw
 from .conduits import ConduitFeatureEngineeringService, RecommendationService
 from .enums import RecommendationCategory
 from .nodes import NodeFeatureEngineeringService
-from .predictor import gnn_recommendation, recommendation
+from .predictor import GNN_CONFIG, get_gnn_recommendation, get_recommendation, gnn_enabled, recommendation
 from .round import max_slope, min_slope  # Re-export for backwards compatibility
 from .services import HydraulicCalculationsService, SimulationRunnerService, TraceAnalysisService
 from .subcatchments import SubcatchmentFeatureEngineeringService
@@ -68,9 +68,14 @@ class DataManager(sw.Model):
         self.mlp_recommendation_service = RecommendationService(self.dfc, model=recommendation, model_name="MLP")
         logger.info("MLP Recommendation Service initialized.")
 
+        # Default the active service to MLP so recommendations() can never run against an
+        # unset service if post-simulation reinitialization fails; calculate() upgrades this
+        # to the GNN (or a fresh MLP) once the model is reinitialized with the report file.
+        self.recommendation_service = self.mlp_recommendation_service
+
         # Store the GNN model if it's available, but don't initialize a service here
-        self.gnn_model = gnn_recommendation
-        if self.gnn_model:
+        self.gnn_model = get_gnn_recommendation() if gnn_enabled() else None
+        if self.gnn_model is not None:
             logger.info("GNN model is available and loaded.")
         else:
             logger.info("GNN model is not available.")
@@ -96,6 +101,40 @@ class DataManager(sw.Model):
         if df is None:
             raise ValueError("DataFrame source is None")
         return df.copy()
+
+    def _ensure_conduit_node_columns_are_strings(self) -> None:
+        if self.dfc is None:
+            return
+        for column in ("InletNode", "OutletNode"):
+            if column in self.dfc.columns:
+                self.dfc[column] = self.dfc[column].astype(str)
+
+    def _select_recommendation_service(self) -> None:
+        gnn_model = get_gnn_recommendation() if gnn_enabled() else None
+        adjacency = None
+
+        if gnn_model is not None:
+            try:
+                from .gnn import build_adjacency_from_dfc, preprocess_adjacency
+
+                self._ensure_conduit_node_columns_are_strings()
+                raw_adjacency = build_adjacency_from_dfc(self.dfc)
+                adjacency = preprocess_adjacency(raw_adjacency, max_hops=GNN_CONFIG["max_hops"])
+            except Exception as e:
+                logger.warning("GNN graph construction failed -> MLP fallback: %s", e)
+                gnn_model, adjacency = None, None
+
+        if gnn_model is not None and adjacency is not None:
+            logger.info("Using GNN model for recommendations (GraphSAGE)")
+            self.recommendation_service = RecommendationService(
+                self.dfc,
+                model=gnn_model,
+                model_name="GNN",
+                adjacency=adjacency,
+            )
+        else:
+            logger.info("Using MLP model for recommendations (fallback - GNN unavailable or disabled)")
+            self.recommendation_service = RecommendationService(self.dfc, model=get_recommendation(), model_name="MLP")
 
     def __enter__(self):
         self.calculate()
@@ -163,6 +202,7 @@ class DataManager(sw.Model):
         self.simulation_service.run_simulation()
 
         # Reinitialize parent sw.Model to include newly generated .rpt file
+        reinitialized = False
         try:
             super().__init__(self.inp.path, crs=self.crs, include_rpt=True)
 
@@ -170,6 +210,7 @@ class DataManager(sw.Model):
             new_conduits_df = self.conduits()
             if new_conduits_df is not None and not new_conduits_df.empty:
                 self.dfc = new_conduits_df.copy()
+                self._ensure_conduit_node_columns_are_strings()
 
             new_nodes_df = self.nodes()
             if new_nodes_df is not None and not new_nodes_df.empty:
@@ -184,16 +225,13 @@ class DataManager(sw.Model):
             self.node_service = NodeFeatureEngineeringService(self.dfn, self.dfs)
             self.conduit_service = ConduitFeatureEngineeringService(dfc=self.dfc, dfn=self.dfn, frost_zone=self.frost_zone)
 
-            # Choose recommendation service based on available models
-            if gnn_recommendation is not None:
-                logger.info("Using GNN model for recommendations (GraphSAGE)")
-                self.recommendation_service = RecommendationService(self.dfc, model=gnn_recommendation, model_name="GNN")
-            else:
-                logger.info("Using MLP model for recommendations (fallback - GNN not available)")
-                self.recommendation_service = RecommendationService(self.dfc, model=recommendation, model_name="MLP")
+            reinitialized = True
 
         except Exception as e:
             logger.warning(f"Could not reinitialize with report file: {e}")
+
+        if reinitialized:
+            self._select_recommendation_service()
 
     def feature_engineering(self) -> None:
         """

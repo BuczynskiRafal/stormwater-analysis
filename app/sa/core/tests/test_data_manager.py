@@ -246,7 +246,11 @@ class TestGNNModelAvailability:
 
     def test_gnn_model_available_logs_info(self):
         """Test that logger.info is called when GNN model is available."""
-        with patch("sa.core.data.gnn_recommendation", new=MagicMock()), patch("sa.core.data.logger") as mock_logger:
+        with (
+            patch("sa.core.data.gnn_enabled", return_value=True),
+            patch("sa.core.data.get_gnn_recommendation", return_value=MagicMock()),
+            patch("sa.core.data.logger") as mock_logger,
+        ):
             DataManager(TEST_FILE)
             # Check that the "GNN model is available" log was called
             info_calls = [str(call) for call in mock_logger.info.call_args_list]
@@ -254,7 +258,11 @@ class TestGNNModelAvailability:
 
     def test_gnn_model_not_available_logs_info(self):
         """Test that logger.info is called when GNN model is not available."""
-        with patch("sa.core.data.gnn_recommendation", new=None), patch("sa.core.data.logger") as mock_logger:
+        with (
+            patch("sa.core.data.gnn_enabled", return_value=True),
+            patch("sa.core.data.get_gnn_recommendation", return_value=None),
+            patch("sa.core.data.logger") as mock_logger,
+        ):
             DataManager(TEST_FILE)
             info_calls = [str(call) for call in mock_logger.info.call_args_list]
             assert any("GNN model is not available" in str(call) for call in info_calls)
@@ -305,7 +313,7 @@ class TestCalculateMethod:
             patch.object(type(data_manager), "conduits", return_value=mock_conduits_df),
             patch.object(type(data_manager), "nodes", return_value=mock_nodes_df),
             patch.object(type(data_manager), "subcatchments", return_value=mock_subcatch_df),
-            patch("sa.core.data.gnn_recommendation", new=None),
+            patch("sa.core.data.gnn_enabled", return_value=False),
             patch("sa.core.data.logger") as mock_logger,
             patch("sa.core.data.SubcatchmentFeatureEngineeringService"),
             patch("sa.core.data.NodeFeatureEngineeringService"),
@@ -334,7 +342,8 @@ class TestCalculateMethod:
             patch.object(type(data_manager), "conduits", return_value=mock_conduits_df),
             patch.object(type(data_manager), "nodes", return_value=mock_nodes_df),
             patch.object(type(data_manager), "subcatchments", return_value=mock_subcatch_df),
-            patch("sa.core.data.gnn_recommendation", new=mock_gnn),
+            patch("sa.core.data.gnn_enabled", return_value=True),
+            patch("sa.core.data.get_gnn_recommendation", return_value=mock_gnn),
             patch("sa.core.data.logger") as mock_logger,
             patch("sa.core.data.SubcatchmentFeatureEngineeringService"),
             patch("sa.core.data.NodeFeatureEngineeringService"),
