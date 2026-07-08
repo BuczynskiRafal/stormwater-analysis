@@ -15,7 +15,7 @@ import pytest
 from sa.core.conduits import RecommendationService
 from sa.core.constants import FEATURE_COLUMNS
 from sa.core.gnn import build_adjacency_from_dfc, preprocess_adjacency
-from sa.core.predictor import GNN_CONFIG
+from sa.core.predictor import GNN_CONFIG, gnn_enabled
 
 HAS_TF = importlib.util.find_spec("tensorflow") is not None
 requires_tf = pytest.mark.skipif(not HAS_TF, reason="requires tensorflow")
@@ -29,6 +29,29 @@ WEIGHTS_AVAILABLE = os.path.exists(WEIGHTS_PATH)
 requires_weights = pytest.mark.skipif(not WEIGHTS_AVAILABLE, reason="GNN model weights not available")
 N_FEATURES = len(FEATURE_COLUMNS)
 N_CLASSES = 9
+
+
+def test_gnn_enablement_requires_runnable_parity_coverage():
+    """Enable-gate (plan1.md D10 / Etap 3.2): fail loudly, never silently green.
+
+    T3/T4 (K1 regression), T5 (train/serve parity) and T6 all load the
+    git-ignored serving weights and therefore SKIP when the weights are absent.
+    A CI job that enables GNN without provisioning those weights would report
+    green while every gating test skipped -- 'green' would NOT prove the
+    graph-served path. So: whenever GNN is actually enabled, require the weights
+    to be present (which forces the gating tests to run instead of skip).
+
+    Stays green today because GNN_ENABLED defaults off; only bites when the flag
+    is flipped (Etap 3.3) in an environment that never runs the parity tests.
+    """
+    if not gnn_enabled():
+        pytest.skip("GNN_ENABLED is off; enable-gate not applicable")
+    assert WEIGHTS_AVAILABLE, (
+        f"GNN_ENABLED=true but serving weights are missing at {WEIGHTS_PATH}. "
+        "The K1/parity regression tests (T3-T6) skip without weights, so a green "
+        "run would not prove the graph-served path. Provision the weights before "
+        "enabling GNN (plan1.md D10 / Etap 3.2)."
+    )
 
 
 def _build_and_load_model():
