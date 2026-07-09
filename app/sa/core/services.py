@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Dict, List
 import pandas as pd
 
 if TYPE_CHECKING:
-    from .data_manager import DataManager
+    from .data import DataManager
 from pyswmm import Simulation
 from swmmio.utils.functions import trace_from_node
 
