@@ -146,7 +146,7 @@ class DataManager(sw.Model):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
-            print(f"Exception occurred: {exc_val}")
+            logger.error(f"Exception occurred: {exc_val}")
         return False
 
     ############################################################################

@@ -4,6 +4,7 @@ Utility services for hydraulic calculations, simulation running, and trace analy
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import TYPE_CHECKING, Dict, List
 
@@ -25,6 +26,8 @@ from .valid_round import (
     validate_max_slope,
     validate_min_slope,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def validate_inputs(func):
@@ -186,10 +189,10 @@ class HydraulicCalculationsService:
         """
         if not validate_max_slope(slope, diameter):
             # raise ValueError("Slope exceeds maximum allowed value")
-            print("Slope exceeds maximum allowed value")
+            logger.warning("Slope exceeds maximum allowed value")
         if not validate_min_slope(slope, filling, diameter):
             # raise ValueError("Slope is too small")
-            print("Slope is too small")
+            logger.warning("Slope is too small")
 
         area = HydraulicCalculationsService.calc_area(filling, diameter)
         velocity = HydraulicCalculationsService.calc_velocity(filling, diameter, slope)

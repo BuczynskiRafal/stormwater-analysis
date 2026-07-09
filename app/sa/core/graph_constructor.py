@@ -188,7 +188,7 @@ def load_gnn_model_weights(weights_path: str = None) -> Optional[Any]:
     """Reconstruct the configured GNN model and load its weights."""
     _require_tensorflow()
 
-    from .data_manager import get_default_feature_columns
+    from .feature_contract import get_default_feature_columns
     from .enums import RecommendationCategory
     from .predictor import GNN_CONFIG
 

@@ -1,5 +1,6 @@
 """Unit tests for services.py module."""
 
+import logging
 import math
 from unittest.mock import MagicMock
 
@@ -168,25 +169,25 @@ class TestHydraulicCalculationsServiceCalcFlow:
         result = HydraulicCalculationsService.calc_flow(0.0, 0.5, 0.01)
         assert result == 0.0
 
-    def test_flow_with_slope_exceeds_max_prints_then_raises(self, capsys):
-        """Test that flow calculation prints warning when slope exceeds max (line 189).
+    def test_flow_with_slope_exceeds_max_warns_then_raises(self, caplog):
+        """Test that flow calculation logs a warning when slope exceeds max.
 
-        Note: calc_flow prints the warning but then calls calc_velocity which raises.
+        Note: calc_flow logs the warning but then calls calc_velocity which raises.
         """
-        with pytest.raises(ValueError, match="Slope exceeds maximum allowed value"):
-            HydraulicCalculationsService.calc_flow(0.1, 0.2, 500)
-        captured = capsys.readouterr()
-        assert "Slope exceeds maximum allowed value" in captured.out
+        with caplog.at_level(logging.WARNING, logger="sa.core.services"):
+            with pytest.raises(ValueError, match="Slope exceeds maximum allowed value"):
+                HydraulicCalculationsService.calc_flow(0.1, 0.2, 500)
+        assert "Slope exceeds maximum allowed value" in caplog.text
 
-    def test_flow_with_slope_too_small_prints_then_raises(self, capsys):
-        """Test that flow calculation prints warning when slope is too small.
+    def test_flow_with_slope_too_small_warns_then_raises(self, caplog):
+        """Test that flow calculation logs a warning when slope is too small.
 
-        Note: calc_flow prints the warning but then calls calc_velocity which raises.
+        Note: calc_flow logs the warning but then calls calc_velocity which raises.
         """
-        with pytest.raises(ValueError, match="Slope is too small"):
-            HydraulicCalculationsService.calc_flow(0.2, 0.5, 0.0001)
-        captured = capsys.readouterr()
-        assert "Slope is too small" in captured.out
+        with caplog.at_level(logging.WARNING, logger="sa.core.services"):
+            with pytest.raises(ValueError, match="Slope is too small"):
+                HydraulicCalculationsService.calc_flow(0.2, 0.5, 0.0001)
+        assert "Slope is too small" in caplog.text
 
 
 class TestHydraulicCalculationsServiceCalcFilling:

@@ -10,6 +10,12 @@ COPY . /app
 
 ENV DJANGO_SETTINGS_MODULE=storm_analysis.settings
 
+# NOTE: DJANGO_ENV=production should be set at deploy time (e.g. via -e or an
+# env file). It is deliberately not baked in here because the production
+# settings hard-require SECRET_KEY (and ALLOWED_HOSTS) from the environment,
+# which would make the container unbootable without them. Without DJANGO_ENV
+# the settings package falls back to development settings.
+
 RUN python manage.py makemigrations
 RUN python manage.py migrate
 
