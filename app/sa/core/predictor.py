@@ -41,13 +41,13 @@ def _load_models() -> None:
         try:
             _classifier = load_model(catchment_classifier_path)
             logger.info(f"Catchment classifier loaded from: {catchment_classifier_path}")
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError, OSError):
             logger.error(f"Cannot load catchment classifier: {catchment_classifier_path}")
 
         try:
             _recommendation = load_model(recommendations_classifier_path)
             logger.info(f"MLP recommendation model loaded from: {recommendations_classifier_path}")
-        except FileNotFoundError:
+        except (FileNotFoundError, ValueError, OSError):
             logger.error(f"Cannot load MLP recommendation model: {recommendations_classifier_path}")
 
         if gnn_enabled():

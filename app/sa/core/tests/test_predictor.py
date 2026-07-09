@@ -95,6 +95,22 @@ class TestLoadModels:
 
         assert predictor._models_loaded is True
 
+    @pytest.mark.skipif(not HAS_TENSORFLOW, reason="TensorFlow not installed")
+    def test_handles_missing_model_files_with_tensorflow(self, reset_predictor_state, monkeypatch, tmp_path):
+        """With TensorFlow available but model files absent, loading must degrade gracefully.
+
+        Keras 3's load_model raises ValueError ("File not found: filepath=...") rather than
+        FileNotFoundError, so the getters must return None without raising.
+        """
+        missing_classifier = str(tmp_path / "missing_classifier.keras")
+        missing_recommendation = str(tmp_path / "missing_recommendation.keras")
+        monkeypatch.setattr(predictor, "catchment_classifier_path", missing_classifier)
+        monkeypatch.setattr(predictor, "recommendations_classifier_path", missing_recommendation)
+
+        assert predictor.get_classifier() is None
+        assert predictor.get_recommendation() is None
+        assert predictor._models_loaded is True
+
     @pytest.mark.skipif(HAS_TENSORFLOW, reason="Test requires TensorFlow to be unavailable")
     def test_handles_missing_tensorflow(self, reset_predictor_state):
         """Test that _load_models handles missing TensorFlow gracefully."""
