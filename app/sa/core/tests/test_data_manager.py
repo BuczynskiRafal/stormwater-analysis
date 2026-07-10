@@ -1,6 +1,7 @@
 """Unit tests for DataManager class in data.py to improve coverage."""
 
 import importlib.util
+import logging
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -193,12 +194,12 @@ class TestContextManager:
         result = data_manager.__exit__(None, None, None)
         assert result is False
 
-    def test_exit_with_exception(self, data_manager: DataManager, capsys):
-        """Test __exit__ prints exception and returns False."""
-        result = data_manager.__exit__(ValueError, ValueError("test error"), None)
+    def test_exit_with_exception(self, data_manager: DataManager, caplog):
+        """Test __exit__ logs the exception and returns False."""
+        with caplog.at_level(logging.ERROR, logger="sa.core.data"):
+            result = data_manager.__exit__(ValueError, ValueError("test error"), None)
         assert result is False
-        captured = capsys.readouterr()
-        assert "Exception occurred: test error" in captured.out
+        assert "Exception occurred: test error" in caplog.text
 
 
 class TestDelegationMethods:

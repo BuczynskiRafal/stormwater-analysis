@@ -80,5 +80,5 @@ jobs:
           app/sa/core/tests/test_gnn_graph.py
           app/sa/core/tests/test_gnn_serving.py
           app/sa/core/tests/test_gnn_parity.py
-          app/sa/core/tests/test_gnn_contract.py
+          app/sa/core/tests/test_feature_contract.py
           app/sa/core/tests/test_gnn_killswitch.py

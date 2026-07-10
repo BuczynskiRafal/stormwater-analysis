@@ -1,4 +1,5 @@
 import importlib.util
+import os
 
 import numpy as np
 import pandas as pd
@@ -6,12 +7,20 @@ import pytest
 import swmmio as sw
 
 from sa.core.data import DataManager
+from sa.core.predictor import recommendations_classifier_path
 from sa.core.tests import TEST_FILE
 from sa.core.valid_round import validate_filling
 
 # Check if TensorFlow is available for tests that require model predictions
 TF_AVAILABLE = importlib.util.find_spec("tensorflow") is not None
-requires_tensorflow = pytest.mark.skipif(not TF_AVAILABLE, reason="TensorFlow not installed")
+
+# Tests that run the full DataManager pipeline need the MLP recommendation
+# model, whose weights are git-ignored and exist only locally.
+MLP_MODEL_AVAILABLE = os.path.exists(recommendations_classifier_path)
+requires_recommendation_model = pytest.mark.skipif(
+    not (TF_AVAILABLE and MLP_MODEL_AVAILABLE),
+    reason="TensorFlow or MLP recommendation model artifact not available",
+)
 
 desired_width = 500
 pd.set_option("display.width", desired_width)
@@ -173,7 +182,7 @@ class TestConduitsData:
             if not pd.isna(conduit_outlet_max_depth) and not pd.isna(node_max_depth):
                 assert conduit_outlet_max_depth == node_max_depth
 
-    @requires_tensorflow
+    @requires_recommendation_model
     @pytest.mark.parametrize("value", [1.0, 1.2, 1.4, 1.6])
     def test_frost_zone_valid_values(self, value):
         """Test setting frost_zone attribute with valid values."""
@@ -181,7 +190,7 @@ class TestConduitsData:
             data_manager.frost_zone = value
             assert data_manager.frost_zone == value
 
-    @requires_tensorflow
+    @requires_recommendation_model
     @pytest.mark.parametrize("value", [0.5, 1.7, -1.0, 2.0])
     def test_frost_zone_invalid_values(self, value):
         """Test setting frost_zone attribute with invalid values."""
